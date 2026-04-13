@@ -299,13 +299,3 @@ Wenn du PrivaShield dauerhaft unter Unraid betreiben willst, würde ich zusätzl
 5. JWT-Secret sicher dokumentieren und geschützt aufbewahren
 
 ---
-
-## GitHub-Datei
-
-Diese Anleitung liegt im Repository als:
-
-```text
-unraid.md
-```
-
-Wenn du willst, kann ich dir als Nächstes auch noch eine **passende Unraid-Template-XML** oder eine **docker-compose.yml speziell für Unraid** erstellen.
