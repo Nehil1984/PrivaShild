@@ -11,6 +11,7 @@ import {
   type MandantenGruppe, type InsertMandantenGruppe,
   type Vorlagenpaket, type InsertVorlagenpaket,
   type MandantenLog, type InsertMandantenLog,
+  type VorlagenpaketHistorie, type InsertVorlagenpaketHistorie,
   type User, type InsertUser,
   type Vvt, type InsertVvt,
   type Avv, type InsertAvv,
@@ -56,6 +57,10 @@ export interface IStorage {
   // Mandanten-Logs
   getMandantenLogs(mandantId: number): Promise<MandantenLog[]>;
   createMandantenLog(data: InsertMandantenLog): Promise<MandantenLog>;
+
+  // Vorlagenpaket-Historie
+  getVorlagenpaketHistorie(mandantId: number): Promise<VorlagenpaketHistorie[]>;
+  createVorlagenpaketHistorie(data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie>;
 
   // VVT
   getVvtByMandant(mandantId: number): Promise<Vvt[]>;

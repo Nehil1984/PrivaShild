@@ -120,6 +120,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(logs);
   });
 
+  app.get("/api/mandanten/:id/vorlagen-historie", authMiddleware, async (req, res) => {
+    const historie = await storage.getVorlagenpaketHistorie(Number(req.params.id));
+    res.json(historie);
+  });
+
   app.get("/api/mandanten-gruppen", authMiddleware, async (_req, res) => {
     res.json(await storage.getMandantenGruppen());
   });
@@ -159,6 +164,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       name: (await storage.getUserById(req.userId))?.name,
     });
     res.json(result);
+  });
+
+  app.post("/api/gruppen/:gruppenId/vorlagenpakete/:paketId/apply", authMiddleware, adminOnly, async (req: any, res) => {
+    const gruppenId = Number(req.params.gruppenId);
+    const paketId = Number(req.params.paketId);
+    const mandanten = await storage.getMandanten();
+    const targets = mandanten.filter((m) => m.gruppeId === gruppenId);
+    const user = await storage.getUserById(req.userId);
+    const results = [];
+    for (const m of targets) {
+      results.push({ mandantId: m.id, mandantName: m.name, ...(await storage.applyVorlagenpaketToMandant(m.id, paketId, { id: req.userId, name: user?.name })) });
+    }
+    res.json({ ok: true, count: results.length, results });
   });
 
   // ─── STATS ────────────────────────────────────────────────────────────────

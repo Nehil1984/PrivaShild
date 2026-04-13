@@ -56,6 +56,7 @@ export const vorlagenpakete = sqliteTable("vorlagenpakete", {
   name: text("name").notNull(),
   beschreibung: text("beschreibung"),
   kategorie: text("kategorie").default("allgemein"),
+  version: text("version").default("1.0"),
   aktiv: integer("aktiv", { mode: "boolean" }).default(true),
   inhaltJson: text("inhalt_json").default("{}"),
   createdAt: text("created_at").default(new Date().toISOString()),
@@ -81,6 +82,21 @@ export const mandantenLogs = sqliteTable("mandanten_logs", {
 export const insertMandantenLogSchema = createInsertSchema(mandantenLogs).omit({ id: true, zeitpunkt: true });
 export type InsertMandantenLog = z.infer<typeof insertMandantenLogSchema>;
 export type MandantenLog = typeof mandantenLogs.$inferSelect;
+
+// ─── Vorlagenpaket-Historie ────────────────────────────────────────────────
+export const vorlagenpaketHistorie = sqliteTable("vorlagenpaket_historie", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mandantId: integer("mandant_id").notNull(),
+  paketId: integer("paket_id").notNull(),
+  paketName: text("paket_name").notNull(),
+  paketVersion: text("paket_version"),
+  angewendetAm: text("angewendet_am").default(new Date().toISOString()),
+  angewendetVon: text("angewendet_von"),
+  detailsJson: text("details_json").default("{}"),
+});
+export const insertVorlagenpaketHistorieSchema = createInsertSchema(vorlagenpaketHistorie).omit({ id: true, angewendetAm: true });
+export type InsertVorlagenpaketHistorie = z.infer<typeof insertVorlagenpaketHistorieSchema>;
+export type VorlagenpaketHistorie = typeof vorlagenpaketHistorie.$inferSelect;
 
 // ─── Benutzer ─────────────────────────────────────────────────────────────────
 export const users = sqliteTable("users", {

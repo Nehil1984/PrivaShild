@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PrivaShield – Druckexport</title>
+<style>
+  /* ─── Reset & Grundlayout ───────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ─── Toolbar (nur am Bildschirm) ──────────────────────────────────────── */
+  #toolbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #1C1B19;
+    color: #ccc;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+    border-bottom: 2px solid #4F98A3;
+    gap: 12px;
+  }
+  #toolbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600; color: #fff;
+  }
+  #toolbar .brand svg { color: #4F98A3; }
+  #toolbar .actions { display: flex; gap: 8px; }
+  #toolbar button {
+    padding: 7px 18px;
+    border: none; border-radius: 6px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+  }
+  #btn-print { background: #4F98A3; color: #fff; }
+  #btn-print:hover { background: #227F8B; }
+  #btn-close { background: #393836; color: #ccc; }
+  #btn-close:hover { background: #4a4846; }
+
+  /* ─── Druckbereich ──────────────────────────────────────────────────────── */
+  #content {
+    max-width: 900px;
+    margin: 80px auto 48px;
+    padding: 0 32px;
+  }
+
+  /* Deckblatt */
+  .cover {
+    padding: 32px 0 24px;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 32px;
+  }
+  .cover-logo {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .cover-logo svg { color: #4F98A3; }
+  .cover-logo .app-name { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+  .cover-logo .app-sub { font-size: 12px; color: #6b7280; }
+  .cover h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+  .cover .meta { font-size: 11px; color: #6b7280; display: flex; gap: 24px; flex-wrap: wrap; }
+  .cover .meta span { display: flex; gap: 4px; align-items: center; }
+
+  /* Mandanten-Infobox */
+  .mandant-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .mandant-box .field label { font-size: 10px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; display: block; }
+  .mandant-box .field span { font-size: 12px; color: #1a1a1a; }
+
+  /* Modulabschnitt */
+  .module-section { margin-bottom: 36px; break-inside: avoid; }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .info-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: #fff;
+  }
+  .info-card h3 {
+    font-size: 11px;
+    margin-bottom: 8px;
+    color: #1e293b;
+  }
+  .info-card p { font-size: 10.5px; color: #475569; margin-bottom: 4px; }
+  .module-header {
+    display: flex; align-items: center; gap-10px; padding: 10px 14px;
+    background: #1e293b; color: #fff; border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid #4F98A3;
+  }
+  .module-header h2 { font-size: 13px; font-weight: 600; margin: 0; }
+  .module-header .badge {
+    margin-left: auto; font-size: 10px; padding: 2px 8px;
+    background: rgba(255,255,255,0.15); border-radius: 99px;
+  }
+
+  /* Tabelle */
+  .data-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 10.5pt;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+  .data-table thead tr { background: #f1f5f9; }
+  .data-table th {
+    text-align: left; padding: 8px 10px;
+    font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .04em; color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .data-table td {
+    padding: 8px 10px; vertical-align: top;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155; font-size: 10.5px;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:nth-child(even) td { background: #f8fafc; }
+
+  .badge-status {
+    display: inline-block; padding: 1px 7px; border-radius: 99px;
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .badge-aktiv, .badge-implementiert, .badge-erledigt, .badge-abgeschlossen { background: #dcfce7; color: #15803d; }
+  .badge-offen { background: #fef9c3; color: #854d0e; }
+  .badge-entwurf, .badge-in-pruefung { background: #e0f2fe; color: #0369a1; }
+  .badge-ueberfaellig, .badge-kritisch { background: #fee2e2; color: #b91c1c; }
+  .badge-niedrig { background: #f1f5f9; color: #64748b; }
+  .badge-mittel { background: #fef9c3; color: #854d0e; }
+  .badge-hoch { background: #fee2e2; color: #b91c1c; }
+
+  .empty-note { padding: 20px; text-align: center; color: #94a3b8; font-size: 11px; font-style: italic; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; }
+
+  /* Fußzeile */
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
+
+  /* Loading */
+  #loading { text-align: center; padding: 80px 32px; color: #6b7280; font-size: 14px; }
+  #error-box { text-align: center; padding: 80px 32px; color: #dc2626; font-size: 14px; }
+
+  /* ─── Druckstile ─────────────────────────────────────────────────────────── */
+  @media print {
+    #toolbar { display: none !important; }
+    #content { margin: 0; padding: 0 16px; }
+    body { font-size: 10pt; }
+    .module-section { break-inside: avoid; page-break-inside: avoid; }
+    .module-header { background: #1e293b !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .data-table tbody tr:nth-child(even) td { background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <div class="brand">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="none">
+      <path d="M16 2 L28 7 L28 16 C28 23 22 29 16 30 C10 29 4 23 4 16 L4 7 Z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M11 16 L14 19 L21 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <span>PrivaShield – Druckexport</span>
+  </div>
+  <div class="actions">
+    <button id="btn-close" onclick="window.close()">✕ Schließen</button>
+    <button id="btn-print" onclick="window.print()">🖨 Drucken / Als PDF speichern</button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="loading">Daten werden geladen…</div>
+  <div id="error-box" style="display:none"></div>
+  <div id="main" style="display:none"></div>
+</div>
+
+<script>
+// ─── Konfigurationsdaten aus sessionStorage ───────────────────────────────
+const raw = sessionStorage.getItem("privashield_export");
+if (!raw) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("error-box").style.display = "block";
+  document.getElementById("error-box").textContent =
+    "Keine Export-Konfiguration gefunden. Bitte die Druckansicht über PrivaShield öffnen.";
+  throw new Error("no config");
+}
+const config = JSON.parse(raw);
+
+// ─── Modul-Definitionen ───────────────────────────────────────────────────
+const MODULES = {
+  vvt: {
+    label: "Verarbeitungsverzeichnis (VVT – Art. 30 DSGVO)",
+    columns: [
+      { key: "bezeichnung", label: "Bezeichnung" },
+      { key: "zweck", label: "Zweck" },
+      { key: "rechtsgrundlage", label: "Rechtsgrundlage" },
+      { key: "loeschfrist", label: "Löschfrist" },
+      { key: "status", label: "Status" },
+    ],
+  },
+  avv: {
+    label: "Auftragsverarbeitungsverträge (AVV – Art. 28 DSGVO)",
+    columns: [
+      { key: "auftragsverarbeiter", label: "Auftragsverarbeiter" },
+      { key: "gegenstand", label: "Gegenstand" },
+      { key: "vertragsdatum", label: "Vertragsdatum" },
+      { key: "status", label: "Status" },
+      { key: "pruef_faellig", label: "Prüfung fällig" },
+    ],
+  },
+  dsfa: {
+    label: "Datenschutz-Folgenabschätzung (DSFA – Art. 35 DSGVO)",
+    columns: [
+      { key: "titel", label: "Titel" },
+      { key: "beschreibung", label: "Beschreibung" },
+      { key: "ergebnis", label: "Ergebnis" },
+      { key: "status", label: "Status" },
+    ],
+  },
+  datenpannen: {
+    label: "Datenpannen (Art. 33/34 DSGVO)",
+    columns: [
+      { key: "titel", label: "Vorfall" },
+      { key: "entdeckt_am", label: "Entdeckt am" },
+      { key: "schwere", label: "Schwere" },
+      { key: "status", label: "Status" },
+      { key: "meldepflichtig", label: "Meldepflichtig" },
+    ],
+  },
+  dsr: {
+    label: "Betroffenenrechte / DSR (Art. 15–22 DSGVO)",
+    columns: [
+      { key: "art", label: "Art des Antrags" },
+      { key: "antragsteller", label: "Antragsteller" },
+      { key: "eingangsdatum", label: "Eingang" },
+      { key: "frist_datum", label: "Frist" },
+      { key: "status", label: "Status" },
+    ],
+  },
+  tom: {
+    label: "Technische & Organisatorische Maßnahmen (TOM – Art. 32 DSGVO)",
+    columns: [
+      { key: "kategorie", label: "Kategorie" },
+      { key: "massnahme", label: "Maßnahme" },
+      { key: "status", label: "Status" },
+      { key: "verantwortlicher", label: "Verantwortlicher" },
+      { key: "pruef_datum", label: "Prüfdatum" },
+    ],
+  },
+  aufgaben: {
+    label: "Aufgaben & Maßnahmenplan",
+    columns: [
+      { key: "titel", label: "Aufgabe" },
+      { key: "prioritaet", label: "Priorität" },
+      { key: "status", label: "Status" },
+      { key: "verantwortlicher", label: "Verantwortlicher" },
+      { key: "faellig_am", label: "Fällig am" },
+    ],
+  },
+  dokumente: {
+    label: "Dokumente & Vorlagen",
+    columns: [
+      { key: "titel", label: "Titel" },
+      { key: "kategorie", label: "Kategorie" },
+      { key: "version", label: "Version" },
+      { key: "status", label: "Status" },
+      { key: "gueltig_bis", label: "Gültig bis" },
+    ],
+  },
+};
+
+// ─── Hilfsfunktionen ─────────────────────────────────────────────────────
+function fmt(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "number") return v === 1 ? "Ja" : v === 0 ? "Nein" : String(v);
+  if (typeof v === "boolean") return v ? "Ja" : "Nein";
+  if (typeof v === "string") {
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+      try { return new Date(v).toLocaleDateString("de-DE"); } catch(e) { return v; }
+    }
+    return v || "—";
+  }
+  return String(v);
+}
+
+function badgeClass(val) {
+  if (!val || typeof val !== "string") return "";
+  const v = val.toLowerCase().replace(/\s+/g, "-");
+  return `badge-status badge-${v}`;
+}
+
+function statusField(key, val) {
+  const statusKeys = ["status", "schwere", "prioritaet", "meldepflichtig"];
+  if (statusKeys.some(k => key.includes(k))) {
+    return `<span class="${badgeClass(String(val))}">${fmt(val)}</span>`;
+  }
+  return fmt(val);
+}
+
+function buildTable(mod, rows) {
+  const cols = mod.columns;
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-note">Keine Einträge vorhanden</div>`;
+  }
+  const thead = cols.map(c => `<th>${c.label}</th>`).join("");
+  const tbody = rows.map(row => {
+    const cells = cols.map(c => `<td>${statusField(c.key, row[c.key])}</td>`).join("");
+    return `<tr>${cells}</tr>`;
+  }).join("");
+  return `
+    <table class="data-table">
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>`;
+}
+
+function buildMandantBox(m) {
+  if (!m) return "";
+  const fields = [
+    { label: "Name", val: m.name },
+    { label: "Rechtsform", val: m.rechtsform },
+    { label: "Branche", val: m.branche },
+    { label: "Anschrift", val: m.anschrift },
+    { label: "Webseite", val: m.webseite },
+    { label: "Verantwortlicher", val: m.verantwortlicherName },
+    { label: "Verantwortlicher Kontakt", val: [m.verantwortlicherEmail, m.verantwortlicherTelefon].filter(Boolean).join(" · ") },
+    { label: "Datenschutzmanager", val: m.datenschutzmanagerName },
+    { label: "Datenschutzmanager Kontakt", val: [m.datenschutzmanagerEmail, m.datenschutzmanagerTelefon].filter(Boolean).join(" · ") },
+    { label: "IT-Verantwortlicher", val: m.itVerantwortlicherName },
+    { label: "IT Kontakt", val: [m.itVerantwortlicherEmail, m.itVerantwortlicherTelefon].filter(Boolean).join(" · ") },
+    { label: "ISB", val: m.isbName },
+    { label: "ISB Kontakt", val: [m.isbEmail, m.isbTelefon].filter(Boolean).join(" · ") },
+    { label: "Webseitenbetreuer", val: m.webseitenbetreuerName },
+    { label: "Webseitenbetreuer Kontakt", val: [m.webseitenbetreuerEmail, m.webseitenbetreuerTelefon].filter(Boolean).join(" · ") },
+    { label: "DSB", val: m.dsb },
+    { label: "DSB E-Mail", val: m.dsb_email || m.dsbEmail },
+    { label: "Gruppe", val: config.gruppeInfo?.name },
+  ].filter(f => f.val);
+  return `<div class="mandant-box">${fields.map(f =>
+    `<div class="field"><label>${f.label}</label><span>${f.val || "—"}</span></div>`
+  ).join("")}</div>`;
+}
+
+function buildRoleCards(m) {
+  if (!m) return "";
+  const roles = [
+    ["Verantwortlicher", m.verantwortlicherName, m.verantwortlicherEmail, m.verantwortlicherTelefon],
+    ["Datenschutzmanager", m.datenschutzmanagerName, m.datenschutzmanagerEmail, m.datenschutzmanagerTelefon],
+    ["IT-Verantwortlicher", m.itVerantwortlicherName, m.itVerantwortlicherEmail, m.itVerantwortlicherTelefon],
+    ["Informationssicherheitsbeauftragter", m.isbName, m.isbEmail, m.isbTelefon],
+    ["Webseitenbetreuer", m.webseitenbetreuerName, m.webseitenbetreuerEmail, m.webseitenbetreuerTelefon],
+  ].filter(([, name, email, tel]) => name || email || tel);
+  if (roles.length === 0) return "";
+  return `<div class="info-grid">${roles.map(([title, name, email, tel]) => `
+    <div class="info-card">
+      <h3>${title}</h3>
+      <p><strong>Name:</strong> ${fmt(name)}</p>
+      <p><strong>E-Mail:</strong> ${fmt(email)}</p>
+      <p><strong>Telefon:</strong> ${fmt(tel)}</p>
+    </div>
+  `).join("")}</div>`;
+}
+
+function buildLogsBox(logs) {
+  if (!logs || logs.length === 0) return "";
+  return `
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Änderungsprotokoll / Audit-Log</h2>
+        <span class="badge">${logs.length} Einträge</span>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Zeitpunkt</th><th>Modul</th><th>Aktion</th><th>Beschreibung</th><th>Benutzer</th></tr></thead>
+        <tbody>
+          ${logs.map(log => `<tr>
+            <td>${fmt(log.zeitpunkt)}</td>
+            <td>${fmt(log.modul)}</td>
+            <td>${fmt(log.aktion)}</td>
+            <td>${fmt(log.beschreibung)}</td>
+            <td>${fmt(log.userName)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ─── API-Abruf ────────────────────────────────────────────────────────────
+// Token aus localStorage holen (App speichert ihn dort)
+const token = localStorage.getItem("privashield_token") ||
+              Object.entries(localStorage).find(([k]) => k.includes("token"))?.[1] || "";
+
+async function fetchData(endpoint) {
+  const res = await fetch(`/api/mandanten/${config.mandantId}/${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// ─── Hauptlogik ───────────────────────────────────────────────────────────
+async function render() {
+  try {
+    // Alle ausgewählten Module parallel laden
+    const results = await Promise.all(
+      config.modules.map(key => fetchData(key).then(data => ({ key, data })))
+    );
+
+    const dataMap = {};
+    results.forEach(({ key, data }) => { dataMap[key] = data; });
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
+    const timeStr = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+
+    let html = `
+      <div class="cover">
+        <div class="cover-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <path d="M16 2 L28 7 L28 16 C28 23 22 29 16 30 C10 29 4 23 4 16 L4 7 Z" fill="none" stroke="#4F98A3" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M11 16 L14 19 L21 12" stroke="#4F98A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+          <div>
+            <div class="app-name">PrivaShield</div>
+            <div class="app-sub">Datenschutzmanagement-Plattform</div>
+          </div>
+        </div>
+        <h1>Datenschutzbericht – ${config.mandantName}</h1>
+        <div class="meta">
+          <span>📅 Erstellt am: ${dateStr} um ${timeStr} Uhr</span>
+          <span>📦 Module: ${config.modules.length} ausgewählt</span>
+        </div>
+      </div>
+
+      ${buildMandantBox(config.mandantInfo)}
+      ${buildRoleCards(config.mandantInfo)}
+      ${config.gruppeInfo ? `<div class="info-card" style="margin-bottom:24px;"><h3>Gruppenkontext</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo.name)}</p><p><strong>Typ:</strong> ${fmt(config.gruppeInfo.typ)}</p></div>` : ""}
+      <div class="info-card" style="margin-bottom:24px;">
+        <h3>Executive Summary</h3>
+        <p><strong>Mandant:</strong> ${fmt(config.mandantName)}</p>
+        <p><strong>Exportierte Module:</strong> ${fmt(config.modules.length)}</p>
+        <p><strong>Audit-Logs:</strong> ${fmt((config.logs || []).length)}</p>
+        <p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p>
+        <p><strong>Top-Risiken:</strong> ${fmt((config.logs || []).filter(l => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length)}</p>
+        <p><strong>Offene Maßnahmenhinweise:</strong> siehe Aufgaben & Maßnahmenplan</p>
+        <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
+      </div>
+    `;
+
+    config.modules.forEach(key => {
+      const mod = MODULES[key];
+      if (!mod) return;
+      const rows = dataMap[key] || [];
+      html += `
+        <div class="module-section">
+          <div class="module-header">
+            <h2>${mod.label}</h2>
+            <span class="badge">${rows.length} Einträge</span>
+          </div>
+          ${buildTable(mod, rows)}
+        </div>
+      `;
+    });
+
+    html += buildLogsBox(config.logs || []);
+
+    html += `
+      <div class="footer">
+        <span>PrivaShield Datenschutzmanagement-Plattform</span>
+        <span>Erstellt: ${dateStr} ${timeStr} Uhr</span>
+      </div>
+    `;
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("main").style.display = "block";
+    document.getElementById("main").innerHTML = html;
+    document.title = `PrivaShield Export – ${config.mandantName} – ${dateStr}`;
+
+  } catch (err) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error-box").style.display = "block";
+    document.getElementById("error-box").textContent =
+      "Fehler beim Laden der Daten: " + (err.message || String(err));
+  }
+}
+
+render();
+</script>
+</body>
+</html>

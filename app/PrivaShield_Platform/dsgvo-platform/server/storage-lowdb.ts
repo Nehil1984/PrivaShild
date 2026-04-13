@@ -12,6 +12,7 @@ import type {
   MandantenGruppe, InsertMandantenGruppe,
   Vorlagenpaket, InsertVorlagenpaket,
   MandantenLog, InsertMandantenLog,
+  VorlagenpaketHistorie, InsertVorlagenpaketHistorie,
   User, InsertUser,
   Vvt, InsertVvt,
   Avv, InsertAvv,
@@ -29,6 +30,7 @@ interface DbSchema {
   mandantenGruppen: MandantenGruppe[];
   vorlagenpakete: Vorlagenpaket[];
   mandantenLogs: MandantenLog[];
+  vorlagenpaketHistorie: VorlagenpaketHistorie[];
   users: User[];
   vvt: Vvt[];
   avv: Avv[];
@@ -50,6 +52,7 @@ const defaultData: DbSchema = {
       name: "DSGVO Basispaket",
       beschreibung: "Grundpaket mit Leitlinien, Aufgaben und Basisdokumentation.",
       kategorie: "datenschutz",
+      version: "1.0",
       aktiv: true,
       inhaltJson: JSON.stringify({
         aufgaben: [
@@ -65,6 +68,7 @@ const defaultData: DbSchema = {
     }
   ],
   mandantenLogs: [],
+  vorlagenpaketHistorie: [],
   users: [],
   vvt: [],
   avv: [],
@@ -331,6 +335,16 @@ export class LowdbStorage implements IStorage {
       beschreibung: `Vorlagenpaket '${paket.name}' wurde angewendet.`,
       detailsJson: JSON.stringify({ paketId, paketName: paket.name, created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } }),
     });
+    db.data.vorlagenpaketHistorie.push({
+      id: nextId(db, "vorlagenpaketHistorie"),
+      mandantId,
+      paketId,
+      paketName: paket.name,
+      paketVersion: paket.version || "1.0",
+      angewendetAm: new Date().toISOString(),
+      angewendetVon: user?.name ?? "System",
+      detailsJson: JSON.stringify({ created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } }),
+    });
     await db.write();
     return { ok: true, created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } };
   }
@@ -344,6 +358,18 @@ export class LowdbStorage implements IStorage {
     const db = await getDb();
     const item: MandantenLog = { id: nextId(db, "mandantenLogs"), ...data as any, zeitpunkt: new Date().toISOString() };
     db.data.mandantenLogs.push(item);
+    await db.write();
+    return item;
+  }
+
+  async getVorlagenpaketHistorie(mandantId: number): Promise<VorlagenpaketHistorie[]> {
+    const db = await getDb();
+    return db.data.vorlagenpaketHistorie.filter((h) => h.mandantId === mandantId).sort((a, b) => (a.angewendetAm < b.angewendetAm ? 1 : -1));
+  }
+  async createVorlagenpaketHistorie(data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie> {
+    const db = await getDb();
+    const item: VorlagenpaketHistorie = { id: nextId(db, "vorlagenpaketHistorie"), ...data as any, angewendetAm: new Date().toISOString() };
+    db.data.vorlagenpaketHistorie.push(item);
     await db.write();
     return item;
   }

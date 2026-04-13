@@ -24,7 +24,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp
+  Printer, Download, ChevronDown, ChevronUp, Copy
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -183,6 +183,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
 // ─── SIDEBAR ───────────────────────────────────────────────────────────────
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/overview", label: "Mandanten-Übersicht", icon: Eye },
   { path: "/vvt", label: "VVT", icon: FileText },
   { path: "/avv", label: "AVV", icon: Shield },
   { path: "/dsfa", label: "DSFA", icon: AlertTriangle },
@@ -385,7 +386,36 @@ function Dashboard() {
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
   });
+  const { data: dokumente = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/dokumente`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dokumente`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: aufgaben = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/aufgaben`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const activeMandant = mandanten.find((m: any) => m.id === activeMandantId);
+  const { data: gruppen = [] } = useQuery({
+    queryKey: ["/api/mandanten-gruppen"],
+    queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then(r => r.json()),
+  });
+  const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
+  const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
+  const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
+  const fehlendeLeitlinien = ["leitlinie_datenschutz", "leitlinie_informationssicherheit"].filter((k) => !dokumente.some((d: any) => d.kategorie === k));
+  const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
+  const reifegradScore = Math.max(0, Math.min(100,
+    (activeMandant?.verantwortlicherName ? 15 : 0) +
+    (activeMandant?.datenschutzmanagerName ? 10 : 0) +
+    (activeMandant?.itVerantwortlicherName ? 10 : 0) +
+    (activeMandant?.isbName ? 10 : 0) +
+    (activeMandant?.gruppeId ? 10 : 0) +
+    (leitlinien.length >= 2 ? 15 : leitlinien.length * 7) +
+    (stats?.offeneAufgaben === 0 ? 15 : (stats?.offeneAufgaben ?? 0) <= 3 ? 10 : 0) +
+    (offeneReviews.length === 0 ? 15 : 5)
+  ));
 
   const statCards = [
     { label: "VVT-Einträge", value: stats?.vvt ?? 0, icon: FileText, path: "/vvt", color: "text-teal-400" },
@@ -412,25 +442,106 @@ function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {statCards.map(({ label, value, icon: Icon, path, color }) => (
-            <Link key={path} href={path}>
-              <a>
-                <Card className="hover:border-border cursor-pointer transition-all hover:shadow-md group">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <Icon className={`h-5 w-5 ${color}`} />
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all" />
-                    </div>
-                    {isLoading ? <Skeleton className="h-7 w-12 mb-1" /> : (
-                      <p className="text-2xl font-bold">{value}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">{label}</p>
-                  </CardContent>
-                </Card>
-              </a>
-            </Link>
-          ))}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+            {statCards.map(({ label, value, icon: Icon, path, color }) => (
+              <Link key={path} href={path}>
+                <a>
+                  <Card className="hover:border-border cursor-pointer transition-all hover:shadow-md group">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <Icon className={`h-5 w-5 ${color}`} />
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all" />
+                      </div>
+                      {isLoading ? <Skeleton className="h-7 w-12 mb-1" /> : (
+                        <p className="text-2xl font-bold">{value}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                    </CardContent>
+                  </Card>
+                </a>
+              </Link>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Leitlinienstatus</CardTitle>
+                <CardDescription>Datenschutz und Informationssicherheit</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p>Leitlinien vorhanden: <span className="font-medium">{leitlinien.length}</span></p>
+                {leitlinien.length === 0 ? <p className="text-muted-foreground">Noch keine Leitlinien vorhanden.</p> : leitlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Offene Reviews</CardTitle>
+                <CardDescription>Überfällige oder offene Prüfungen</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p>Reviews offen: <span className="font-medium">{offeneReviews.length}</span></p>
+                {offeneReviews.length === 0 ? <p className="text-muted-foreground">Keine offenen Reviews.</p> : offeneReviews.slice(0, 5).map((a: any) => <p key={a.id} className="text-muted-foreground">{a.titel}</p>)}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Hinweise & Risiken</CardTitle>
+              <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {kritischeAufgaben.length === 0 && fehlendeLeitlinien.length === 0 && offeneReviews.length === 0 && (
+                <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
+              )}
+              {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
+              {offeneReviews.length > 0 && <p className="text-yellow-400">Offene Reviews: {offeneReviews.length}</p>}
+              {fehlendeLeitlinien.includes("leitlinie_datenschutz") && <p className="text-orange-400">Datenschutzleitlinie fehlt.</p>}
+              {fehlendeLeitlinien.includes("leitlinie_informationssicherheit") && <p className="text-orange-400">Informationssicherheitsleitlinie fehlt.</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Gruppenkontext</CardTitle>
+              <CardDescription>Kennzahlen zur zugeordneten Gruppe</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {activeMandant?.gruppeId ? (
+                <>
+                  <p>Gruppe: <span className="font-medium">{gruppen.find((g: any) => g.id === activeMandant.gruppeId)?.name || "—"}</span></p>
+                  <p>Mandanten in Gruppe: <span className="font-medium">{gruppenKennzahl}</span></p>
+                </>
+              ) : <p className="text-muted-foreground">Keiner Gruppe zugeordnet.</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Reifegrad</CardTitle>
+              <CardDescription>Vereinfachter Governance-Score</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{reifegradScore}%</p>
+              <div className="mt-3 h-3 w-full rounded bg-secondary overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${reifegradScore}%` }} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Letzte Änderungen</CardTitle>
+              <CardDescription>Trend- und Aktivitätssicht</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-muted-foreground">Zuletzt aktualisierte Themen lassen sich über das Änderungsprotokoll im Bereich Mandanten-Extras prüfen.</p>
+              <p>Kritische Aufgaben: <span className="font-medium">{kritischeAufgaben.length}</span></p>
+              <p>Offene Reviews: <span className="font-medium">{offeneReviews.length}</span></p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
@@ -1080,6 +1191,9 @@ function AufgabenPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) - 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">-10%</button>
+                    <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) + 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">+10%</button>
+                    <button onClick={() => update.mutate({ id: item.id, status: item.status === "offen" ? "in_bearbeitung" : item.status === "in_bearbeitung" ? "erledigt" : "offen" })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">Status</button>
                     <StatusBadge value={item.prioritaet} />
                     <StatusBadge value={item.status} />
                     <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1224,6 +1338,12 @@ function MandantenPage() {
   });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [setupStep, setSetupStep] = useState(1);
+  const [setupPaketId, setSetupPaketId] = useState("none");
+  const { data: pakete = [] } = useQuery({
+    queryKey: ["/api/vorlagenpakete"],
+    queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
+  });
   const emptyForm = {
     name: "", rechtsform: "", anschrift: "", branche: "", webseite: "", notizen: "", gruppeId: "none",
     dsb: "", dsbEmail: "", dsbTelefon: "",
@@ -1237,14 +1357,35 @@ function MandantenPage() {
   const { toast } = useToast();
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
 
-  const openNew = () => { setForm(emptyForm); setModal("new"); };
+  const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
   const openEdit = (m: any) => { setForm({ ...emptyForm, ...m, gruppeId: m.gruppeId ? String(m.gruppeId) : "none" }); setModal(m); };
+  const quickSetup = () => {
+    setSetupStep(1);
+    setForm({
+      ...emptyForm,
+      name: "Neuer Mandant",
+      rechtsform: "GmbH",
+      branche: "Dienstleistung",
+      dsb: "Datenschutzbeauftragter",
+      verantwortlicherName: "Verantwortlicher",
+      datenschutzmanagerName: "Datenschutzmanager",
+      itVerantwortlicherName: "IT-Verantwortlicher",
+      isbName: "ISB",
+      webseitenbetreuerName: "Webseitenbetreuer",
+    });
+    setModal("new");
+  };
 
   const save = async () => {
     try {
       const payload = { ...form, gruppeId: form.gruppeId === "none" ? null : Number(form.gruppeId) };
-      if (modal === "new") await apiRequest("POST", "/api/mandanten", payload);
-      else await apiRequest("PUT", `/api/mandanten/${modal.id}`, payload);
+      if (modal === "new") {
+        const res = await apiRequest("POST", "/api/mandanten", payload);
+        const created = await res.json();
+        if (setupPaketId !== "none") {
+          await apiRequest("POST", `/api/mandanten/${created.id}/vorlagenpakete/${setupPaketId}/apply`, {});
+        }
+      } else await apiRequest("PUT", `/api/mandanten/${modal.id}`, payload);
       qc.invalidateQueries({ queryKey: ["/api/mandanten"] });
       qc.invalidateQueries({ queryKey: ["/api/mandanten-gruppen"] });
       setModal(null);
@@ -1255,7 +1396,7 @@ function MandantenPage() {
   return (
     <div>
       <PageHeader title="Mandantenverwaltung" desc="Alle Mandanten der Plattform verwalten"
-        action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neuer Mandant</Button>} />
+        action={<div className="flex gap-2"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={quickSetup}>Quick-Setup</Button><Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neuer Mandant</Button></div>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {mandanten.map((m: any) => (
@@ -1298,6 +1439,22 @@ function MandantenPage() {
         <DialogContent className="max-w-3xl">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Mandant" : "Mandant bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+            {modal === "new" && (
+              <div className="flex gap-2 text-xs">
+                {[1,2,3].map((step) => <button key={step} onClick={() => setSetupStep(step)} className={`px-3 py-1 rounded-full ${setupStep === step ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>Schritt {step}</button>)}
+              </div>
+            )}
+            {modal === "new" && setupStep === 3 && (
+              <Card>
+                <CardContent className="p-3 text-xs space-y-1">
+                  <p className="font-medium">Abschlusscheck</p>
+                  <p className={form.name ? "text-emerald-400" : "text-red-400"}>Name {form.name ? "vorhanden" : "fehlt"}</p>
+                  <p className={form.verantwortlicherName ? "text-emerald-400" : "text-yellow-400"}>Verantwortlicher {form.verantwortlicherName ? "vorhanden" : "empfohlen"}</p>
+                  <p className={form.itVerantwortlicherName ? "text-emerald-400" : "text-yellow-400"}>IT-Verantwortlicher {form.itVerantwortlicherName ? "vorhanden" : "empfohlen"}</p>
+                  <p className={setupPaketId !== "none" ? "text-emerald-400" : "text-yellow-400"}>Startpaket {setupPaketId !== "none" ? "gewählt" : "nicht gewählt"}</p>
+                </CardContent>
+              </Card>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Rechtsform</Label><Input value={form.rechtsform} onChange={e => set("rechtsform", e.target.value)} className="h-8 text-sm" placeholder="GmbH, AG..." /></div>
@@ -1314,8 +1471,8 @@ function MandantenPage() {
                 </Select>
               </div>
             </div>
-            <Separator />
-            <div className="space-y-3">
+            {setupStep >= 2 && <Separator />}
+            {setupStep >= 2 && <div className="space-y-3">
               <p className="text-sm font-medium">Ansprechpartner und Rollen</p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-3 text-xs font-semibold text-muted-foreground">Datenschutzbeauftragter</div>
@@ -1348,12 +1505,23 @@ function MandantenPage() {
                 <div className="space-y-1"><Label className="text-xs">E-Mail</Label><Input type="email" value={form.webseitenbetreuerEmail} onChange={e => set("webseitenbetreuerEmail", e.target.value)} className="h-8 text-sm" /></div>
                 <div className="space-y-1"><Label className="text-xs">Telefon</Label><Input value={form.webseitenbetreuerTelefon} onChange={e => set("webseitenbetreuerTelefon", e.target.value)} className="h-8 text-sm" /></div>
               </div>
-            </div>
-            <Separator />
+            </div>}
+            {setupStep >= 3 && <Separator />}
+            {setupStep >= 3 && <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Vorlagenpaket zum Start</Label>
+                <Select value={setupPaketId} onValueChange={setSetupPaketId}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Kein Paket" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Paket</SelectItem>
+                    {pakete.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name} v{p.version || "1.0"}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             <div className="space-y-1">
               <Label className="text-xs">Notizen</Label>
               <Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-20" />
-            </div>
+            </div>}
             <DialogFooter>
               <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
               <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
@@ -1374,9 +1542,20 @@ function GruppenPage() {
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then(r => r.json()),
   });
+  const { data: mandanten = [] } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
+  });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [selectedGroupForApply, setSelectedGroupForApply] = useState<string>("");
+  const [selectedPaketForApply, setSelectedPaketForApply] = useState<string>("");
+  const [selectedGroupForReport, setSelectedGroupForReport] = useState<string>("");
   const [form, setForm] = useState({ name: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" });
+  const { data: pakete = [] } = useQuery({
+    queryKey: ["/api/vorlagenpakete"],
+    queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
+  });
   const { toast } = useToast();
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
   const openNew = () => { setForm({ name: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" }); setModal("new"); };
@@ -1393,13 +1572,113 @@ function GruppenPage() {
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
+  const applyToGroup = async () => {
+    if (!selectedGroupForApply || !selectedPaketForApply) return;
+    try {
+      const res = await apiRequest("POST", `/api/gruppen/${selectedGroupForApply}/vorlagenpakete/${selectedPaketForApply}/apply`, {});
+      const data = await res.json();
+      toast({ title: "Vorlagenpaket zugewiesen", description: `${data.count} Mandanten verarbeitet` });
+    } catch {
+      toast({ title: "Fehler bei Gruppenzuweisung", variant: "destructive" });
+    }
+  };
+  const exportGroupReport = () => {
+    const gruppe = gruppen.find((g: any) => String(g.id) === selectedGroupForReport);
+    const members = mandanten.filter((m: any) => String(m.gruppeId) === selectedGroupForReport);
+    const blob = new Blob([JSON.stringify({ gruppe, members }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gruppenbericht-${gruppe?.name || selectedGroupForReport}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const groupAmpel = (groupId: number) => {
+    const ms = mandanten.filter((m: any) => m.gruppeId === groupId);
+    if (ms.length === 0) return { label: "Rot", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+    const withResponsible = ms.filter((m: any) => m.verantwortlicherName).length;
+    if (withResponsible === ms.length) return { label: "Grün", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+    if (withResponsible >= Math.ceil(ms.length / 2)) return { label: "Gelb", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" };
+    return { label: "Rot", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+  };
 
   return (
     <div>
       <PageHeader title="Mandantengruppen" desc="Konzern-, Holding- und Standortstrukturen verwalten"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neue Gruppe</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Vorlagenpaket gruppenweit anwenden</CardTitle>
+              <CardDescription>Wendet ein Vorlagenpaket auf alle Mandanten einer Gruppe an</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div className="space-y-1"><Label className="text-xs">Gruppe</Label>
+                <Select value={selectedGroupForApply} onValueChange={setSelectedGroupForApply}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Gruppe wählen" /></SelectTrigger><SelectContent>{gruppen.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Vorlagenpaket</Label>
+                <Select value={selectedPaketForApply} onValueChange={setSelectedPaketForApply}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Paket wählen" /></SelectTrigger><SelectContent>{pakete.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name} v{p.version || "1.0"}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <Button className="bg-primary" onClick={applyToGroup} disabled={!selectedGroupForApply || !selectedPaketForApply}>Auf Gruppe anwenden</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Gruppenbericht exportieren</CardTitle>
+              <CardDescription>Exportiert Gruppendaten und zugeordnete Mandanten als JSON</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div className="space-y-1 md:col-span-2"><Label className="text-xs">Gruppe</Label>
+                <Select value={selectedGroupForReport} onValueChange={setSelectedGroupForReport}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Gruppe wählen" /></SelectTrigger><SelectContent>{gruppen.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <Button variant="outline" onClick={exportGroupReport} disabled={!selectedGroupForReport}>Gruppenbericht exportieren</Button>
+            </CardContent>
+          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {gruppen.map((g: any) => (
+              <Card key={`metric-${g.id}`}>
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium truncate">{g.name}</p>
+                  <p className="text-xs text-muted-foreground">{g.typ}</p>
+                  <span className={`inline-flex mt-2 items-center px-2 py-0.5 rounded text-xs font-medium border ${groupAmpel(g.id).cls}`}>{groupAmpel(g.id).label}</span>
+                  <p className="text-2xl font-bold mt-2">{mandanten.filter((m: any) => m.gruppeId === g.id).length}</p>
+                  <p className="text-xs text-muted-foreground">zugeordnete Mandanten</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Hierarchie</CardTitle>
+              <CardDescription>Überblick über Gruppen und Untergruppen</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {gruppen.filter((g: any) => !g.parentGroupId).map((root: any) => {
+                const children = gruppen.filter((g: any) => g.parentGroupId === root.id);
+                return (
+                  <div key={root.id} className="rounded-lg border p-3">
+                    <p className="text-sm font-medium">{root.name}</p>
+                    <p className="text-xs text-muted-foreground">{root.typ}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Mandanten: {mandanten.filter((m: any) => m.gruppeId === root.id).map((m: any) => m.name).join(", ") || "—"}</p>
+                    {children.length > 0 && (
+                      <div className="mt-3 ml-4 space-y-2 border-l pl-4">
+                        {children.map((child: any) => (
+                          <div key={child.id}>
+                            <p className="text-sm">{child.name}</p>
+                            <p className="text-xs text-muted-foreground">{child.typ}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Mandanten: {mandanten.filter((m: any) => m.gruppeId === child.id).map((m: any) => m.name).join(", ") || "—"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+          <div className="space-y-2">
           {gruppen.map((g: any) => (
             <Card key={g.id} className="group hover:border-border/80 transition-colors">
               <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
@@ -1416,6 +1695,7 @@ function GruppenPage() {
             </Card>
           ))}
           {gruppen.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine Gruppen angelegt.</CardContent></Card>}
+          </div>
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
@@ -1467,12 +1747,20 @@ function VorlagenpaketePage() {
   });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", beschreibung: "", kategorie: "allgemein", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' });
+  const [duplicateId, setDuplicateId] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' });
+  const [builderTasks, setBuilderTasks] = useState<string[]>([]);
+  const [builderDocs, setBuilderDocs] = useState<string[]>([]);
   const [preset, setPreset] = useState("leer");
   const { toast } = useToast();
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
-  const openNew = () => { setPreset("leer"); setForm({ name: "", beschreibung: "", kategorie: "allgemein", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' }); setModal("new"); };
+  const openNew = () => { setPreset("leer"); setBuilderTasks([]); setBuilderDocs([]); setForm({ name: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' }); setModal("new"); };
   const openEdit = (p: any) => { setForm({ ...p }); setModal(p); };
+  const duplicatePaket = (p: any) => {
+    setForm({ ...p, name: `${p.name} Kopie`, version: `${p.version || "1.0"}-copy` });
+    setDuplicateId(p.id);
+    setModal("new");
+  };
   const applyPreset = (key: string) => {
     setPreset(key);
     if (key === "dsgvo") {
@@ -1502,9 +1790,15 @@ function VorlagenpaketePage() {
   };
   const save = async () => {
     try {
-      JSON.parse(form.inhaltJson || "{}");
-      if (modal === "new") await apiRequest("POST", "/api/vorlagenpakete", form);
-      else await apiRequest("PUT", `/api/vorlagenpakete/${modal.id}`, form);
+      const builderJson = {
+        aufgaben: builderTasks.map((titel) => ({ titel, typ: "task", prioritaet: "mittel", status: "offen", kategorie: "sonstige" })),
+        dokumente: builderDocs.map((titel) => ({ titel, kategorie: "vorlage", dokumentTyp: "vorlage", status: "entwurf", version: "1.0" })),
+      };
+      const merged = builderTasks.length || builderDocs.length ? JSON.stringify(builderJson, null, 2) : form.inhaltJson;
+      JSON.parse(merged || "{}");
+      const payload = { ...form, inhaltJson: merged };
+      if (modal === "new") await apiRequest("POST", "/api/vorlagenpakete", payload);
+      else await apiRequest("PUT", `/api/vorlagenpakete/${modal.id}`, payload);
       qc.invalidateQueries({ queryKey: ["/api/vorlagenpakete"] });
       setModal(null);
       toast({ title: "Vorlagenpaket gespeichert" });
@@ -1528,6 +1822,7 @@ function VorlagenpaketePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge value={p.aktiv ? "aktiv" : "archiviert"} />
+                  <button onClick={() => duplicatePaket(p)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Copy className="h-3.5 w-3.5" /></button>
                   <button onClick={() => openEdit(p)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setDelId(p.id)} className="p-1 rounded text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
@@ -1543,6 +1838,7 @@ function VorlagenpaketePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Kategorie</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" /></div>
+              <div className="space-y-1"><Label className="text-xs">Version</Label><Input value={form.version} onChange={e => set("version", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Schnellvorlage</Label>
                 <div className="flex gap-2">
                   <Button type="button" variant={preset === "leer" ? "default" : "outline"} size="sm" onClick={() => applyPreset("leer")}>Leer</Button>
@@ -1551,6 +1847,24 @@ function VorlagenpaketePage() {
                 </div>
               </div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                <div className="space-y-2 rounded-lg border p-3">
+                  <Label className="text-xs">Bausteine Aufgaben</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["VVT erfassen", "TOM prüfen", "DSFA prüfen", "Leitlinie abstimmen"].map((item) => (
+                      <button key={item} type="button" onClick={() => setBuilderTasks((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item])} className={`px-2 py-1 rounded text-xs ${builderTasks.includes(item) ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>{item}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2 rounded-lg border p-3">
+                  <Label className="text-xs">Bausteine Dokumente</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Datenschutzleitlinie", "IS-Leitlinie", "Risikobewertung", "Prozessbeschreibung"].map((item) => (
+                      <button key={item} type="button" onClick={() => setBuilderDocs((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item])} className={`px-2 py-1 rounded text-xs ${builderDocs.includes(item) ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>{item}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Inhalt (JSON)</Label><Textarea value={form.inhaltJson} onChange={e => set("inhaltJson", e.target.value)} className="font-mono text-xs min-h-60" /></div>
             </div>
             <DialogFooter>
@@ -1861,6 +2175,15 @@ function ExportPage() {
       : null,
     enabled: !!activeMandantId,
   });
+  const { data: logs = [] } = useQuery({
+    queryKey: ["/api/export-logs", activeMandantId],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/logs`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: gruppen = [] } = useQuery({
+    queryKey: ["/api/mandanten-gruppen"],
+    queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then((r) => r.json()),
+  });
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -1876,6 +2199,8 @@ function ExportPage() {
       mandantId: activeMandantId,
       mandantName: mandant?.name ?? "Unbekannter Mandant",
       mandantInfo: mandant,
+      gruppeInfo: gruppen.find((g: any) => g.id === mandant?.gruppeId) || null,
+      logs,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),
       generatedAt: new Date().toISOString(),
     };
@@ -1914,6 +2239,13 @@ function ExportPage() {
             <Badge variant="outline">{mandant?.name ?? "—"}</Badge>
           </div>
         </CardHeader>
+        <CardContent className="pt-0 text-xs text-muted-foreground space-y-1">
+          <p>{mandant?.rechtsform || "—"}{mandant?.branche ? ` · ${mandant.branche}` : ""}</p>
+          <p>Gruppe: {gruppen.find((g: any) => g.id === mandant?.gruppeId)?.name || "—"}</p>
+          <p>Verantwortlicher: {mandant?.verantwortlicherName || "—"}</p>
+          <p>Webseite: {mandant?.webseite || "—"}</p>
+          <p>Logs im Export: {logs.length}</p>
+        </CardContent>
       </Card>
 
       {/* Modulauswahl */}
@@ -1981,9 +2313,30 @@ function MandantenExtrasPage() {
     queryKey: ["/api/vorlagenpakete"],
     queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
   });
+  const { data: historie = [] } = useQuery({
+    queryKey: ["/api/vorlagen-historie", activeMandantId],
+    queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}/vorlagen-historie`).then(r => r.json()),
+    enabled: !!activeMandantId,
+  });
+  const selectedPaketObj = pakete.find((p: any) => String(p.id) === selectedPaket);
+  const paketPreview = (() => {
+    if (!selectedPaketObj?.inhaltJson) return null;
+    try { return JSON.parse(selectedPaketObj.inhaltJson); } catch { return null; }
+  })();
   const [selectedPaket, setSelectedPaket] = useState<string>("");
   const [modulFilter, setModulFilter] = useState<string>("alle");
+  const [showOnlyUserLogs, setShowOnlyUserLogs] = useState(false);
   const visibleLogs = logs.filter((log: any) => modulFilter === "alle" || log.modul === modulFilter);
+  const filteredLogs = visibleLogs.filter((log: any) => !showOnlyUserLogs || !!log.userName);
+  const exportLogs = () => {
+    const blob = new Blob([JSON.stringify(filteredLogs, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mandant-${activeMandantId}-logs.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const applyPaket = async () => {
     if (!activeMandantId || !selectedPaket) return;
@@ -2021,6 +2374,62 @@ function MandantenExtrasPage() {
             </div>
             <Button className="bg-primary" onClick={applyPaket} disabled={!selectedPaket}>Anwenden</Button>
           </CardContent>
+          {selectedPaketObj && (
+            <CardContent className="pt-0">
+              <div className="rounded-lg border p-3 text-xs bg-muted/30 space-y-4">
+                <div>
+                  <p className="font-medium mb-2">Vorschau</p>
+                  <p className="text-muted-foreground">{selectedPaketObj.beschreibung || "Keine Beschreibung"}</p>
+                </div>
+                {paketPreview ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-medium mb-2">Erzeugte Aufgaben</p>
+                      <div className="space-y-2">
+                        {(paketPreview.aufgaben || []).length === 0 && <p className="text-muted-foreground">Keine Aufgaben</p>}
+                        {(paketPreview.aufgaben || []).map((a: any, i: number) => (
+                          <div key={i} className="rounded border p-2 bg-background">
+                            <p className="font-medium">{a.titel}</p>
+                            <p className="text-muted-foreground">{a.typ || "task"} · {a.prioritaet || "mittel"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-medium mb-2">Erzeugte Dokumente</p>
+                      <div className="space-y-2">
+                        {(paketPreview.dokumente || []).length === 0 && <p className="text-muted-foreground">Keine Dokumente</p>}
+                        {(paketPreview.dokumente || []).map((d: any, i: number) => (
+                          <div key={i} className="rounded border p-2 bg-background">
+                            <p className="font-medium">{d.titel}</p>
+                            <p className="text-muted-foreground">{d.kategorie || "vorlage"} · v{d.version || "1.0"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <pre className="overflow-auto whitespace-pre-wrap break-all">{selectedPaketObj.inhaltJson}</pre>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Vorlagenpaket-Historie</CardTitle>
+            <CardDescription>Wann welches Paket in welcher Version angewendet wurde</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {historie.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Historie vorhanden.</p>}
+            {historie.map((h: any) => (
+              <div key={h.id} className="rounded-lg border p-3 text-sm">
+                <p className="font-medium">{h.paketName} v{h.paketVersion || "1.0"}</p>
+                <p className="text-xs text-muted-foreground">{new Date(h.angewendetAm).toLocaleString("de-DE")} · {h.angewendetVon || "System"}</p>
+              </div>
+            ))}
+          </CardContent>
         </Card>
 
         <Card>
@@ -2029,6 +2438,10 @@ function MandantenExtrasPage() {
             <CardDescription>Nachvollziehbarkeit von Änderungen je Mandant</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
+            <div className="flex items-center gap-2 pb-2">
+              <button onClick={() => setShowOnlyUserLogs((v) => !v)} className={`px-3 py-1 rounded-full text-xs transition-colors ${showOnlyUserLogs ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>Nur Benutzer-Logs</button>
+              <Button variant="outline" size="sm" onClick={exportLogs}>Logs exportieren</Button>
+            </div>
             <div className="flex gap-2 flex-wrap pb-2">
               {["alle", "mandanten", "aufgaben", "dokumente", "vvt", "avv", "dsfa", "datenpannen", "dsr", "tom", "vorlagenpakete"].map((m) => (
                 <button key={m} onClick={() => setModulFilter(m)} className={`px-3 py-1 rounded-full text-xs transition-colors ${modulFilter === m ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
@@ -2036,8 +2449,8 @@ function MandantenExtrasPage() {
                 </button>
               ))}
             </div>
-            {visibleLogs.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Änderungen protokolliert.</p>}
-            {visibleLogs.map((log: any) => (
+            {filteredLogs.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Änderungen protokolliert.</p>}
+            {filteredLogs.map((log: any) => (
               <details key={log.id} className="rounded-lg border p-3">
                 <summary className="cursor-pointer list-none">
                 <div className="flex items-center justify-between gap-3">
@@ -2057,6 +2470,104 @@ function MandantenExtrasPage() {
             ))}
           </CardContent>
         </Card>
+      </div>
+    </MandantGuard>
+  );
+}
+
+function MandantenOverviewPage() {
+  const { activeMandantId } = useMandant();
+  const { data: mandant } = useQuery({
+    queryKey: ["/api/mandanten-overview", activeMandantId],
+    queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}`).then(r => r.json()),
+    enabled: !!activeMandantId,
+  });
+  const { data: stats } = useQuery({
+    queryKey: ["/api/stats-overview", activeMandantId],
+    queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}/stats`).then(r => r.json()),
+    enabled: !!activeMandantId,
+  });
+  const { data: gruppen = [] } = useQuery({
+    queryKey: ["/api/mandanten-gruppen"],
+    queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then(r => r.json()),
+  });
+  const ampel = (() => {
+    const hasDS = !!mandant && !!mandant.verantwortlicherName;
+    const hasGroup = !!mandant?.gruppeId;
+    const offene = stats?.offeneAufgaben ?? 0;
+    const hasPrivacy = !!mandant?.dsb || !!mandant?.datenschutzmanagerName;
+    const hasIT = !!mandant?.itVerantwortlicherName;
+    const hasWebsite = !!mandant?.webseite;
+    const hasISB = !!mandant?.isbName;
+    const score = [hasDS, hasGroup, hasPrivacy, hasIT, hasWebsite, hasISB, offene <= 3].filter(Boolean).length;
+    if (score >= 6) return { label: "Grün", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", text: "Mandant gut strukturiert und aktuell stabil." };
+    if (score >= 4) return { label: "Gelb", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", text: "Mandant teilweise gepflegt, Nacharbeit empfohlen." };
+    return { label: "Rot", cls: "bg-red-500/15 text-red-400 border-red-500/30", text: "Mandant mit erhöhtem organisatorischem Handlungsbedarf." };
+  })();
+  const ampelKriterien = [
+    { label: "Verantwortlicher gepflegt", ok: !!mandant?.verantwortlicherName },
+    { label: "Gruppe zugeordnet", ok: !!mandant?.gruppeId },
+    { label: "Datenschutzfunktion vorhanden", ok: !!mandant?.dsb || !!mandant?.datenschutzmanagerName },
+    { label: "IT-Verantwortlicher vorhanden", ok: !!mandant?.itVerantwortlicherName },
+    { label: "Webseite gepflegt", ok: !!mandant?.webseite },
+    { label: "ISB vorhanden", ok: !!mandant?.isbName },
+    { label: "Wenig offene Aufgaben", ok: (stats?.offeneAufgaben ?? 0) <= 3 },
+  ];
+
+  return (
+    <MandantGuard>
+      <div className="space-y-6">
+        <PageHeader title="Mandanten-Übersicht" desc="Stammdaten, Rollen und Compliance-Status des aktiven Mandanten" />
+        <Card>
+          <CardHeader>
+            <CardTitle>{mandant?.name || "Mandant"}</CardTitle>
+            <CardDescription>{mandant?.rechtsform || "—"}{mandant?.branche ? ` · ${mandant.branche}` : ""}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="font-medium mb-2">Stammdaten</p>
+              <div className="space-y-1 text-muted-foreground">
+                <p>Anschrift: {mandant?.anschrift || "—"}</p>
+                <p>Webseite: {mandant?.webseite || "—"}</p>
+                <p>Gruppe: {gruppen.find((g: any) => g.id === mandant?.gruppeId)?.name || "—"}</p>
+                <p>Notizen: {mandant?.notizen || "—"}</p>
+              </div>
+            </div>
+            <div>
+              <p className="font-medium mb-2">Rollen</p>
+              <div className="space-y-1 text-muted-foreground">
+                <p>Verantwortlicher: {mandant?.verantwortlicherName || "—"}</p>
+                <p>Kontakt: {mandant?.verantwortlicherEmail || "—"}{mandant?.verantwortlicherTelefon ? ` · ${mandant.verantwortlicherTelefon}` : ""}</p>
+                <p>Datenschutzmanager: {mandant?.datenschutzmanagerName || "—"}</p>
+                <p>Kontakt: {mandant?.datenschutzmanagerEmail || "—"}{mandant?.datenschutzmanagerTelefon ? ` · ${mandant.datenschutzmanagerTelefon}` : ""}</p>
+                <p>IT-Verantwortlicher: {mandant?.itVerantwortlicherName || "—"}</p>
+                <p>Kontakt: {mandant?.itVerantwortlicherEmail || "—"}{mandant?.itVerantwortlicherTelefon ? ` · ${mandant.itVerantwortlicherTelefon}` : ""}</p>
+                <p>ISB: {mandant?.isbName || "—"}</p>
+                <p>Kontakt: {mandant?.isbEmail || "—"}{mandant?.isbTelefon ? ` · ${mandant.isbTelefon}` : ""}</p>
+                <p>Webseitenbetreuer: {mandant?.webseitenbetreuerName || "—"}</p>
+                <p>Kontakt: {mandant?.webseitenbetreuerEmail || "—"}{mandant?.webseitenbetreuerTelefon ? ` · ${mandant.webseitenbetreuerTelefon}` : ""}</p>
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <p className="font-medium mb-2">Mandantenstatus</p>
+              <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium border ${ampel.cls}`}>{ampel.label}</span>
+              <p className="text-xs text-muted-foreground mt-2">{ampel.text}</p>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                {ampelKriterien.map((k) => <p key={k.label} className={`text-xs ${k.ok ? "text-emerald-400" : "text-yellow-400"}`}>{k.ok ? "✓" : "•"} {k.label}</p>)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            ["VVT", stats?.vvt ?? 0],
+            ["Aufgaben", stats?.aufgaben ?? 0],
+            ["Offene Aufgaben", stats?.offeneAufgaben ?? 0],
+            ["Dokumente", stats?.dokumente ?? 0],
+          ].map(([label, value]) => (
+            <Card key={String(label)}><CardContent className="p-4"><p className="text-2xl font-bold">{value as any}</p><p className="text-xs text-muted-foreground">{label}</p></CardContent></Card>
+          ))}
+        </div>
       </div>
     </MandantGuard>
   );
@@ -2086,6 +2597,7 @@ function AppRoutes() {
       <Layout>
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/overview" component={MandantenOverviewPage} />
           <Route path="/vvt" component={VvtPage} />
           <Route path="/avv" component={AvvPage} />
           <Route path="/dsfa" component={DsfaPage} />
