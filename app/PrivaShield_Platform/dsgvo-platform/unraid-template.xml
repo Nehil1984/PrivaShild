@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>PrivaShield</Name>
+  <Repository>privashield:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Nehil1984/PrivaShild</Support>
+  <Project>https://github.com/Nehil1984/PrivaShild</Project>
+  <Overview>PrivaShield DSGVO-Plattform als Unraid Docker-Container mit persistentem Datenverzeichnis und Initial-Admin-Setup.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:5000]/</WebUI>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>PrivaShield unter Unraid mit SQLite-Datenhaltung, JWT-Authentifizierung und initialem Admin-Benutzer per Umgebungsvariablen.</Description>
+
+  <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="HTTP-Port der PrivaShield-Weboberfläche" Type="Port" Display="always" Required="true" Mask="false">5000</Config>
+
+  <Config Name="AppData" Target="/data" Default="/mnt/user/appdata/privashield/data" Mode="rw" Description="Persistenter Speicherort für die SQLite-Datenbank" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/privashield/data</Config>
+
+  <Config Name="NODE_ENV" Target="NODE_ENV" Default="production" Mode="" Description="Node-Umgebung, für Unraid produktiv auf production setzen" Type="Variable" Display="advanced" Required="true" Mask="false">production</Config>
+
+  <Config Name="PORT" Target="PORT" Default="5000" Mode="" Description="Interner Port der Anwendung" Type="Variable" Display="advanced" Required="true" Mask="false">5000</Config>
+
+  <Config Name="DATABASE_PATH" Target="DATABASE_PATH" Default="/data/privashield.db" Mode="" Description="Pfad zur persistenten SQLite-Datenbank im Container" Type="Variable" Display="always" Required="true" Mask="false">/data/privashield.db</Config>
+
+  <Config Name="JWT_SECRET" Target="JWT_SECRET" Default="" Mode="" Description="Pflichtwert. Langer zufälliger geheimer Schlüssel für JWT-Signaturen" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="INITIAL_ADMIN_EMAIL" Target="INITIAL_ADMIN_EMAIL" Default="admin@example.local" Mode="" Description="E-Mail des initialen Admin-Benutzers beim Erststart" Type="Variable" Display="always" Required="true" Mask="false">admin@example.local</Config>
+
+  <Config Name="INITIAL_ADMIN_PASSWORD" Target="INITIAL_ADMIN_PASSWORD" Default="" Mode="" Description="Starkes Einmalpasswort für den initialen Admin" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="INITIAL_ADMIN_NAME" Target="INITIAL_ADMIN_NAME" Default="Administrator" Mode="" Description="Anzeigename des initialen Admin-Benutzers" Type="Variable" Display="advanced" Required="false" Mask="false">Administrator</Config>
+</Container>

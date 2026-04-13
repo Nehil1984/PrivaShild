@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  privashield:
+    container_name: privashield
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: privashield:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_PATH: /data/privashield.db
+      JWT_SECRET: ${JWT_SECRET}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Administrator}
+    ports:
+      - "5000:5000"
+    volumes:
+      - /mnt/user/appdata/privashield/data:/data
+
+# Nutzung unter Unraid:
+# 1. Datei nach docker-compose.unraid.yml kopieren
+# 2. .env mit JWT_SECRET und Initial-Admin-Werten anlegen
+# 3. Starten mit: docker compose -f docker-compose.unraid.yml up -d --build
