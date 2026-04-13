@@ -72,3 +72,21 @@ Für öffentlich erreichbaren Betrieb unter Unraid empfehle ich:
 - stattdessen Reverse Proxy, z. B. **Nginx Proxy Manager**
 - HTTPS erzwingen
 - optional Zugriff per VPN oder IP-Restriktion absichern
+
+## Wichtiger Hinweis für Unraid-Startprobleme
+
+Wenn beim Containerstart nur JS-/Bundle-Inhalt im Log erscheint statt normaler Startmeldungen:
+
+1. Image unbedingt **neu bauen oder neu pullen**
+2. Container vollständig **neu erstellen**, nicht nur neu starten
+3. sicherstellen, dass kein eigenes Command/Override in Unraid gesetzt ist
+4. folgende Variablen setzen:
+   - `JWT_SECRET`
+   - `INITIAL_ADMIN_EMAIL`
+   - `INITIAL_ADMIN_PASSWORD`
+5. danach Container-Log erneut prüfen
+
+Die erwarteten Startmeldungen sehen eher so aus:
+- `[entrypoint] /data bereit ...`
+- `[entrypoint] starte app mit node /app/dist/index.cjs`
+- `[DB] Backend: ...`

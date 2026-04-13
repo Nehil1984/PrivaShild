@@ -1,16 +1,26 @@
 #!/bin/sh
-# Entrypoint: Stellt sicher dass /data dem Container-User gehört,
-# auch wenn Unraid das Volume als root mounted.
-set -e
+# Entrypoint: Stellt sicher, dass /data nutzbar ist und startet die App robust.
+set -eu
 
-# /data-Verzeichnis anlegen falls nicht vorhanden
+APP_USER="privashield"
+APP_GROUP="privashield"
+APP_UID="${PUID:-1099}"
+APP_GID="${PGID:-1099}"
+
 mkdir -p /data
 
-# Berechtigungen setzen (läuft noch als root)
-chown -R privashield:privashield /data
-chmod 755 /data
+if ! getent group "$APP_GROUP" >/dev/null 2>&1; then
+  addgroup -g "$APP_GID" "$APP_GROUP" >/dev/null 2>&1 || true
+fi
 
-echo "[entrypoint] /data bereit (owner: $(stat -c '%U' /data))"
+if ! id -u "$APP_USER" >/dev/null 2>&1; then
+  adduser -u "$APP_UID" -G "$APP_GROUP" -s /bin/sh -D "$APP_USER" >/dev/null 2>&1 || true
+fi
 
-# Zu privashield-User wechseln und Server starten
-exec su-exec privashield node dist/index.cjs
+chown -R "$APP_USER:$APP_GROUP" /data || true
+chmod 755 /data || true
+
+echo "[entrypoint] /data bereit (owner: $(stat -c '%U' /data 2>/dev/null || echo unknown))"
+echo "[entrypoint] starte app mit node /app/dist/index.cjs"
+
+exec su-exec "$APP_USER:$APP_GROUP" node /app/dist/index.cjs

@@ -14,9 +14,8 @@ RUN npm run build
 # ─── Stage 2: Production ───────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-# su-exec: Ermöglicht sicheren User-Wechsel nach Volume-Mount
-# (Standard-Tool in Alpine, ersetzt gosu)
-RUN apk add --no-cache su-exec
+# su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
+RUN apk add --no-cache su-exec libc-utils
 
 # Non-root User anlegen
 # GID/UID 1099 (1000 ist auf Unraid oft bereits belegt)
@@ -51,5 +50,6 @@ ENV NODE_ENV=production
 ENV PORT=5000
 ENV DATABASE_PATH=/data/privashield.db
 
-# Container startet als root → Entrypoint setzt Rechte → wechselt zu privashield
+# Container startet als root, Entrypoint setzt Rechte und startet dann robust die App
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD []
