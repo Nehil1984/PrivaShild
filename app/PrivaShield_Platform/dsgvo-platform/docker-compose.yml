@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  privashield:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: privashield
+    restart: unless-stopped
+
+    ports:
+      - "5000:5000"       # Weboberfläche — in Unraid: HOST_PORT:5000
+
+    volumes:
+      - ./data:/data      # SQLite-Datenbank persistent speichern
+
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_PATH: /data/privashield.db
+      # WICHTIG: JWT_SECRET in Produktion ändern!
+      JWT_SECRET: "aendern-sie-diesen-schluessel-in-produktion"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/auth/me"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+    labels:
+      - "com.unraid.managed=true"
+      - "com.unraid.name=PrivaShield"
+      - "com.unraid.description=Datenschutzmanagement-Plattform (DSGVO)"
+      - "com.unraid.webui=http://[IP]:[PORT:5000]/"
+      - "com.unraid.icon=https://raw.githubusercontent.com/docker-library/docs/master/node/logo.png"
