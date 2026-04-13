@@ -12,8 +12,8 @@
   <Overview>PrivaShield DSGVO-Plattform als Unraid Docker-Container mit persistentem Datenverzeichnis und Initial-Admin-Setup.</Overview>
   <Category>Productivity: Tools:</Category>
   <WebUI>http://[IP]:[PORT:5000]/</WebUI>
-  <TemplateURL>https://github.com/Nehil1984/PrivaShild</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Nehil1984/PrivaShild/master/icon.png</Icon>
+  <TemplateURL>https://github.com/Nehil1984/PrivaShild/blob/master/app/PrivaShield_Platform/dsgvo-platform/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Nehil1984/PrivaShild/master/app/PrivaShield_Platform/dsgvo-platform/assets/unraid-icon.svg</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>

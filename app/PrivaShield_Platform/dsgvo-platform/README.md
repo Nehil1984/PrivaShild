@@ -53,6 +53,17 @@ INITIAL_ADMIN_NAME=Administrator
 - Unraid Template: `unraid-template.xml`
 - Compose für Unraid: `docker-compose.unraid.yml`
 - Beispielvariablen: `.env.unraid.example`
+- Unraid-Icon: `assets/unraid-icon.svg`
+
+## Container Publishing
+
+Ein GitHub-Actions-Workflow liegt bereit unter:
+
+- `.github/workflows/docker-ghcr.yml`
+
+Damit kann das Docker-Image nach **GHCR** veröffentlicht werden, z. B. als:
+
+- `ghcr.io/<owner>/privashield:latest`
 
 ## Reverse Proxy Empfehlung
 
