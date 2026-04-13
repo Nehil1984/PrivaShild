@@ -2,6 +2,13 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+const passwordSchema = z.string()
+  .min(12, "Passwort muss mindestens 12 Zeichen lang sein")
+  .regex(/[a-z]/, "Passwort muss mindestens einen Kleinbuchstaben enthalten")
+  .regex(/[A-Z]/, "Passwort muss mindestens einen Großbuchstaben enthalten")
+  .regex(/[0-9]/, "Passwort muss mindestens eine Zahl enthalten")
+  .regex(/[^A-Za-z0-9]/, "Passwort muss mindestens ein Sonderzeichen enthalten");
+
 // ─── Mandanten ────────────────────────────────────────────────────────────────
 export const mandanten = sqliteTable("mandanten", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -110,7 +117,7 @@ export const users = sqliteTable("users", {
   createdAt: text("created_at").default(new Date().toISOString()),
 });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, passwordHash: true, createdAt: true }).extend({
-  password: z.string().min(8),
+  password: passwordSchema,
 });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

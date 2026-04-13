@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
+import { validateBody } from "./validation";
+import { insertAvvSchema, insertMandantSchema, insertUserSchema, insertVvtSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -127,7 +129,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const all = await storage.getAllUsers();
     res.json(all.map(({ passwordHash, ...u }) => u));
   });
-  app.post("/api/users", authMiddleware, adminOnly, async (req, res) => {
+  app.post("/api/users", authMiddleware, adminOnly, validateBody(insertUserSchema), async (req, res) => {
     try {
       const user = await storage.createUser(req.body);
       const { passwordHash, ...safe } = user;
@@ -162,7 +164,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.json(m);
   });
-  app.post("/api/mandanten", authMiddleware, adminOnly, async (req, res) => {
+  app.post("/api/mandanten", authMiddleware, adminOnly, validateBody(insertMandantSchema), async (req, res) => {
     const m = await storage.createMandant(req.body);
     res.status(201).json(m);
   });
@@ -244,6 +246,44 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       results.push({ mandantId: m.id, mandantName: m.name, ...(await storage.applyVorlagenpaketToMandant(m.id, paketId, { id: req.userId, name: user?.name })) });
     }
     res.json({ ok: true, count: results.length, results });
+  });
+
+  app.post("/api/mandanten/:mid/vvt", authMiddleware, validateBody(insertVvtSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createVvt({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `vvt_erstellt`,
+      modul: "vvt",
+      entitaetTyp: "vvt",
+      entitaetId: item.id,
+      beschreibung: `vvt wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/avv", authMiddleware, validateBody(insertAvvSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createAvv({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `avv_erstellt`,
+      modul: "avv",
+      entitaetTyp: "avv",
+      entitaetId: item.id,
+      beschreibung: `avv wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
   });
 
   // ─── STATS ────────────────────────────────────────────────────────────────
