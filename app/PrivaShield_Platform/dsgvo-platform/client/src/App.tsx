@@ -416,6 +416,12 @@ function Dashboard() {
     (stats?.offeneAufgaben === 0 ? 15 : (stats?.offeneAufgaben ?? 0) <= 3 ? 10 : 0) +
     (offeneReviews.length === 0 ? 15 : 5)
   ));
+  const complianceKpis = {
+    offeneAufgaben: stats?.offeneAufgaben ?? 0,
+    leitlinien: leitlinien.length,
+    reviews: offeneReviews.length,
+    kritische: kritischeAufgaben.length,
+  };
 
   const statCards = [
     { label: "VVT-Einträge", value: stats?.vvt ?? 0, icon: FileText, path: "/vvt", color: "text-teal-400" },
@@ -540,6 +546,19 @@ function Dashboard() {
               <p className="text-muted-foreground">Zuletzt aktualisierte Themen lassen sich über das Änderungsprotokoll im Bereich Mandanten-Extras prüfen.</p>
               <p>Kritische Aufgaben: <span className="font-medium">{kritischeAufgaben.length}</span></p>
               <p>Offene Reviews: <span className="font-medium">{offeneReviews.length}</span></p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Management-KPIs</CardTitle>
+              <CardDescription>Verdichtete Kennzahlen zur Steuerung</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-2xl font-bold">{complianceKpis.offeneAufgaben}</p><p className="text-xs text-muted-foreground">offene Aufgaben</p></div>
+              <div><p className="text-2xl font-bold">{complianceKpis.leitlinien}</p><p className="text-xs text-muted-foreground">Leitlinien</p></div>
+              <div><p className="text-2xl font-bold">{complianceKpis.reviews}</p><p className="text-xs text-muted-foreground">offene Reviews</p></div>
+              <div><p className="text-2xl font-bold">{complianceKpis.kritische}</p><p className="text-xs text-muted-foreground">kritische Aufgaben</p></div>
             </CardContent>
           </Card>
         </div>
@@ -2578,6 +2597,24 @@ function MandantenOverviewPage() {
     <MandantGuard>
       <div className="space-y-6">
         <PageHeader title="Mandanten-Übersicht" desc="Stammdaten, Rollen und Compliance-Status des aktiven Mandanten" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Konsistenzprüfung</CardTitle>
+            <CardDescription>Schneller Qualitätscheck der Stammdaten</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            {[
+              ["Mandantenname", !!mandant?.name],
+              ["Rechtsform", !!mandant?.rechtsform],
+              ["Anschrift", !!mandant?.anschrift],
+              ["Webseite", !!mandant?.webseite],
+              ["Verantwortlicher", !!mandant?.verantwortlicherName],
+              ["Datenschutzmanager oder DSB", !!mandant?.datenschutzmanagerName || !!mandant?.dsb],
+              ["IT-Verantwortlicher", !!mandant?.itVerantwortlicherName],
+              ["ISB", !!mandant?.isbName],
+            ].map(([label, ok]) => <p key={String(label)} className={ok ? "text-emerald-400" : "text-yellow-400"}>{ok ? "✓" : "•"} {label}</p>)}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>{mandant?.name || "Mandant"}</CardTitle>

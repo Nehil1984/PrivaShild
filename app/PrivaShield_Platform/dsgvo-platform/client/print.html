@@ -494,6 +494,10 @@ async function render() {
         <p><strong>Management-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
         <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
       </div>
+      <div class="info-grid">
+        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p></div>
+        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p></div>
+      </div>
     `;
 
     config.modules.forEach(key => {
