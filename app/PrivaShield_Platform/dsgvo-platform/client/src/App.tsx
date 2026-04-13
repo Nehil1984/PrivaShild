@@ -109,8 +109,8 @@ function ConfirmDialog({ open, title, desc, onConfirm, onCancel }: any) {
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────────────
 function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
-  const [email, setEmail] = useState("admin@dsgvo.local");
-  const [password, setPassword] = useState("Admin1234!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -170,7 +170,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
               </Button>
             </form>
             <div className="text-xs text-muted-foreground text-center pt-1">
-              Standard: admin@dsgvo.local / Admin1234!
+              Bitte mit deinen zugewiesenen Zugangsdaten anmelden.
             </div>
           </CardContent>
         </Card>

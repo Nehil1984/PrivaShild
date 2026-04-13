@@ -4,15 +4,23 @@ import { storage, reloadStorage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
+import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dsgvo-platform-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
+function getJwtSecret(): string {
+  if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET ist nicht gesetzt. Bitte sichere Umgebungsvariable konfigurieren.");
+  }
+  return JWT_SECRET;
+}
+
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return res.status(401).json({ message: "Nicht authentifiziert" });
   try {
-    const payload = jwt.verify(auth.slice(7), JWT_SECRET) as { userId: number; role: string };
+    const payload = jwt.verify(auth.slice(7), getJwtSecret()) as unknown as { userId: number; role: string };
     (req as any).userId = payload.userId;
     (req as any).userRole = payload.role;
     next();
@@ -62,29 +70,47 @@ async function requireEntityAccess(req: any, res: Response, item: any | undefine
 // Seed initial admin if no users exist
 async function seedAdmin() {
   const all = await storage.getAllUsers();
-  if (all.length === 0) {
-    await storage.createUser({
-      email: "admin@dsgvo.local",
-      password: "Admin1234!",
-      name: "Administrator",
-      role: "admin",
-      mandantIds: "[]",
-    });
-    console.log("Admin-Benutzer erstellt: admin@dsgvo.local / Admin1234!");
+  if (all.length > 0) return;
+
+  const email = process.env.INITIAL_ADMIN_EMAIL;
+  const password = process.env.INITIAL_ADMIN_PASSWORD;
+  const name = process.env.INITIAL_ADMIN_NAME || "Administrator";
+
+  if (!email || !password) {
+    console.warn("Kein Initial-Admin erstellt: INITIAL_ADMIN_EMAIL und INITIAL_ADMIN_PASSWORD fehlen.");
+    return;
   }
+
+  await storage.createUser({
+    email,
+    password,
+    name,
+    role: "admin",
+    mandantIds: "[]",
+  });
+  console.log(`Initialer Admin-Benutzer erstellt: ${email}`);
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await seedAdmin();
 
+  getJwtSecret();
+
   // ─── AUTH ────────────────────────────────────────────────────────────────
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", loginRateLimit, async (req, res) => {
     const { email, password } = req.body;
     const user = await storage.getUserByEmail(email);
-    if (!user || !user.aktiv) return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
+    if (!user || !user.aktiv) {
+      registerLoginFailure(req);
+      return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "8h" });
+    if (!valid) {
+      registerLoginFailure(req);
+      return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
+    }
+    clearLoginFailures(req);
+    const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "8h" });
     const { passwordHash, ...safeUser } = user;
     res.json({ token, user: safeUser });
   });
