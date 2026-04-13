@@ -40,7 +40,9 @@ export const mandanten = sqliteTable("mandanten", {
   aktiv: integer("aktiv", { mode: "boolean" }).default(true),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertMandantSchema = createInsertSchema(mandanten).omit({ id: true, createdAt: true });
+export const insertMandantSchema = createInsertSchema(mandanten).omit({ id: true, createdAt: true }).extend({
+  name: z.string().trim().min(1, "Name ist erforderlich"),
+});
 export type InsertMandant = z.infer<typeof insertMandantSchema>;
 export type Mandant = typeof mandanten.$inferSelect;
 
@@ -53,7 +55,9 @@ export const mandantenGruppen = sqliteTable("mandanten_gruppen", {
   parentGroupId: integer("parent_group_id"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertMandantenGruppeSchema = createInsertSchema(mandantenGruppen).omit({ id: true, createdAt: true });
+export const insertMandantenGruppeSchema = createInsertSchema(mandantenGruppen).omit({ id: true, createdAt: true }).extend({
+  name: z.string().trim().min(1, "Name ist erforderlich"),
+});
 export type InsertMandantenGruppe = z.infer<typeof insertMandantenGruppeSchema>;
 export type MandantenGruppe = typeof mandantenGruppen.$inferSelect;
 
@@ -68,7 +72,9 @@ export const vorlagenpakete = sqliteTable("vorlagenpakete", {
   inhaltJson: text("inhalt_json").default("{}"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertVorlagenpaketSchema = createInsertSchema(vorlagenpakete).omit({ id: true, createdAt: true });
+export const insertVorlagenpaketSchema = createInsertSchema(vorlagenpakete).omit({ id: true, createdAt: true }).extend({
+  name: z.string().trim().min(1, "Name ist erforderlich"),
+});
 export type InsertVorlagenpaket = z.infer<typeof insertVorlagenpaketSchema>;
 export type Vorlagenpaket = typeof vorlagenpakete.$inferSelect;
 
@@ -141,7 +147,10 @@ export const vvt = sqliteTable("vvt", {
   createdAt: text("created_at").default(new Date().toISOString()),
   updatedAt: text("updated_at").default(new Date().toISOString()),
 });
-export const insertVvtSchema = createInsertSchema(vvt).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVvtSchema = createInsertSchema(vvt).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  bezeichnung: z.string().trim().min(1, "Bezeichnung ist erforderlich"),
+});
+export const requestVvtSchema = insertVvtSchema.omit({ mandantId: true });
 export type InsertVvt = z.infer<typeof insertVvtSchema>;
 export type Vvt = typeof vvt.$inferSelect;
 
@@ -161,7 +170,10 @@ export const avv = sqliteTable("avv", {
   createdAt: text("created_at").default(new Date().toISOString()),
   updatedAt: text("updated_at").default(new Date().toISOString()),
 });
-export const insertAvvSchema = createInsertSchema(avv).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAvvSchema = createInsertSchema(avv).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  auftragsverarbeiter: z.string().trim().min(1, "Auftragsverarbeiter ist erforderlich"),
+});
+export const requestAvvSchema = insertAvvSchema.omit({ mandantId: true });
 export type InsertAvv = z.infer<typeof insertAvvSchema>;
 export type Avv = typeof avv.$inferSelect;
 
@@ -182,7 +194,10 @@ export const dsfa = sqliteTable("dsfa", {
   createdAt: text("created_at").default(new Date().toISOString()),
   updatedAt: text("updated_at").default(new Date().toISOString()),
 });
-export const insertDsfaSchema = createInsertSchema(dsfa).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDsfaSchema = createInsertSchema(dsfa).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+});
+export const requestDsfaSchema = insertDsfaSchema.omit({ mandantId: true });
 export type InsertDsfa = z.infer<typeof insertDsfaSchema>;
 export type Dsfa = typeof dsfa.$inferSelect;
 
@@ -206,7 +221,11 @@ export const datenpannen = sqliteTable("datenpannen", {
   schwere: text("schwere").default("niedrig"), // niedrig | mittel | hoch | kritisch
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertDatenpanneSchema = createInsertSchema(datenpannen).omit({ id: true, createdAt: true });
+export const insertDatenpanneSchema = createInsertSchema(datenpannen).omit({ id: true, createdAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+  entdecktAm: z.string().trim().min(1, "Entdeckt-Am ist erforderlich"),
+});
+export const requestDatenpanneSchema = insertDatenpanneSchema.omit({ mandantId: true });
 export type InsertDatenpanne = z.infer<typeof insertDatenpanneSchema>;
 export type Datenpanne = typeof datenpannen.$inferSelect;
 
@@ -224,7 +243,11 @@ export const dsr = sqliteTable("dsr", {
   notizen: text("notizen"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertDsrSchema = createInsertSchema(dsr).omit({ id: true, createdAt: true });
+export const insertDsrSchema = createInsertSchema(dsr).omit({ id: true, createdAt: true }).extend({
+  art: z.string().trim().min(1, "Art ist erforderlich"),
+  eingangsdatum: z.string().trim().min(1, "Eingangsdatum ist erforderlich"),
+});
+export const requestDsrSchema = insertDsrSchema.omit({ mandantId: true });
 export type InsertDsr = z.infer<typeof insertDsrSchema>;
 export type Dsr = typeof dsr.$inferSelect;
 
@@ -241,7 +264,11 @@ export const tom = sqliteTable("tom", {
   notizen: text("notizen"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
-export const insertTomSchema = createInsertSchema(tom).omit({ id: true, createdAt: true });
+export const insertTomSchema = createInsertSchema(tom).omit({ id: true, createdAt: true }).extend({
+  kategorie: z.string().trim().min(1, "Kategorie ist erforderlich"),
+  massnahme: z.string().trim().min(1, "Maßnahme ist erforderlich"),
+});
+export const requestTomSchema = insertTomSchema.omit({ mandantId: true });
 export type InsertTom = z.infer<typeof insertTomSchema>;
 export type Tom = typeof tom.$inferSelect;
 
@@ -290,6 +317,10 @@ export const dokumente = sqliteTable("dokumente", {
   createdAt: text("created_at").default(new Date().toISOString()),
   updatedAt: text("updated_at").default(new Date().toISOString()),
 });
-export const insertDokumentSchema = createInsertSchema(dokumente).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDokumentSchema = createInsertSchema(dokumente).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+  kategorie: z.string().trim().min(1, "Kategorie ist erforderlich"),
+});
+export const requestDokumentSchema = insertDokumentSchema.omit({ mandantId: true });
 export type InsertDokument = z.infer<typeof insertDokumentSchema>;
 export type Dokument = typeof dokumente.$inferSelect;

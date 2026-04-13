@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 import { validateBody } from "./validation";
-import { insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema } from "@shared/schema";
+import { insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAvvSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -335,7 +335,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, count: results.length, results });
   });
 
-  app.post("/api/mandanten/:mid/vvt", authMiddleware, validateBody(insertVvtSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/vvt", authMiddleware, validateBody(requestVvtSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createVvt({ ...req.body, mandantId });
@@ -354,7 +354,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/avv", authMiddleware, validateBody(insertAvvSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/avv", authMiddleware, validateBody(requestAvvSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createAvv({ ...req.body, mandantId });
@@ -373,7 +373,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/dsfa", authMiddleware, validateBody(insertDsfaSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/dsfa", authMiddleware, validateBody(requestDsfaSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDsfa({ ...req.body, mandantId });
@@ -392,7 +392,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/datenpannen", authMiddleware, validateBody(insertDatenpanneSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/datenpannen", authMiddleware, validateBody(requestDatenpanneSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDatenpanne({ ...req.body, mandantId });
@@ -411,7 +411,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/dsr", authMiddleware, validateBody(insertDsrSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/dsr", authMiddleware, validateBody(requestDsrSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDsr({ ...req.body, mandantId });
@@ -430,7 +430,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/tom", authMiddleware, validateBody(insertTomSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/tom", authMiddleware, validateBody(requestTomSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createTom({ ...req.body, mandantId });
@@ -449,7 +449,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
-  app.post("/api/mandanten/:mid/dokumente", authMiddleware, validateBody(insertDokumentSchema), async (req: any, res) => {
+  app.post("/api/mandanten/:mid/dokumente", authMiddleware, validateBody(requestDokumentSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDokument({ ...req.body, mandantId });
