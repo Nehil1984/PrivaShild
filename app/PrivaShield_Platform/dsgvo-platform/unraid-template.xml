@@ -12,15 +12,15 @@
   <Overview>PrivaShield DSGVO-Plattform als Unraid Docker-Container mit persistentem Datenverzeichnis und Initial-Admin-Setup.</Overview>
   <Category>Productivity: Tools:</Category>
   <WebUI>http://[IP]:[PORT:5000]/</WebUI>
-  <TemplateURL/>
-  <Icon/>
+  <TemplateURL>https://github.com/Nehil1984/PrivaShild</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Nehil1984/PrivaShild/master/icon.png</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Description>PrivaShield unter Unraid mit SQLite-Datenhaltung, JWT-Authentifizierung und initialem Admin-Benutzer per Umgebungsvariablen.</Description>
+  <Description>PrivaShield unter Unraid mit SQLite-Datenhaltung, JWT-Authentifizierung und initialem Admin-Benutzer per Umgebungsvariablen. Für Produktivbetrieb wird ein Reverse Proxy mit HTTPS empfohlen.</Description>
 
   <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="HTTP-Port der PrivaShield-Weboberfläche" Type="Port" Display="always" Required="true" Mask="false">5000</Config>
 

@@ -299,3 +299,60 @@ Wenn du PrivaShield dauerhaft unter Unraid betreiben willst, würde ich zusätzl
 5. JWT-Secret sicher dokumentieren und geschützt aufbewahren
 
 ---
+
+## Reverse Proxy mit Nginx Proxy Manager unter Unraid
+
+Für produktionsnahen Betrieb solltest du PrivaShield nicht einfach ungeschützt direkt auf Port 5000 ins Internet stellen.
+
+Empfehlung unter Unraid:
+- PrivaShield intern auf Port `5000`
+- Veröffentlichung nur über **Nginx Proxy Manager**
+- HTTPS mit Let's Encrypt
+- optional Zugriff zusätzlich per VPN oder IP-Restriktion absichern
+
+### Beispielaufbau
+
+- PrivaShield intern: `http://UNRAID-IP:5000`
+- Extern über Proxy: `https://privacy.deinedomain.tld`
+
+### Proxy-Host im Nginx Proxy Manager
+
+Lege einen neuen **Proxy Host** mit folgenden Werten an:
+
+| Feld | Wert |
+|---|---|
+| Domain Names | `privacy.deinedomain.tld` |
+| Scheme | `http` |
+| Forward Hostname / IP | `UNRAID-IP` |
+| Forward Port | `5000` |
+| Block Common Exploits | aktivieren |
+| Websockets Support | aktivieren |
+| Cache Assets | deaktiviert |
+
+### SSL-Einstellungen
+
+Im Reiter **SSL**:
+- `Request a new SSL Certificate`
+- `Force SSL`
+- `HTTP/2 Support`
+- `HSTS Enabled` optional nach Test
+
+### Zusätzliche Empfehlung
+
+Wenn die Plattform nur intern genutzt werden soll:
+- Domain nur intern auflösbar machen oder
+- Zugriff auf den Proxy per VPN beschränken
+
+---
+
+## Zusätzliche Dateien im Repository
+
+```text
+unraid.md
+unraid-template.xml
+docker-compose.unraid.yml
+.env.unraid.example
+README.md
+```
+
+---

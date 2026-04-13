@@ -52,3 +52,12 @@ INITIAL_ADMIN_NAME=Administrator
 - Vollständige Anleitung: `unraid.md`
 - Unraid Template: `unraid-template.xml`
 - Compose für Unraid: `docker-compose.unraid.yml`
+- Beispielvariablen: `.env.unraid.example`
+
+## Reverse Proxy Empfehlung
+
+Für öffentlich erreichbaren Betrieb unter Unraid empfehle ich:
+- Veröffentlichung nicht direkt auf Port `5000`
+- stattdessen Reverse Proxy, z. B. **Nginx Proxy Manager**
+- HTTPS erzwingen
+- optional Zugriff per VPN oder IP-Restriktion absichern
