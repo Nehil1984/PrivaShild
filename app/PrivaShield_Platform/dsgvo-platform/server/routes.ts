@@ -7,6 +7,7 @@ import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 import { validateBody } from "./validation";
 import { insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema } from "@shared/schema";
+import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -59,6 +60,23 @@ async function auditLog(event: {
     beschreibung: event.beschreibung,
     detailsJson: JSON.stringify(event.details || {}),
   });
+}
+
+function diffObjects(before: Record<string, any> | undefined, after: Record<string, any> | undefined) {
+  const previous = before || {};
+  const next = after || {};
+  const keys = Array.from(new Set([...Object.keys(previous), ...Object.keys(next)])).sort();
+  const changes: Array<{ field: string; before: unknown; after: unknown }> = [];
+
+  for (const key of keys) {
+    const a = previous[key];
+    const b = next[key];
+    if (JSON.stringify(a) !== JSON.stringify(b)) {
+      changes.push({ field: key, before: a, after: b });
+    }
+  }
+
+  return changes;
 }
 
 async function getAllowedMandantIds(req: any): Promise<number[]> {
@@ -465,7 +483,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     getOne: (id: number) => Promise<any>,
     create: (data: any) => Promise<any>,
     update: (id: number, data: any) => Promise<any>,
-    remove: (id: number) => Promise<void>
+    remove: (id: number) => Promise<void>,
+    updateSchema?: ZodTypeAny,
   ) {
     app.get(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
       const mandantId = Number(req.params.mid);
@@ -495,7 +514,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
       res.status(201).json(item);
     });
-    app.put(`/api/${path}/:id`, authMiddleware, async (req: any, res) => {
+    app.put(`/api/${path}/:id`, authMiddleware, async (req: any, res, next) => {
+      if (updateSchema) {
+        return validateBody(updateSchema)(req, res, async () => {
+          const existing = await getOne(Number(req.params.id));
+          if (!(await requireEntityAccess(req, res, existing))) return;
+          const item = await update(Number(req.params.id), req.body);
+          if (!item) return res.status(404).json({ message: "Nicht gefunden" });
+          const user = await storage.getUserById(req.userId);
+          await storage.createMandantenLog({
+            mandantId: item.mandantId,
+            userId: req.userId,
+            userName: user?.name,
+            aktion: `${path}_aktualisiert`,
+            modul: path,
+            entitaetTyp: path,
+            entitaetId: item.id,
+            beschreibung: `${path} wurde aktualisiert.`,
+            detailsJson: JSON.stringify({ after: item, changes: diffObjects(existing, item) }),
+          });
+          res.json(item);
+        });
+      }
+
       const existing = await getOne(Number(req.params.id));
       if (!(await requireEntityAccess(req, res, existing))) return;
       const item = await update(Number(req.params.id), req.body);
@@ -510,7 +551,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         entitaetTyp: path,
         entitaetId: item.id,
         beschreibung: `${path} wurde aktualisiert.`,
-        detailsJson: JSON.stringify(item),
+        detailsJson: JSON.stringify({ after: item, changes: diffObjects(existing, item) }),
       });
       res.json(item);
     });
@@ -529,20 +570,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         entitaetTyp: path,
         entitaetId: existing.id,
         beschreibung: `${path} wurde gelöscht.`,
-        detailsJson: JSON.stringify(existing),
+        detailsJson: JSON.stringify({ before: existing }),
       });
       res.json({ ok: true });
     });
   }
 
-  crudRoutes("vvt", storage.getVvtByMandant.bind(storage), storage.getVvt.bind(storage), storage.createVvt.bind(storage), storage.updateVvt.bind(storage), storage.deleteVvt.bind(storage));
-  crudRoutes("avv", storage.getAvvByMandant.bind(storage), storage.getAvv.bind(storage), storage.createAvv.bind(storage), storage.updateAvv.bind(storage), storage.deleteAvv.bind(storage));
-  crudRoutes("dsfa", storage.getDsfaByMandant.bind(storage), storage.getDsfa.bind(storage), storage.createDsfa.bind(storage), storage.updateDsfa.bind(storage), storage.deleteDsfa.bind(storage));
-  crudRoutes("datenpannen", storage.getDatenpannenByMandant.bind(storage), storage.getDatenpanne.bind(storage), storage.createDatenpanne.bind(storage), storage.updateDatenpanne.bind(storage), storage.deleteDatenpanne.bind(storage));
-  crudRoutes("dsr", storage.getDsrByMandant.bind(storage), storage.getDsr.bind(storage), storage.createDsr.bind(storage), storage.updateDsr.bind(storage), storage.deleteDsr.bind(storage));
-  crudRoutes("tom", storage.getTomByMandant.bind(storage), storage.getTom.bind(storage), storage.createTom.bind(storage), storage.updateTom.bind(storage), storage.deleteTom.bind(storage));
+  crudRoutes("vvt", storage.getVvtByMandant.bind(storage), storage.getVvt.bind(storage), storage.createVvt.bind(storage), storage.updateVvt.bind(storage), storage.deleteVvt.bind(storage), insertVvtSchema.partial());
+  crudRoutes("avv", storage.getAvvByMandant.bind(storage), storage.getAvv.bind(storage), storage.createAvv.bind(storage), storage.updateAvv.bind(storage), storage.deleteAvv.bind(storage), insertAvvSchema.partial());
+  crudRoutes("dsfa", storage.getDsfaByMandant.bind(storage), storage.getDsfa.bind(storage), storage.createDsfa.bind(storage), storage.updateDsfa.bind(storage), storage.deleteDsfa.bind(storage), insertDsfaSchema.partial());
+  crudRoutes("datenpannen", storage.getDatenpannenByMandant.bind(storage), storage.getDatenpanne.bind(storage), storage.createDatenpanne.bind(storage), storage.updateDatenpanne.bind(storage), storage.deleteDatenpanne.bind(storage), insertDatenpanneSchema.partial());
+  crudRoutes("dsr", storage.getDsrByMandant.bind(storage), storage.getDsr.bind(storage), storage.createDsr.bind(storage), storage.updateDsr.bind(storage), storage.deleteDsr.bind(storage), insertDsrSchema.partial());
+  crudRoutes("tom", storage.getTomByMandant.bind(storage), storage.getTom.bind(storage), storage.createTom.bind(storage), storage.updateTom.bind(storage), storage.deleteTom.bind(storage), insertTomSchema.partial());
   crudRoutes("aufgaben", storage.getAufgabenByMandant.bind(storage), storage.getAufgabe.bind(storage), storage.createAufgabe.bind(storage), storage.updateAufgabe.bind(storage), storage.deleteAufgabe.bind(storage));
-  crudRoutes("dokumente", storage.getDokumenteByMandant.bind(storage), storage.getDokument.bind(storage), storage.createDokument.bind(storage), storage.updateDokument.bind(storage), storage.deleteDokument.bind(storage));
+  crudRoutes("dokumente", storage.getDokumenteByMandant.bind(storage), storage.getDokument.bind(storage), storage.createDokument.bind(storage), storage.updateDokument.bind(storage), storage.deleteDokument.bind(storage), insertDokumentSchema.partial());
 
   // ─── DB-BACKEND UMSCHALTER (Admin only) ─────────────────────────────────
   app.get("/api/admin/db-config", authMiddleware, adminOnly, (_req, res) => {
