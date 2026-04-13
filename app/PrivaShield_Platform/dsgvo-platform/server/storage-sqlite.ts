@@ -79,7 +79,7 @@ export class DatabaseStorage implements IStorage {
   async getMandantenLogs(mandantId: number) { return db.select().from(mandantenLogs).where(eq(mandantenLogs.mandantId, mandantId)).orderBy(desc(mandantenLogs.zeitpunkt)).all(); }
   async createMandantenLog(data: InsertMandantenLog) { return db.insert(mandantenLogs).values({ ...data, zeitpunkt: new Date().toISOString() }).returning().get(); }
   async getVorlagenpaketHistorie(_mandantId: number) { return [] as VorlagenpaketHistorie[]; }
-  async createVorlagenpaketHistorie(_data: InsertVorlagenpaketHistorie) { throw new Error("Vorlagenpaket-Historie für SQLite noch nicht implementiert"); }
+  async createVorlagenpaketHistorie(_data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie> { throw new Error("Vorlagenpaket-Historie für SQLite noch nicht implementiert"); }
 
   // VVT
   async getVvtByMandant(mandantId: number) { return db.select().from(vvt).where(eq(vvt.mandantId, mandantId)).orderBy(desc(vvt.createdAt)).all(); }

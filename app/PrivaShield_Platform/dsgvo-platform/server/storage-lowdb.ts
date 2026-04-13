@@ -126,7 +126,7 @@ export class LowdbStorage implements IStorage {
       role: rest.role ?? "user",
       passwordHash,
       mandantIds: rest.mandantIds ?? "[]",
-      aktiv: 1,
+      aktiv: true,
       createdAt: new Date().toISOString(),
     };
     db.data.users.push(user);
@@ -352,7 +352,7 @@ export class LowdbStorage implements IStorage {
   // ─── Mandanten-Logs ───────────────────────────────────────────────────────
   async getMandantenLogs(mandantId: number): Promise<MandantenLog[]> {
     const db = await getDb();
-    return db.data.mandantenLogs.filter((l) => l.mandantId === mandantId).sort((a, b) => (a.zeitpunkt < b.zeitpunkt ? 1 : -1));
+    return db.data.mandantenLogs.filter((l) => l.mandantId === mandantId).sort((a, b) => ((a.zeitpunkt || "") < (b.zeitpunkt || "") ? 1 : -1));
   }
   async createMandantenLog(data: InsertMandantenLog): Promise<MandantenLog> {
     const db = await getDb();
@@ -364,7 +364,7 @@ export class LowdbStorage implements IStorage {
 
   async getVorlagenpaketHistorie(mandantId: number): Promise<VorlagenpaketHistorie[]> {
     const db = await getDb();
-    return db.data.vorlagenpaketHistorie.filter((h) => h.mandantId === mandantId).sort((a, b) => (a.angewendetAm < b.angewendetAm ? 1 : -1));
+    return db.data.vorlagenpaketHistorie.filter((h) => h.mandantId === mandantId).sort((a, b) => ((a.angewendetAm || "") < (b.angewendetAm || "") ? 1 : -1));
   }
   async createVorlagenpaketHistorie(data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie> {
     const db = await getDb();
@@ -377,23 +377,23 @@ export class LowdbStorage implements IStorage {
   // ─── Generic helper ──────────────────────────────────────────────────────
   private async _getAll<T extends { mandantId: number }>(col: keyof DbSchema, mandantId: number): Promise<T[]> {
     const db = await getDb();
-    return (db.data[col] as T[]).filter((x) => x.mandantId === mandantId);
+    return (db.data[col] as unknown as T[]).filter((x) => x.mandantId === mandantId);
   }
   private async _getOne<T extends { id: number }>(col: keyof DbSchema, id: number): Promise<T | undefined> {
     const db = await getDb();
-    return (db.data[col] as T[]).find((x) => x.id === id);
+    return (db.data[col] as unknown as T[]).find((x) => x.id === id);
   }
   private async _create<T extends { id: number }>(col: keyof DbSchema, data: any, extra?: any): Promise<T> {
     const db = await getDb();
     const now = new Date().toISOString();
     const item: T = { id: nextId(db, col as string), ...data, createdAt: now, updatedAt: now, ...extra };
-    (db.data[col] as T[]).push(item);
+    (db.data[col] as unknown as T[]).push(item);
     await db.write();
     return item;
   }
   private async _update<T extends { id: number }>(col: keyof DbSchema, id: number, data: any): Promise<T | undefined> {
     const db = await getDb();
-    const arr = db.data[col] as T[];
+    const arr = db.data[col] as unknown as T[];
     const idx = arr.findIndex((x) => x.id === id);
     if (idx === -1) return undefined;
     arr[idx] = { ...arr[idx], ...data, updatedAt: new Date().toISOString() };
@@ -402,7 +402,7 @@ export class LowdbStorage implements IStorage {
   }
   private async _delete(col: keyof DbSchema, id: number): Promise<void> {
     const db = await getDb();
-    (db.data[col] as any[]) = (db.data[col] as any[]).filter((x: any) => x.id !== id);
+    (db.data[col] as unknown as any[]) = (db.data[col] as unknown as any[]).filter((x: any) => x.id !== id);
     await db.write();
   }
 
