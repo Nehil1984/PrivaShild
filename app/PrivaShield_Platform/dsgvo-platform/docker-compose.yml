@@ -18,8 +18,10 @@ services:
       NODE_ENV: production
       PORT: 5000
       DATABASE_PATH: /data/privashield.db
-      # WICHTIG: JWT_SECRET in Produktion ändern!
-      JWT_SECRET: "aendern-sie-diesen-schluessel-in-produktion"
+      JWT_SECRET: "bitte-langen-zufaelligen-produktionsschluessel-setzen"
+      INITIAL_ADMIN_EMAIL: "admin@example.local"
+      INITIAL_ADMIN_PASSWORD: "bitte-sicheres-einmalpasswort-setzen"
+      INITIAL_ADMIN_NAME: "Administrator"
 
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/auth/me"]
