@@ -26,6 +26,39 @@ function adminOnly(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+async function getAllowedMandantIds(req: any): Promise<number[]> {
+  if (req.userRole === "admin") {
+    const all = await storage.getMandanten();
+    return all.map((m) => m.id);
+  }
+  const user = await storage.getUserById(req.userId);
+  try {
+    return JSON.parse(user?.mandantIds || "[]");
+  } catch {
+    return [];
+  }
+}
+
+async function canAccessMandant(req: any, mandantId: number): Promise<boolean> {
+  if (req.userRole === "admin") return true;
+  const ids = await getAllowedMandantIds(req);
+  return ids.includes(mandantId);
+}
+
+async function requireMandantAccess(req: any, res: Response, mandantId: number): Promise<boolean> {
+  if (await canAccessMandant(req, mandantId)) return true;
+  res.status(403).json({ message: "Kein Zugriff auf diesen Mandanten" });
+  return false;
+}
+
+async function requireEntityAccess(req: any, res: Response, item: any | undefined): Promise<boolean> {
+  if (!item) {
+    res.status(404).json({ message: "Nicht gefunden" });
+    return false;
+  }
+  return requireMandantAccess(req, res, item.mandantId);
+}
+
 // Seed initial admin if no users exist
 async function seedAdmin() {
   const all = await storage.getAllUsers();
@@ -96,9 +129,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const ids: number[] = JSON.parse(user?.mandantIds || "[]");
     res.json(all.filter((m) => ids.includes(m.id)));
   });
-  app.get("/api/mandanten/:id", authMiddleware, async (req, res) => {
-    const m = await storage.getMandant(Number(req.params.id));
+  app.get("/api/mandanten/:id", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.id);
+    const m = await storage.getMandant(mandantId);
     if (!m) return res.status(404).json({ message: "Nicht gefunden" });
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.json(m);
   });
   app.post("/api/mandanten", authMiddleware, adminOnly, async (req, res) => {
@@ -115,13 +150,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  app.get("/api/mandanten/:id/logs", authMiddleware, async (req, res) => {
-    const logs = await storage.getMandantenLogs(Number(req.params.id));
+  app.get("/api/mandanten/:id/logs", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.id);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const logs = await storage.getMandantenLogs(mandantId);
     res.json(logs);
   });
 
-  app.get("/api/mandanten/:id/vorlagen-historie", authMiddleware, async (req, res) => {
-    const historie = await storage.getVorlagenpaketHistorie(Number(req.params.id));
+  app.get("/api/mandanten/:id/vorlagen-historie", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.id);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const historie = await storage.getVorlagenpaketHistorie(mandantId);
     res.json(historie);
   });
 
@@ -159,7 +198,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
   app.post("/api/mandanten/:id/vorlagenpakete/:paketId/apply", authMiddleware, async (req: any, res) => {
-    const result = await storage.applyVorlagenpaketToMandant(Number(req.params.id), Number(req.params.paketId), {
+    const mandantId = Number(req.params.id);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const result = await storage.applyVorlagenpaketToMandant(mandantId, Number(req.params.paketId), {
       id: req.userId,
       name: (await storage.getUserById(req.userId))?.name,
     });
@@ -180,8 +221,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── STATS ────────────────────────────────────────────────────────────────
-  app.get("/api/mandanten/:id/stats", authMiddleware, async (req, res) => {
-    const stats = await storage.getStatsForMandant(Number(req.params.id));
+  app.get("/api/mandanten/:id/stats", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.id);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const stats = await storage.getStatsForMandant(mandantId);
     res.json(stats);
   });
 
@@ -194,20 +237,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     update: (id: number, data: any) => Promise<any>,
     remove: (id: number) => Promise<void>
   ) {
-    app.get(`/api/mandanten/:mid/${path}`, authMiddleware, async (req, res) => {
-      res.json(await getAll(Number(req.params.mid)));
+    app.get(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
+      const mandantId = Number(req.params.mid);
+      if (!(await requireMandantAccess(req, res, mandantId))) return;
+      res.json(await getAll(mandantId));
     });
-    app.get(`/api/${path}/:id`, authMiddleware, async (req, res) => {
+    app.get(`/api/${path}/:id`, authMiddleware, async (req: any, res) => {
       const item = await getOne(Number(req.params.id));
-      if (!item) return res.status(404).json({ message: "Nicht gefunden" });
+      if (!(await requireEntityAccess(req, res, item))) return;
       res.json(item);
     });
-    app.post(`/api/mandanten/:mid/${path}`, authMiddleware, async (req, res) => {
-      const item = await create({ ...req.body, mandantId: Number(req.params.mid) });
-      const user = await storage.getUserById((req as any).userId);
+    app.post(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
+      const mandantId = Number(req.params.mid);
+      if (!(await requireMandantAccess(req, res, mandantId))) return;
+      const item = await create({ ...req.body, mandantId });
+      const user = await storage.getUserById(req.userId);
       await storage.createMandantenLog({
-        mandantId: Number(req.params.mid),
-        userId: (req as any).userId,
+        mandantId,
+        userId: req.userId,
         userName: user?.name,
         aktion: `${path}_erstellt`,
         modul: path,
@@ -218,13 +265,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
       res.status(201).json(item);
     });
-    app.put(`/api/${path}/:id`, authMiddleware, async (req, res) => {
+    app.put(`/api/${path}/:id`, authMiddleware, async (req: any, res) => {
+      const existing = await getOne(Number(req.params.id));
+      if (!(await requireEntityAccess(req, res, existing))) return;
       const item = await update(Number(req.params.id), req.body);
       if (!item) return res.status(404).json({ message: "Nicht gefunden" });
-      const user = await storage.getUserById((req as any).userId);
+      const user = await storage.getUserById(req.userId);
       await storage.createMandantenLog({
         mandantId: item.mandantId,
-        userId: (req as any).userId,
+        userId: req.userId,
         userName: user?.name,
         aktion: `${path}_aktualisiert`,
         modul: path,
@@ -235,23 +284,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
       res.json(item);
     });
-    app.delete(`/api/${path}/:id`, authMiddleware, async (req, res) => {
+    app.delete(`/api/${path}/:id`, authMiddleware, async (req: any, res) => {
       const existing = await getOne(Number(req.params.id));
+      if (!existing) return res.status(404).json({ message: "Nicht gefunden" });
+      if (!(await requireEntityAccess(req, res, existing))) return;
       await remove(Number(req.params.id));
-      if (existing) {
-        const user = await storage.getUserById((req as any).userId);
-        await storage.createMandantenLog({
-          mandantId: existing.mandantId,
-          userId: (req as any).userId,
-          userName: user?.name,
-          aktion: `${path}_geloescht`,
-          modul: path,
-          entitaetTyp: path,
-          entitaetId: existing.id,
-          beschreibung: `${path} wurde gelöscht.`,
-          detailsJson: JSON.stringify(existing),
-        });
-      }
+      const user = await storage.getUserById(req.userId);
+      await storage.createMandantenLog({
+        mandantId: existing.mandantId,
+        userId: req.userId,
+        userName: user?.name,
+        aktion: `${path}_geloescht`,
+        modul: path,
+        entitaetTyp: path,
+        entitaetId: existing.id,
+        beschreibung: `${path} wurde gelöscht.`,
+        detailsJson: JSON.stringify(existing),
+      });
       res.json({ ok: true });
     });
   }

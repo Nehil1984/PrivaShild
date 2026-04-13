@@ -92,10 +92,46 @@ async function getDb(): Promise<Low<DbSchema>> {
   _db = new Low<DbSchema>(adapter, defaultData);
   await _db.read();
   // Merge defaults (in case new collections were added)
-  _db.data = { ...defaultData, ..._db.data };
-  if (!_db.data.meta) _db.data.meta = { nextId: {} };
+  _db.data = {
+    ...defaultData,
+    ..._db.data,
+    meta: {
+      ...defaultData.meta,
+      ..._db.data?.meta,
+      nextId: {
+        ...defaultData.meta.nextId,
+        ..._db.data?.meta?.nextId,
+      },
+    },
+  };
+  syncNextIds(_db);
   await _db.write();
   return _db;
+}
+
+function syncNextIds(db: Low<DbSchema>) {
+  const collections: (keyof DbSchema)[] = [
+    "mandanten",
+    "mandantenGruppen",
+    "vorlagenpakete",
+    "mandantenLogs",
+    "vorlagenpaketHistorie",
+    "users",
+    "vvt",
+    "avv",
+    "dsfa",
+    "datenpannen",
+    "dsr",
+    "tom",
+    "aufgaben",
+    "dokumente",
+  ];
+
+  for (const col of collections) {
+    const rows = db.data[col] as unknown as Array<{ id?: number }>;
+    const maxId = rows.reduce((max, row) => Math.max(max, Number(row?.id || 0)), 0);
+    db.data.meta.nextId[col as string] = Math.max(db.data.meta.nextId[col as string] ?? 0, maxId);
+  }
 }
 
 function nextId(db: Low<DbSchema>, col: string): number {
