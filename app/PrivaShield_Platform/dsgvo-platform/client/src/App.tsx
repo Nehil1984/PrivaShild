@@ -596,7 +596,7 @@ const rechtsgrundlagen = ["Art. 6 Abs. 1 lit. a (Einwilligung)", "Art. 6 Abs. 1 
 
 function VvtForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", loeschfrist: "", status: "aktiv", dsfa: false, drittlandtransfer: false, ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -682,7 +682,7 @@ function VvtPage() {
 // ─── AVV PAGE ──────────────────────────────────────────────────────────────
 function AvvForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, pruefFaellig: "", notizen: "", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -758,7 +758,7 @@ function AvvPage() {
 // ─── DSFA PAGE ─────────────────────────────────────────────────────────────
 function DsfaForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -840,7 +840,7 @@ function DsfaPage() {
 // ─── DATENPANNEN PAGE ──────────────────────────────────────────────────────
 function DatenpanneForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -929,7 +929,7 @@ const dsrArten: Record<string, string> = {
 
 function DsrForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ art: "auskunft", antragsteller: "", eingangsdatum: new Date().toISOString().split("T")[0], fristDatum: "", beschreibung: "", status: "offen", notizen: "", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -1020,7 +1020,7 @@ const tomKategorien: Record<string, string> = {
 
 function TomForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", notizen: "", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -1113,7 +1113,7 @@ function TomPage() {
 // ─── AUFGABEN PAGE ─────────────────────────────────────────────────────────
 function AufgabeForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", beschreibung: "", typ: "task", prioritaet: "mittel", status: "offen", fortschritt: 0, verantwortlicher: "", startDatum: "", faelligAm: "", abgeschlossenAm: "", kategorie: "sonstige", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -1238,7 +1238,7 @@ function AufgabenPage() {
 // ─── DOKUMENTE PAGE ────────────────────────────────────────────────────────
 function DokumentForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", kategorie: "richtlinie", dokumentTyp: "richtlinie", beschreibung: "", version: "1.0", status: "aktiv", gueltigBis: "", verantwortlicher: "", freigegebenVon: "", freigegebenAm: "", naechstePruefungAm: "", inhalt: "", ...initial });
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -1537,9 +1537,10 @@ function MandantenPage() {
                   </SelectContent>
                 </Select>
               </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Notizen</Label>
-              <Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-20" />
+              <div className="space-y-1">
+                <Label className="text-xs">Notizen</Label>
+                <Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-20" />
+              </div>
             </div>}
             <DialogFooter>
               <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
