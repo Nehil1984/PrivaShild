@@ -421,6 +421,33 @@ async function fetchData(endpoint) {
 // ─── Hauptlogik ───────────────────────────────────────────────────────────
 async function render() {
   try {
+    if (config.groupReport) {
+      const gruppe = config.gruppe || {};
+      const members = config.members || [];
+      const dateStr = new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("main").style.display = "block";
+      document.getElementById("main").innerHTML = `
+        <div class="cover">
+          <div class="cover-logo">
+            <div>
+              <div class="app-name">PrivaShield</div>
+              <div class="app-sub">Gruppenbericht</div>
+            </div>
+          </div>
+          <h1>Gruppenbericht – ${fmt(gruppe.name)}</h1>
+          <div class="meta"><span>📅 ${dateStr}</span><span>👥 ${members.length} Mandanten</span></div>
+        </div>
+        <div class="info-card" style="margin-bottom:24px;"><h3>Gruppe</h3><p><strong>Name:</strong> ${fmt(gruppe.name)}</p><p><strong>Typ:</strong> ${fmt(gruppe.typ)}</p><p><strong>Beschreibung:</strong> ${fmt(gruppe.beschreibung)}</p></div>
+        <div class="module-section">
+          <div class="module-header"><h2>Zugeordnete Mandanten</h2><span class="badge">${members.length}</span></div>
+          <table class="data-table"><thead><tr><th>Name</th><th>Rechtsform</th><th>Branche</th><th>Verantwortlicher</th></tr></thead><tbody>
+          ${members.map(m => `<tr><td>${fmt(m.name)}</td><td>${fmt(m.rechtsform)}</td><td>${fmt(m.branche)}</td><td>${fmt(m.verantwortlicherName)}</td></tr>`).join("")}
+          </tbody></table>
+        </div>`;
+      return;
+    }
+
     // Alle ausgewählten Module parallel laden
     const results = await Promise.all(
       config.modules.map(key => fetchData(key).then(data => ({ key, data })))
@@ -464,6 +491,8 @@ async function render() {
         <p><strong>Top-Risiken:</strong> ${fmt((config.logs || []).filter(l => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length)}</p>
         <p><strong>Offene Maßnahmenhinweise:</strong> siehe Aufgaben & Maßnahmenplan</p>
         <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
+        <p><strong>Management-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
+        <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
       </div>
     `;
 

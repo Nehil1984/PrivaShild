@@ -1551,6 +1551,7 @@ function GruppenPage() {
   const [selectedGroupForApply, setSelectedGroupForApply] = useState<string>("");
   const [selectedPaketForApply, setSelectedPaketForApply] = useState<string>("");
   const [selectedGroupForReport, setSelectedGroupForReport] = useState<string>("");
+  const [selectedGroupForPrint, setSelectedGroupForPrint] = useState<string>("");
   const [form, setForm] = useState({ name: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" });
   const { data: pakete = [] } = useQuery({
     queryKey: ["/api/vorlagenpakete"],
@@ -1593,6 +1594,18 @@ function GruppenPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  const printGroupReport = () => {
+    const gruppe = gruppen.find((g: any) => String(g.id) === selectedGroupForPrint);
+    const members = mandanten.filter((m: any) => String(m.gruppeId) === selectedGroupForPrint);
+    const cfg = {
+      groupReport: true,
+      gruppe,
+      members,
+      generatedAt: new Date().toISOString(),
+    };
+    sessionStorage.setItem("privashield_export", JSON.stringify(cfg));
+    window.open("/print.html", "_blank");
+  };
 
   const groupAmpel = (groupId: number) => {
     const ms = mandanten.filter((m: any) => m.gruppeId === groupId);
@@ -1634,6 +1647,18 @@ function GruppenPage() {
                 <Select value={selectedGroupForReport} onValueChange={setSelectedGroupForReport}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Gruppe wählen" /></SelectTrigger><SelectContent>{gruppen.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}</SelectContent></Select>
               </div>
               <Button variant="outline" onClick={exportGroupReport} disabled={!selectedGroupForReport}>Gruppenbericht exportieren</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Gruppenbericht drucken</CardTitle>
+              <CardDescription>Öffnet eine Druckansicht für eine Gruppe und ihre Mandanten</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div className="space-y-1 md:col-span-2"><Label className="text-xs">Gruppe</Label>
+                <Select value={selectedGroupForPrint} onValueChange={setSelectedGroupForPrint}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Gruppe wählen" /></SelectTrigger><SelectContent>{gruppen.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <Button onClick={printGroupReport} disabled={!selectedGroupForPrint}>Druckansicht öffnen</Button>
             </CardContent>
           </Card>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2184,6 +2209,11 @@ function ExportPage() {
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then((r) => r.json()),
   });
+  const managementSummary = {
+    score: mandant?.verantwortlicherName ? 75 : 40,
+    ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
+    topRisiken: logs.filter((l: any) => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length,
+  };
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -2201,6 +2231,7 @@ function ExportPage() {
       mandantInfo: mandant,
       gruppeInfo: gruppen.find((g: any) => g.id === mandant?.gruppeId) || null,
       logs,
+      managementSummary,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),
       generatedAt: new Date().toISOString(),
     };
@@ -2318,6 +2349,18 @@ function MandantenExtrasPage() {
     queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}/vorlagen-historie`).then(r => r.json()),
     enabled: !!activeMandantId,
   });
+  const { data: mandant } = useQuery({
+    queryKey: ["/api/mandant-extras", activeMandantId],
+    queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}`).then(r => r.json()),
+    enabled: !!activeMandantId,
+  });
+  const { data: alleMandanten = [] } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
+  });
+  const gruppenHistorie = mandant?.gruppeId
+    ? alleMandanten.filter((m: any) => m.gruppeId === mandant.gruppeId)
+    : [];
   const selectedPaketObj = pakete.find((p: any) => String(p.id) === selectedPaket);
   const paketPreview = (() => {
     if (!selectedPaketObj?.inhaltJson) return null;
@@ -2431,6 +2474,23 @@ function MandantenExtrasPage() {
             ))}
           </CardContent>
         </Card>
+
+        {mandant?.gruppeId && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Gruppenweiter Kontext</CardTitle>
+              <CardDescription>Mandanten derselben Gruppe</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {gruppenHistorie.map((m: any) => (
+                <div key={m.id} className="rounded-lg border p-3 text-sm">
+                  <p className="font-medium">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.rechtsform || "—"}{m.branche ? ` · ${m.branche}` : ""}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
