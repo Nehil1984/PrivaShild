@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 import { validateBody } from "./validation";
-import { insertAvvSchema, insertMandantSchema, insertUserSchema, insertVvtSchema } from "@shared/schema";
+import { insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -34,6 +34,31 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 function adminOnly(req: Request, res: Response, next: NextFunction) {
   if ((req as any).userRole !== "admin") return res.status(403).json({ message: "Nur für Administratoren" });
   next();
+}
+
+async function auditLog(event: {
+  mandantId?: number | null;
+  userId?: number | null;
+  userName?: string;
+  aktion: string;
+  modul: string;
+  entitaetTyp?: string;
+  entitaetId?: number | null;
+  beschreibung: string;
+  details?: Record<string, unknown>;
+}) {
+  if (!event.mandantId) return;
+  await storage.createMandantenLog({
+    mandantId: event.mandantId,
+    userId: event.userId ?? null,
+    userName: event.userName,
+    aktion: event.aktion,
+    modul: event.modul,
+    entitaetTyp: event.entitaetTyp,
+    entitaetId: event.entitaetId ?? null,
+    beschreibung: event.beschreibung,
+    detailsJson: JSON.stringify(event.details || {}),
+  });
 }
 
 async function getAllowedMandantIds(req: any): Promise<number[]> {
@@ -109,11 +134,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       registerLoginFailure(req);
+      await auditLog({
+        mandantId: null,
+        userId: user.id,
+        userName: user.name,
+        aktion: "login_fehlgeschlagen",
+        modul: "auth",
+        entitaetTyp: "user",
+        entitaetId: user.id,
+        beschreibung: "Fehlgeschlagener Login-Versuch",
+        details: { email },
+      });
       return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
     }
     clearLoginFailures(req);
     const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "8h" });
     const { passwordHash, ...safeUser } = user;
+    await auditLog({
+      mandantId: null,
+      userId: user.id,
+      userName: user.name,
+      aktion: "login_erfolgreich",
+      modul: "auth",
+      entitaetTyp: "user",
+      entitaetId: user.id,
+      beschreibung: "Erfolgreicher Login",
+      details: { email, role: user.role },
+    });
     res.json({ token, user: safeUser });
   });
 
@@ -195,8 +242,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/mandanten-gruppen", authMiddleware, async (_req, res) => {
     res.json(await storage.getMandantenGruppen());
   });
-  app.post("/api/mandanten-gruppen", authMiddleware, adminOnly, async (req, res) => {
+  app.post("/api/mandanten-gruppen", authMiddleware, adminOnly, validateBody(insertMandantenGruppeSchema), async (req: any, res) => {
     const gruppe = await storage.createMandantenGruppe(req.body);
+    await auditLog({
+      mandantId: null,
+      userId: req.userId,
+      userName: (await storage.getUserById(req.userId))?.name,
+      aktion: "mandantengruppe_erstellt",
+      modul: "mandanten-gruppen",
+      entitaetTyp: "mandantengruppe",
+      entitaetId: gruppe.id,
+      beschreibung: "Mandantengruppe wurde erstellt",
+      details: gruppe,
+    });
     res.status(201).json(gruppe);
   });
   app.put("/api/mandanten-gruppen/:id", authMiddleware, adminOnly, async (req, res) => {
@@ -212,8 +270,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/vorlagenpakete", authMiddleware, async (_req, res) => {
     res.json(await storage.getVorlagenpakete());
   });
-  app.post("/api/vorlagenpakete", authMiddleware, adminOnly, async (req, res) => {
+  app.post("/api/vorlagenpakete", authMiddleware, adminOnly, validateBody(insertVorlagenpaketSchema), async (req: any, res) => {
     const paket = await storage.createVorlagenpaket(req.body);
+    await auditLog({
+      mandantId: null,
+      userId: req.userId,
+      userName: (await storage.getUserById(req.userId))?.name,
+      aktion: "vorlagenpaket_erstellt",
+      modul: "vorlagenpakete",
+      entitaetTyp: "vorlagenpaket",
+      entitaetId: paket.id,
+      beschreibung: "Vorlagenpaket wurde erstellt",
+      details: paket,
+    });
     res.status(201).json(paket);
   });
   app.put("/api/vorlagenpakete/:id", authMiddleware, adminOnly, async (req, res) => {
@@ -281,6 +350,101 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       entitaetTyp: "avv",
       entitaetId: item.id,
       beschreibung: `avv wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/dsfa", authMiddleware, validateBody(insertDsfaSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createDsfa({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `dsfa_erstellt`,
+      modul: "dsfa",
+      entitaetTyp: "dsfa",
+      entitaetId: item.id,
+      beschreibung: `dsfa wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/datenpannen", authMiddleware, validateBody(insertDatenpanneSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createDatenpanne({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `datenpanne_erstellt`,
+      modul: "datenpannen",
+      entitaetTyp: "datenpanne",
+      entitaetId: item.id,
+      beschreibung: `datenpanne wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/dsr", authMiddleware, validateBody(insertDsrSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createDsr({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `dsr_erstellt`,
+      modul: "dsr",
+      entitaetTyp: "dsr",
+      entitaetId: item.id,
+      beschreibung: `dsr wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/tom", authMiddleware, validateBody(insertTomSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createTom({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `tom_erstellt`,
+      modul: "tom",
+      entitaetTyp: "tom",
+      entitaetId: item.id,
+      beschreibung: `tom wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.post("/api/mandanten/:mid/dokumente", authMiddleware, validateBody(insertDokumentSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createDokument({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `dokument_erstellt`,
+      modul: "dokumente",
+      entitaetTyp: "dokument",
+      entitaetId: item.id,
+      beschreibung: `dokument wurde angelegt.`,
       detailsJson: JSON.stringify(item),
     });
     res.status(201).json(item);
