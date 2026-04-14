@@ -3963,7 +3963,7 @@ function ExportPage() {
           {t("exportPrint")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("selectModulesPrint")} {t("exportDesc")}
+          {t("selectModulesPrint")} {t("printHint")}
         </p>
       </div>
 
@@ -3973,7 +3973,7 @@ function ExportPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <Building2 className="h-4 w-4 text-primary" />
-              Mandant
+              {t("exportTenant")}
             </CardTitle>
             <Badge variant="outline">{mandant?.name ?? "—"}</Badge>
           </div>
@@ -3983,7 +3983,7 @@ function ExportPage() {
           <p>Gruppe: {gruppen.find((g: any) => g.id === mandant?.gruppeId)?.name || "—"}</p>
           <p>Verantwortlicher: {mandant?.verantwortlicherName || "—"}</p>
           <p>Webseite: {mandant?.webseite || "—"}</p>
-          <p>Logs im Export: {logs.length}</p>
+          <p>{t("exportLogsCount")}: {logs.length}</p>
         </CardContent>
       </Card>
 
@@ -3991,12 +3991,12 @@ function ExportPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Module auswählen</CardTitle>
+            <CardTitle className="text-sm">{t("exportModules")}</CardTitle>
             <button
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => allSel ? setSelected(new Set()) : setSelected(new Set(EXPORT_MODULES.map((m) => m.key)))}
             >
-              {allSel ? "Alle abwählen" : "Alle auswählen"}
+              {allSel ? t("deselectAll") : t("selectAll")}
             </button>
           </div>
         </CardHeader>
