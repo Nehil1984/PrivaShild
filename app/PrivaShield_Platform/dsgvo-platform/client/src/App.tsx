@@ -998,6 +998,55 @@ function AvvPage() {
 }
 
 // ─── DSFA PAGE ─────────────────────────────────────────────────────────────
+const dsfaTemplates: Record<string, any> = {
+  none: null,
+  ki: {
+    titel: "DSFA für KI-gestützte Verarbeitung",
+    beschreibung: "Bewertung eines KI-gestützten Verarbeitungsprozesses mit möglicher Auswirkung auf Rechte und Freiheiten betroffener Personen.",
+    notwendigkeit: "Prüfung, ob der KI-Einsatz für den festgelegten Zweck erforderlich und verhältnismäßig ist.",
+    massnahmen: "Datenminimierung, menschliche Kontrolle, Anbieterprüfung, Logging, Zugriffsbegrenzung, Transparenzmaßnahmen",
+    ergebnis: "bedingt",
+    status: "entwurf",
+    risikoquelle: "Automatisierte Bewertung / KI-Einsatz",
+    betroffeneGruppen: "Beschäftigte, Kunden, Interessenten",
+    datenarten: "Prompt-Daten, Inhaltsdaten, Kontextdaten, Metadaten",
+    eintrittswahrscheinlichkeit: "mittel",
+    schweregrad: "hoch",
+    restrisiko: "mittel",
+    konsultation: false,
+  },
+  video: {
+    titel: "DSFA für Videoüberwachung",
+    beschreibung: "Bewertung der Videoüberwachung unter Berücksichtigung von Eingriffsintensität, Speicherfristen und Transparenz.",
+    notwendigkeit: "Prüfung der Erforderlichkeit zur Wahrung des Hausrechts und zur Vorfallaufklärung.",
+    massnahmen: "Beschilderung, kurze Speicherfrist, eingeschränkter Zugriff, dokumentierte Auswertungsvorgaben",
+    ergebnis: "bedingt",
+    status: "entwurf",
+    risikoquelle: "Systematische Überwachung öffentlich zugänglicher Bereiche",
+    betroffeneGruppen: "Besucher, Beschäftigte, Lieferanten",
+    datenarten: "Bilddaten, Zeitstempel, Standortbezug",
+    eintrittswahrscheinlichkeit: "mittel",
+    schweregrad: "hoch",
+    restrisiko: "mittel",
+    konsultation: false,
+  },
+  biometrie: {
+    titel: "DSFA für biometrische Verarbeitung",
+    beschreibung: "Bewertung biometrischer Verfahren, etwa Zutritts- oder Zeiterfassung mit sensiblen Merkmalen.",
+    notwendigkeit: "Prüfung, ob mildere Mittel zur Zweckerreichung bestehen.",
+    massnahmen: "Alternativverfahren, Verschlüsselung, getrennte Speicherung, enge Berechtigungskonzepte",
+    ergebnis: "nicht_akzeptabel",
+    status: "entwurf",
+    risikoquelle: "Verarbeitung besonderer Kategorien personenbezogener Daten",
+    betroffeneGruppen: "Beschäftigte, Besucher",
+    datenarten: "Biometrische Merkmale, Identitätsdaten, Protokolldaten",
+    eintrittswahrscheinlichkeit: "hoch",
+    schweregrad: "hoch",
+    restrisiko: "hoch",
+    konsultation: true,
+  },
+};
+
 function DsfaForm({ initial, onSave, onCancel }: any) {
   const { data: dokumente = [] } = useModuleData("dokumente");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
@@ -1009,11 +1058,30 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
       return [];
     }
   })();
-  const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, ...initial });
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, risikoquelle: "", betroffeneGruppen: "", datenarten: "", eintrittswahrscheinlichkeit: "", schweregrad: "", restrisiko: "", restmassnahmen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = dsfaTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">DSFA-Musterfall</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="ki">KI-gestützte Verarbeitung</SelectItem>
+              <SelectItem value="video">Videoüberwachung</SelectItem>
+              <SelectItem value="biometrie">Biometrische Verarbeitung</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         {kiTools.length > 0 && (
           <div className="col-span-2 space-y-1">
@@ -1030,6 +1098,13 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung der Verarbeitung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notwendigkeit & Verhältnismäßigkeit</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Risikominderungsmaßnahmen</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Risikoquelle / Auslöser</Label><Input value={form.risikoquelle} onChange={e => set("risikoquelle", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Gruppen</Label><Textarea value={form.betroffeneGruppen} onChange={e => set("betroffeneGruppen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">Eintrittswahrscheinlichkeit</Label><Input value={form.eintrittswahrscheinlichkeit} onChange={e => set("eintrittswahrscheinlichkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="space-y-1"><Label className="text-xs">Schweregrad</Label><Input value={form.schweregrad} onChange={e => set("schweregrad", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="space-y-1"><Label className="text-xs">Restrisiko</Label><Input value={form.restrisiko} onChange={e => set("restrisiko", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Restmaßnahmen / Follow-up</Label><Textarea value={form.restmassnahmen} onChange={e => set("restmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="space-y-1"><Label className="text-xs">Ergebnis</Label>
           <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
