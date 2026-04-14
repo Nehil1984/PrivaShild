@@ -827,12 +827,102 @@ function VvtPage() {
 }
 
 // ─── AVV PAGE ──────────────────────────────────────────────────────────────
+const avvTemplates: Record<string, any> = {
+  none: null,
+  microsoft365: {
+    auftragsverarbeiter: "Microsoft 365",
+    gegenstand: "Bereitstellung von E-Mail, Kollaboration, Dateiablage und Office-Diensten",
+    laufzeit: "unbefristet für die Dauer der Nutzung",
+    status: "aktiv",
+    sccs: true,
+    datenarten: "Benutzerdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
+    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige Kommunikationspartner",
+    technischeMassnahmen: "MFA, Rollen- und Berechtigungskonzept, Verschlüsselung, Logging",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Cloud-Infrastruktur und verbundene Microsoft-Unterauftragnehmer prüfen",
+    notizen: "Transfer Impact Assessment und Drittlandtransfer prüfen",
+  },
+  hosting: {
+    auftragsverarbeiter: "Hosting-Anbieter",
+    gegenstand: "Hosting von Webseiten, Anwendungen und Datenbanken",
+    laufzeit: "unbefristet für die Dauer des Hostingvertrags",
+    status: "aktiv",
+    sccs: false,
+    datenarten: "Server-Logs, Nutzungsdaten, Kundendaten, Inhaltsdaten",
+    betroffenePersonen: "Webseitenbesucher, Kunden, Beschäftigte",
+    technischeMassnahmen: "Zugriffsschutz, Backup, Netzwerksegmentierung, Härtung",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Rechenzentrum und Infrastrukturpartner prüfen",
+    notizen: "Standort des Hostings und technische TOMs dokumentieren",
+  },
+  newsletter: {
+    auftragsverarbeiter: "Newsletter-Dienstleister",
+    gegenstand: "Versand und Verwaltung von Newslettern und Einwilligungen",
+    laufzeit: "für die Dauer der Nutzung",
+    status: "aktiv",
+    sccs: true,
+    datenarten: "E-Mail-Adresse, Name, Nutzungs- und Öffnungsdaten, Einwilligungsdaten",
+    betroffenePersonen: "Interessenten, Kunden, Newsletter-Abonnenten",
+    technischeMassnahmen: "Double-Opt-In, Rollenrechte, Export- und Löschkonzept",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Versandinfrastruktur und Tracking-Komponenten prüfen",
+    notizen: "Tracking und Einwilligungslage gesondert bewerten",
+  },
+  payroll: {
+    auftragsverarbeiter: "Lohnabrechnungsdienstleister",
+    gegenstand: "Durchführung der Lohn- und Gehaltsabrechnung",
+    laufzeit: "für die Dauer des Dienstleistungsvertrags",
+    status: "aktiv",
+    sccs: false,
+    datenarten: "Beschäftigtendaten, Steuerdaten, Sozialversicherungsdaten, Bankdaten",
+    betroffenePersonen: "Beschäftigte",
+    technischeMassnahmen: "Vertraulichkeitskonzept, Zugriffsbeschränkung, verschlüsselte Übertragung",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Softwareanbieter und Rechenzentrumsbetrieb prüfen",
+    notizen: "Besonders schützensame Daten im Beschäftigtenkontext beachten",
+  },
+  ki: {
+    auftragsverarbeiter: "KI-Dienstleister",
+    gegenstand: "Verarbeitung von Prompts, Eingaben und Ausgaben im Rahmen KI-gestützter Prozesse",
+    laufzeit: "für die Dauer der Nutzung des KI-Dienstes",
+    status: "aktiv",
+    sccs: true,
+    datenarten: "Prompt-Daten, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Daten",
+    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige Betroffene je Use Case",
+    technischeMassnahmen: "Datenminimierung, Rollen- und Berechtigungskonzept, Anbieterprüfung, Protokollierung",
+    pruefintervall: "halbjährlich",
+    subauftragnehmerHinweis: "Modellanbieter, Hosting-Partner und nachgelagerte Dienste prüfen",
+    notizen: "DSFA-Pflicht und KI-VO-Risikoklasse gesondert prüfen",
+  },
+};
+
 function AvvForm({ initial, onSave, onCancel }: any) {
-  const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, pruefFaellig: "", notizen: "", ...initial });
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = avvTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Muster-Auftragsverarbeiter</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="microsoft365">Microsoft 365</SelectItem>
+              <SelectItem value="hosting">Hosting-Anbieter</SelectItem>
+              <SelectItem value="newsletter">Newsletter-Dienstleister</SelectItem>
+              <SelectItem value="payroll">Lohnabrechnungsdienstleister</SelectItem>
+              <SelectItem value="ki">KI-Dienstleister</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Auftragsverarbeiter *</Label><Input value={form.auftragsverarbeiter} onChange={e => set("auftragsverarbeiter", e.target.value)} className="h-8 text-sm" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Gegenstand</Label><Input value={form.gegenstand} onChange={e => set("gegenstand", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Vertragsdatum</Label><Input type="date" value={form.vertragsdatum} onChange={e => set("vertragsdatum", e.target.value)} className="h-8 text-sm" /></div>
@@ -844,7 +934,12 @@ function AvvForm({ initial, onSave, onCancel }: any) {
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.pruefFaellig} onChange={e => set("pruefFaellig", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Prüfintervall</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
         <div className="flex items-center gap-2 col-span-2"><input type="checkbox" id="sccs" checked={!!form.sccs} onChange={e => set("sccs", e.target.checked)} className="rounded" /><Label htmlFor="sccs" className="text-xs">EU-Standardvertragsklauseln (SCCs) vorhanden</Label></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Technische und organisatorische Maßnahmen</Label><Textarea value={form.technischeMassnahmen} onChange={e => set("technischeMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Hinweis zu Subauftragsverarbeitern</Label><Textarea value={form.subauftragnehmerHinweis} onChange={e => set("subauftragnehmerHinweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-16" /></div>
       </div>
       <DialogFooter>
