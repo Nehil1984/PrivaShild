@@ -16,6 +16,7 @@ export const mandanten = sqliteTable("mandanten", {
   rechtsform: text("rechtsform"),
   anschrift: text("anschrift"),
   branche: text("branche"),
+  branchen: text("branchen").default("[]"),
   webseite: text("webseite"),
   dsb: text("dsb"),
   dsbEmail: text("dsb_email"),
@@ -141,8 +142,12 @@ export const vvt = sqliteTable("vvt", {
   empfaenger: text("empfaenger"),
   drittlandtransfer: integer("drittlandtransfer", { mode: "boolean" }).default(false),
   loeschfrist: text("loeschfrist"),
+  loeschklasse: text("loeschklasse"),
+  aufbewahrungsgrund: text("aufbewahrungsgrund"),
   tomHinweis: text("tom_hinweis"),
   verantwortlicher: text("verantwortlicher"),
+  verantwortlicherEmail: text("verantwortlicher_email"),
+  verantwortlicherTelefon: text("verantwortlicher_telefon"),
   status: text("status").default("aktiv"), // aktiv | entwurf | archiviert
   dsfa: integer("dsfa", { mode: "boolean" }).default(false),
   createdAt: text("created_at").default(new Date().toISOString()),
@@ -166,6 +171,10 @@ export const avv = sqliteTable("avv", {
   status: text("status").default("aktiv"), // entwurf | aktiv | gekündigt | abgelaufen
   sccs: integer("sccs", { mode: "boolean" }).default(false),
   subauftragnehmer: text("subauftragnehmer").default("[]"), // JSON
+  avKontaktName: text("av_kontakt_name"),
+  avKontaktEmail: text("av_kontakt_email"),
+  avKontaktTelefon: text("av_kontakt_telefon"),
+  genehmigteSubdienstleister: text("genehmigte_subdienstleister").default("[]"),
   pruefFaellig: text("pruef_faellig"),
   notizen: text("notizen"),
   createdAt: text("created_at").default(new Date().toISOString()),
@@ -209,7 +218,9 @@ export const datenpannen = sqliteTable("datenpannen", {
   titel: text("titel").notNull(),
   beschreibung: text("beschreibung"),
   entdecktAm: text("entdeckt_am").notNull(),
+  entdecktUm: text("entdeckt_um"),
   gemeldetAm: text("gemeldet_am"),
+  gemeldetUm: text("gemeldet_um"),
   frist72h: text("frist_72h"),
   betroffenePersonen: integer("betroffene_personen").default(0),
   datenkategorien: text("datenkategorien").default("[]"), // JSON
@@ -276,6 +287,34 @@ export const insertTomSchema = createInsertSchema(tom).omit({ id: true, createdA
 export const requestTomSchema = insertTomSchema.omit({ mandantId: true });
 export type InsertTom = z.infer<typeof insertTomSchema>;
 export type Tom = typeof tom.$inferSelect;
+
+// ─── Löschkonzept ──────────────────────────────────────────────────────────────
+export const loeschkonzept = sqliteTable("loeschkonzept", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mandantId: integer("mandant_id").notNull(),
+  bezeichnung: text("bezeichnung").notNull(),
+  datenart: text("datenart"),
+  loeschklasse: text("loeschklasse").notNull(),
+  quelleVvtId: integer("quelle_vvt_id"),
+  quelleVvtBezeichnung: text("quelle_vvt_bezeichnung"),
+  aufbewahrungsfrist: text("aufbewahrungsfrist"),
+  loeschereignis: text("loeschereignis"),
+  rechtsgrundlage: text("rechtsgrundlage"),
+  systeme: text("systeme"),
+  verantwortlicher: text("verantwortlicher"),
+  kontrolle: text("kontrolle"),
+  nachweis: text("nachweis"),
+  status: text("status").default("aktiv"),
+  createdAt: text("created_at").default(new Date().toISOString()),
+  updatedAt: text("updated_at").default(new Date().toISOString()),
+});
+export const insertLoeschkonzeptSchema = createInsertSchema(loeschkonzept).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  bezeichnung: z.string().trim().min(1, "Bezeichnung ist erforderlich"),
+  loeschklasse: z.string().trim().min(1, "Löschklasse ist erforderlich"),
+});
+export const requestLoeschkonzeptSchema = insertLoeschkonzeptSchema.omit({ mandantId: true });
+export type InsertLoeschkonzept = z.infer<typeof insertLoeschkonzeptSchema>;
+export type Loeschkonzept = typeof loeschkonzept.$inferSelect;
 
 // ─── Audit / interne Audits ───────────────────────────────────────────────────
 export const audits = sqliteTable("audits", {

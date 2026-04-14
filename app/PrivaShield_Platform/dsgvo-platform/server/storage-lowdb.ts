@@ -21,6 +21,7 @@ import type {
   Dsr, InsertDsr,
   Tom, InsertTom,
   Audit, InsertAudit,
+  Loeschkonzept, InsertLoeschkonzept,
   Aufgabe, InsertAufgabe,
   Dokument, InsertDokument,
 } from "@shared/schema";
@@ -40,6 +41,7 @@ interface DbSchema {
   dsr: Dsr[];
   tom: Tom[];
   audits: Audit[];
+  loeschkonzept: Loeschkonzept[];
   aufgaben: Aufgabe[];
   dokumente: Dokument[];
 }
@@ -79,6 +81,7 @@ const defaultData: DbSchema = {
   dsr: [],
   tom: [],
   audits: [],
+  loeschkonzept: [],
   aufgaben: [],
   dokumente: [],
 };
@@ -493,6 +496,37 @@ export class LowdbStorage implements IStorage {
   async createAudit(data: InsertAudit) { return this._create<Audit>("audits", data); }
   async updateAudit(id: number, data: Partial<InsertAudit>) { return this._update<Audit>("audits", id, data); }
   async deleteAudit(id: number) { return this._delete("audits", id); }
+
+  // ─── Löschkonzept ───────────────────────────────────────────────────────
+  async getLoeschkonzeptByMandant(mandantId: number): Promise<Loeschkonzept[]> {
+    const db = await getDb();
+    return db.data.loeschkonzept.filter((x) => x.mandantId === mandantId).sort((a, b) => ((a.updatedAt || a.createdAt || "") < (b.updatedAt || b.createdAt || "") ? 1 : -1));
+  }
+  async getLoeschkonzept(id: number): Promise<Loeschkonzept | undefined> {
+    const db = await getDb();
+    return db.data.loeschkonzept.find((x) => x.id === id);
+  }
+  async createLoeschkonzept(data: InsertLoeschkonzept): Promise<Loeschkonzept> {
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const item: Loeschkonzept = { id: nextId(db, "loeschkonzept"), ...data as any, createdAt: now, updatedAt: now };
+    db.data.loeschkonzept.push(item);
+    await db.write();
+    return item;
+  }
+  async updateLoeschkonzept(id: number, data: Partial<InsertLoeschkonzept>): Promise<Loeschkonzept | undefined> {
+    const db = await getDb();
+    const idx = db.data.loeschkonzept.findIndex((x) => x.id === id);
+    if (idx === -1) return undefined;
+    db.data.loeschkonzept[idx] = { ...db.data.loeschkonzept[idx], ...data as any, updatedAt: new Date().toISOString() };
+    await db.write();
+    return db.data.loeschkonzept[idx];
+  }
+  async deleteLoeschkonzept(id: number): Promise<void> {
+    const db = await getDb();
+    db.data.loeschkonzept = db.data.loeschkonzept.filter((x) => x.id !== id);
+    await db.write();
+  }
 
   // ─── Aufgaben ─────────────────────────────────────────────────────────────
   async getAufgabenByMandant(mandantId: number) { return this._getAll<Aufgabe>("aufgaben", mandantId); }

@@ -194,6 +194,7 @@ const navItems = [
   { path: "/dsr", label: "DSR / Betroffenenrechte", icon: UserCheck },
   { path: "/tom", label: "TOM-Katalog", icon: Lock },
   { path: "/audits", label: "Interne Audits", icon: ClipboardList },
+  { path: "/loeschkonzept", label: "Löschkonzept", icon: Database },
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
   { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
@@ -719,7 +720,7 @@ const vvtTemplates: Record<string, any> = {
 
 function VvtForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", loeschfrist: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
+  const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
@@ -761,7 +762,11 @@ function VvtForm({ initial, onSave, onCancel }: any) {
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Verantwortlicher E-Mail</Label><Input type="email" value={form.verantwortlicherEmail || ""} onChange={e => set("verantwortlicherEmail", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Verantwortlicher Telefon</Label><Input value={form.verantwortlicherTelefon || ""} onChange={e => set("verantwortlicherTelefon", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Löschfrist</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 3 Jahre" /></div>
+        <div className="space-y-1"><Label className="text-xs">Löschklasse</Label><Input value={form.loeschklasse || ""} onChange={e => set("loeschklasse", e.target.value)} className="h-8 text-sm" placeholder="z. B. LK1 operativ" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Aufbewahrungsgrund / Löschereignis</Label><Textarea value={form.aufbewahrungsgrund || ""} onChange={e => set("aufbewahrungsgrund", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Datenkategorien</Label><Textarea value={form.datenkategorien} onChange={e => set("datenkategorien", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Empfänger / Dritte</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
@@ -900,7 +905,7 @@ const avvTemplates: Record<string, any> = {
 
 function AvvForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
+  const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: "", pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
@@ -935,12 +940,16 @@ function AvvForm({ initial, onSave, onCancel }: any) {
             <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="gekündigt">Gekündigt</SelectItem><SelectItem value="abgelaufen">Abgelaufen</SelectItem></SelectContent>
           </Select>
         </div>
+        <div className="space-y-1"><Label className="text-xs">AV-Kontaktperson</Label><Input value={form.avKontaktName || ""} onChange={e => set("avKontaktName", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">AV-Kontakt E-Mail</Label><Input type="email" value={form.avKontaktEmail || ""} onChange={e => set("avKontaktEmail", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">AV-Kontakt Telefon</Label><Input value={form.avKontaktTelefon || ""} onChange={e => set("avKontaktTelefon", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.pruefFaellig} onChange={e => set("pruefFaellig", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Prüfintervall</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
         <div className="flex items-center gap-2 col-span-2"><input type="checkbox" id="sccs" checked={!!form.sccs} onChange={e => set("sccs", e.target.checked)} className="rounded" /><Label htmlFor="sccs" className="text-xs">EU-Standardvertragsklauseln (SCCs) vorhanden</Label></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Technische und organisatorische Maßnahmen</Label><Textarea value={form.technischeMassnahmen} onChange={e => set("technischeMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Genehmigte Subdienstleister</Label><Textarea value={form.genehmigteSubdienstleister || ""} onChange={e => set("genehmigteSubdienstleister", e.target.value)} className="text-sm min-h-12" placeholder="z. B. Rechenzentrum XY, Mailgateway Z" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Hinweis zu Subauftragsverarbeitern</Label><Textarea value={form.subauftragnehmerHinweis} onChange={e => set("subauftragnehmerHinweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-16" /></div>
       </div>
@@ -1232,13 +1241,20 @@ const datenpannenTemplates: Record<string, any> = {
 
 function DatenpanneForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], gemeldetAm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
+  const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], entdecktUm: new Date().toTimeString().slice(0,5), gemeldetAm: "", gemeldetUm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = datenpannenTemplates[value];
     if (!template) return;
     setForm((p: any) => ({ ...p, ...template }));
+  };
+  const recalc72h = (next: any) => {
+    if (!next.entdecktAm || !next.entdecktUm) return next;
+    const base = new Date(`${next.entdecktAm}T${next.entdecktUm}:00`);
+    if (Number.isNaN(base.getTime())) return next;
+    const deadline = new Date(base.getTime() + 72 * 60 * 60 * 1000);
+    return { ...next, frist72h: deadline.toISOString().slice(0,16) };
   };
   return (
     <div className="space-y-3">
@@ -1256,9 +1272,11 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
           </Select>
         </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Entdeckt am *</Label><Input type="date" value={form.entdecktAm} onChange={e => set("entdecktAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Entdeckt am *</Label><Input type="date" value={form.entdecktAm} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktAm: e.target.value }))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Entdeckt um *</Label><Input type="time" value={form.entdecktUm || ""} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktUm: e.target.value }))} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Gemeldet am</Label><Input type="date" value={form.gemeldetAm || ""} onChange={e => set("gemeldetAm", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">72h-Frist</Label><Input type="date" value={form.frist72h || ""} onChange={e => set("frist72h", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Gemeldet um</Label><Input type="time" value={form.gemeldetUm || ""} onChange={e => set("gemeldetUm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">72h-Frist</Label><Input type="datetime-local" value={form.frist72h || ""} onChange={e => set("frist72h", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Schwere</Label>
           <Select value={form.schwere} onValueChange={v => set("schwere", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -1723,6 +1741,88 @@ function AuditForm({ initial, onSave, onCancel }: any) {
         </DialogFooter>
       </div>
     </div>
+  );
+}
+
+const loeschklassen = [
+  { key: "LK1", label: "LK1 Operative Kurzfristdaten" },
+  { key: "LK2", label: "LK2 Vertrags- und Kommunikationsdaten" },
+  { key: "LK3", label: "LK3 Handels- und Steuerunterlagen" },
+  { key: "LK4", label: "LK4 Personal- und Bewerberdaten" },
+  { key: "LK5", label: "LK5 Besondere Kategorien / Hochrisikodaten" },
+];
+
+function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
+  const { data: vvts = [] } = useModuleData("vvt");
+  const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const importFromVvt = (value: string) => {
+    set("quelleVvtId", value);
+    if (value === "none") return;
+    const found = vvts.find((item: any) => String(item.id) === value);
+    if (!found) return;
+    setForm((p: any) => ({ ...p, quelleVvtId: value, quelleVvtBezeichnung: found.bezeichnung, bezeichnung: p.bezeichnung || found.bezeichnung, datenart: found.datenkategorien || p.datenart, loeschklasse: found.loeschklasse || p.loeschklasse, aufbewahrungsfrist: found.loeschfrist || p.aufbewahrungsfrist, loeschereignis: found.aufbewahrungsgrund || p.loeschereignis, rechtsgrundlage: found.rechtsgrundlage || p.rechtsgrundlage, verantwortlicher: found.verantwortlicher || p.verantwortlicher }));
+  };
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Übernahme aus VVT</Label>
+          <Select value={String(form.quelleVvtId || "none")} onValueChange={importFromVvt}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="VVT auswählen" /></SelectTrigger>
+            <SelectContent><SelectItem value="none">Keine VVT-Übernahme</SelectItem>{vvts.map((item:any) => <SelectItem key={item.id} value={String(item.id)}>{item.bezeichnung}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Bezeichnung *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten / Datensätze</Label><Textarea value={form.datenart} onChange={e => set("datenart", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">Löschklasse *</Label>
+          <Select value={form.loeschklasse} onValueChange={v => set("loeschklasse", v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{loeschklassen.map((k) => <SelectItem key={k.key} value={k.key}>{k.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1"><Label className="text-xs">Aufbewahrungsfrist</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Löschereignis / Trigger</Label><Textarea value={form.loeschereignis} onChange={e => set("loeschereignis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">Rechtsgrundlage / Normbezug</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Systeme / Speicherorte</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Kontrolle / Überwachung</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Löschprotokoll</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
+      </div>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave({ ...form, quelleVvtId: form.quelleVvtId === "none" ? null : Number(form.quelleVvtId) })} disabled={!form.bezeichnung}>Speichern</Button>
+        </DialogFooter>
+      </div>
+    </div>
+  );
+}
+
+function LoeschkonzeptPage() {
+  const { data, isLoading, create, update, remove } = useModuleData("loeschkonzept");
+  const [modal, setModal] = useState<null | "new" | any>(null);
+  const [delId, setDelId] = useState<number | null>(null);
+  const { toast } = useToast();
+  const save = (form: any) => {
+    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  };
+  return (
+    <MandantGuard>
+      <PageHeader title="Löschkonzept" desc="Löschklassen, Fristen und Übernahme aus dem VVT zu einem operativen Lösch- und Aufbewahrungskonzept"
+        action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer Eintrag</Button>} />
+      {isLoading ? <Skeleton className="h-32 w-full" /> : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {loeschklassen.map((k) => <Card key={k.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{k.key}</p><p className="text-sm font-semibold">{k.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.loeschklasse === k.key).length}</p></CardContent></Card>)}
+          </div>
+          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch kein Löschkonzept dokumentiert.</CardContent></Card>}
+          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
+        </div>
+      )}
+      <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer Löschkonzept-Eintrag" : "Löschkonzept bearbeiten"}</DialogTitle></DialogHeader></div>{modal && <LoeschkonzeptForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
+      <ConfirmDialog open={delId !== null} title="Eintrag löschen?" desc="Dieser Vorgang kann nicht rückgängig gemacht werden." onConfirm={() => { remove.mutate(delId!); setDelId(null); }} onCancel={() => setDelId(null)} />
+    </MandantGuard>
   );
 }
 
@@ -2410,7 +2510,7 @@ function MandantenPage() {
     queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
   });
   const emptyForm = {
-    name: "", rechtsform: "", anschrift: "", branche: "", webseite: "", notizen: "", gruppenOrganisation: false, gruppeId: "none",
+    name: "", rechtsform: "", anschrift: "", branche: "", branchen: [], webseite: "", notizen: "", gruppenOrganisation: false, gruppeId: "none",
     dsb: "", dsbEmail: "", dsbTelefon: "",
     verantwortlicherName: "", verantwortlicherEmail: "", verantwortlicherTelefon: "",
     datenschutzmanagerName: "", datenschutzmanagerEmail: "", datenschutzmanagerTelefon: "",
@@ -2426,7 +2526,7 @@ function MandantenPage() {
   const openEdit = (m: any) => {
     setSetupStep(3);
     setSetupPaketId("none");
-    setForm({ ...emptyForm, ...m, gruppenOrganisation: !!(m.gruppenOrganisation || m.gruppeId), gruppeId: m.gruppeId ? String(m.gruppeId) : "none" });
+    setForm({ ...emptyForm, ...m, branchen: (() => { try { return Array.isArray(m.branchen) ? m.branchen : JSON.parse(m.branchen || "[]"); } catch { return []; } })(), gruppenOrganisation: !!(m.gruppenOrganisation || m.gruppeId), gruppeId: m.gruppeId ? String(m.gruppeId) : "none" });
     setModal(m);
   };
   const quickSetup = () => {
@@ -2436,6 +2536,7 @@ function MandantenPage() {
       name: "Neuer Mandant",
       rechtsform: "GmbH",
       branche: "Dienstleistung",
+      branchen: ["Dienstleistung"],
       dsb: "Datenschutzbeauftragter",
       verantwortlicherName: "Verantwortlicher",
       datenschutzmanagerName: "Datenschutzmanager",
@@ -2451,6 +2552,7 @@ function MandantenPage() {
       const hasGroupAssignment = form.gruppeId !== "none";
       const payload = {
         ...form,
+        branchen: JSON.stringify(Array.isArray(form.branchen) ? form.branchen : []),
         gruppenOrganisation: !!form.gruppenOrganisation || hasGroupAssignment,
         gruppeId: hasGroupAssignment ? Number(form.gruppeId) : null,
       };
@@ -2535,7 +2637,8 @@ function MandantenPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Rechtsform</Label><Input value={form.rechtsform} onChange={e => set("rechtsform", e.target.value)} className="h-8 text-sm" placeholder="GmbH, AG..." /></div>
-              <div className="space-y-1"><Label className="text-xs">Branche</Label><Input value={form.branche} onChange={e => set("branche", e.target.value)} className="h-8 text-sm" /></div>
+              <div className="space-y-1"><Label className="text-xs">Hauptbranche</Label><Input value={form.branche} onChange={e => set("branche", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Weitere Branchen</Label><Input value={Array.isArray(form.branchen) ? form.branchen.join(", ") : ""} onChange={e => set("branchen", e.target.value.split(",").map(v => v.trim()).filter(Boolean))} className="h-8 text-sm" placeholder="z. B. Handel, SaaS, Gesundheit" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Anschrift</Label><Input value={form.anschrift} onChange={e => set("anschrift", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Webseite</Label><Input value={form.webseite} onChange={e => set("webseite", e.target.value)} className="h-8 text-sm" placeholder="https://..." /></div>
               <div className="space-y-2">
@@ -2971,6 +3074,9 @@ function VorlagenpaketePage() {
               <div className="col-span-2 space-y-1"><Label className="text-xs">Schnellvorlage</Label>
                 <div className="flex gap-2">
                   <Button type="button" variant={preset === "leer" ? "default" : "outline"} size="sm" onClick={() => applyPreset("leer")}>Leer</Button>
+                  <Button type="button" variant={preset === "kleinunternehmen" ? "default" : "outline"} size="sm" onClick={() => applyPreset("kleinunternehmen")}>Kleinunternehmen</Button>
+                  <Button type="button" variant={preset === "mittelstand" ? "default" : "outline"} size="sm" onClick={() => applyPreset("mittelstand")}>Mittelständer</Button>
+                  <Button type="button" variant={preset === "konzern" ? "default" : "outline"} size="sm" onClick={() => applyPreset("konzern")}>Konzern</Button>
                   <Button type="button" variant={preset === "dsgvo" ? "default" : "outline"} size="sm" onClick={() => applyPreset("dsgvo")}>DSGVO Basis</Button>
                   <Button type="button" variant={preset === "isms" ? "default" : "outline"} size="sm" onClick={() => applyPreset("isms")}>ISMS Basis</Button>
                 </div>
@@ -3334,6 +3440,7 @@ const EXPORT_MODULES = [
   { key: "dsr", label: "Betroffenenrechte / DSR (Art. 15–22)", icon: UserCheck, color: "text-purple-400" },
   { key: "tom", label: "TOM-Katalog (Art. 32)", icon: Lock, color: "text-green-400" },
   { key: "audits", label: "Interne Audits & Auditprotokoll", icon: ClipboardList, color: "text-cyan-400" },
+  { key: "loeschkonzept", label: "Löschkonzept & Löschklassen", icon: Database, color: "text-sky-400" },
   { key: "aufgaben", label: "Aufgaben & Maßnahmenplan", icon: CheckSquare, color: "text-orange-400" },
   { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-slate-400" },
 ];
@@ -3858,6 +3965,7 @@ function AppRoutes() {
           <Route path="/dsr" component={DsrPage} />
           <Route path="/tom" component={TomPage} />
           <Route path="/audits" component={AuditsPage} />
+          <Route path="/loeschkonzept" component={LoeschkonzeptPage} />
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />
           <Route path="/web-datenschutz" component={WebDatenschutzPage} />

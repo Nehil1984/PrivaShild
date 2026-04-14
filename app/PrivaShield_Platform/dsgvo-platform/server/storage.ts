@@ -20,6 +20,7 @@ import {
   type Dsr, type InsertDsr,
   type Tom, type InsertTom,
   type Audit, type InsertAudit,
+  type Loeschkonzept, type InsertLoeschkonzept,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
 } from "@shared/schema";
@@ -111,6 +112,13 @@ export interface IStorage {
   createAudit(data: InsertAudit): Promise<Audit>;
   updateAudit(id: number, data: Partial<InsertAudit>): Promise<Audit | undefined>;
   deleteAudit(id: number): Promise<void>;
+
+  // Löschkonzept
+  getLoeschkonzeptByMandant(mandantId: number): Promise<Loeschkonzept[]>;
+  getLoeschkonzept(id: number): Promise<Loeschkonzept | undefined>;
+  createLoeschkonzept(data: InsertLoeschkonzept): Promise<Loeschkonzept>;
+  updateLoeschkonzept(id: number, data: Partial<InsertLoeschkonzept>): Promise<Loeschkonzept | undefined>;
+  deleteLoeschkonzept(id: number): Promise<void>;
 
   // Aufgaben
   getAufgabenByMandant(mandantId: number): Promise<Aufgabe[]>;

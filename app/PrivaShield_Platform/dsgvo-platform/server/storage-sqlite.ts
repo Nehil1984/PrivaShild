@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import { eq, and, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
-  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, audits, aufgaben, dokumente,
+  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, loeschkonzept, audits, aufgaben, dokumente,
   type Mandant, type InsertMandant,
   type MandantenGruppe, type InsertMandantenGruppe,
   type Vorlagenpaket, type InsertVorlagenpaket,
@@ -22,6 +22,7 @@ import {
   type Dsr, type InsertDsr,
   type Tom, type InsertTom,
   type Audit, type InsertAudit,
+  type Loeschkonzept, type InsertLoeschkonzept,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
 } from "@shared/schema";
@@ -131,6 +132,13 @@ export class DatabaseStorage implements IStorage {
   async updateAudit(id: number, data: Partial<InsertAudit>) { return db.update(audits).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(audits.id, id)).returning().get(); }
   async deleteAudit(id: number) { db.delete(audits).where(eq(audits.id, id)).run(); }
 
+  // Löschkonzept
+  async getLoeschkonzeptByMandant(mandantId: number) { return db.select().from(loeschkonzept).where(eq(loeschkonzept.mandantId, mandantId)).orderBy(desc(loeschkonzept.createdAt)).all(); }
+  async getLoeschkonzept(id: number) { return db.select().from(loeschkonzept).where(eq(loeschkonzept.id, id)).get(); }
+  async createLoeschkonzept(data: InsertLoeschkonzept) { const now = new Date().toISOString(); return db.insert(loeschkonzept).values({ ...data, createdAt: now, updatedAt: now }).returning().get(); }
+  async updateLoeschkonzept(id: number, data: Partial<InsertLoeschkonzept>) { return db.update(loeschkonzept).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(loeschkonzept.id, id)).returning().get(); }
+  async deleteLoeschkonzept(id: number) { db.delete(loeschkonzept).where(eq(loeschkonzept.id, id)).run(); }
+
   // Aufgaben
   async getAufgabenByMandant(mandantId: number) { return db.select().from(aufgaben).where(eq(aufgaben.mandantId, mandantId)).orderBy(desc(aufgaben.createdAt)).all(); }
   async getAufgabe(id: number) { return db.select().from(aufgaben).where(eq(aufgaben.id, id)).get(); }
@@ -155,6 +163,7 @@ export class DatabaseStorage implements IStorage {
       dsr: db.select().from(dsr).where(eq(dsr.mandantId, mandantId)).all().length,
       tom: db.select().from(tom).where(eq(tom.mandantId, mandantId)).all().length,
       audits: db.select().from(audits).where(eq(audits.mandantId, mandantId)).all().length,
+      loeschkonzept: db.select().from(loeschkonzept).where(eq(loeschkonzept.mandantId, mandantId)).all().length,
       aufgaben: db.select().from(aufgaben).where(eq(aufgaben.mandantId, mandantId)).all().length,
       offeneAufgaben: db.select().from(aufgaben).where(and(eq(aufgaben.mandantId, mandantId), eq(aufgaben.status, "offen"))).all().length,
       dokumente: db.select().from(dokumente).where(eq(dokumente.mandantId, mandantId)).all().length,
