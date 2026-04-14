@@ -2414,18 +2414,18 @@ function BackupsPage() {
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.enabled} onChange={e => setForm((p: any) => ({ ...p, enabled: e.target.checked }))} /><span>Automatische Backup-Routine aktivieren</span></label>
-          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>Backups mit Kennwort verschlüsseln</span></label>
+          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.enabled} onChange={e => setForm((p: any) => ({ ...p, enabled: e.target.checked }))} /><span>{t("enableAutomaticBackups")}</span></label>
+          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>{t("encryptBackups")}</span></label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Backup-Verzeichnis</Label><Input value={form.backupDir || ""} onChange={e => setForm((p: any) => ({ ...p, backupDir: e.target.value }))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Kennworthinweis</Label><Input value={form.passwordHint || ""} onChange={e => setForm((p: any) => ({ ...p, passwordHint: e.target.value }))} placeholder="z. B. interner Safe" className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("backupDirectory")}</Label><Input value={form.backupDir || ""} onChange={e => setForm((p: any) => ({ ...p, backupDir: e.target.value }))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("passwordHint")}</Label><Input value={form.passwordHint || ""} onChange={e => setForm((p: any) => ({ ...p, passwordHint: e.target.value }))} placeholder="z. B. interner Safe" className="h-8 text-sm" /></div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Stündlich</Label><Input type="number" value={form.retention?.hourly || 24} onChange={e => setRetention("hourly", Number(e.target.value || 24))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Täglich</Label><Input type="number" value={form.retention?.daily || 7} onChange={e => setRetention("daily", Number(e.target.value || 7))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Wöchentlich</Label><Input type="number" value={form.retention?.weekly || 4} onChange={e => setRetention("weekly", Number(e.target.value || 4))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Monatlich</Label><Input type="number" value={form.retention?.monthly || 12} onChange={e => setRetention("monthly", Number(e.target.value || 12))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Jährlich</Label><Input type="number" value={form.retention?.yearly || 2} onChange={e => setRetention("yearly", Number(e.target.value || 2))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("hourly")}</Label><Input type="number" value={form.retention?.hourly || 24} onChange={e => setRetention("hourly", Number(e.target.value || 24))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("daily")}</Label><Input type="number" value={form.retention?.daily || 7} onChange={e => setRetention("daily", Number(e.target.value || 7))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("weekly")}</Label><Input type="number" value={form.retention?.weekly || 4} onChange={e => setRetention("weekly", Number(e.target.value || 4))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("monthly")}</Label><Input type="number" value={form.retention?.monthly || 12} onChange={e => setRetention("monthly", Number(e.target.value || 12))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("yearly")}</Label><Input type="number" value={form.retention?.yearly || 2} onChange={e => setRetention("yearly", Number(e.target.value || 2))} className="h-8 text-sm" /></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1"><Label className="text-xs">Neues Backup-Kennwort</Label><Input type="password" value={form.password || ""} onChange={e => setForm((p: any) => ({ ...p, password: e.target.value }))} placeholder={form.passwordConfigured ? "Kennwort ändern" : "Kennwort setzen"} className="h-8 text-sm" /></div>
@@ -2438,8 +2438,8 @@ function BackupsPage() {
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("backupRunNow")}</CardTitle><CardDescription>Erstellt bei Bedarf stündliche, tägliche, wöchentliche, monatliche und jährliche Sicherungsstände.</CardDescription></CardHeader>
         <CardContent className="space-y-3 text-sm">
-          {form.encrypt && <div className="space-y-1"><Label className="text-xs">Kennwort für verschlüsseltes Backup</Label><Input type="password" value={runPassword} onChange={e => setRunPassword(e.target.value)} className="h-8 text-sm" /></div>}
-          <Button size="sm" onClick={() => runMutation.mutate()} className="bg-primary">Backup starten</Button>
+          {form.encrypt && <div className="space-y-1"><Label className="text-xs">{t("backupPassword")}</Label><Input type="password" value={runPassword} onChange={e => setRunPassword(e.target.value)} className="h-8 text-sm" /></div>}
+          <Button size="sm" onClick={() => runMutation.mutate()} className="bg-primary">{t("startBackup")}</Button>
         </CardContent>
       </Card>
 
