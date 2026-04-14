@@ -722,6 +722,11 @@ function VvtForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = vvtTemplates[value];
@@ -907,6 +912,11 @@ function AvvForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: "", pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = avvTemplates[value];
@@ -1072,6 +1082,11 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, risikoquelle: "", betroffeneGruppen: "", datenarten: "", eintrittswahrscheinlichkeit: "", schweregrad: "", restrisiko: "", restmassnahmen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = dsfaTemplates[value];
@@ -1243,6 +1258,11 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], entdecktUm: new Date().toTimeString().slice(0,5), gemeldetAm: "", gemeldetUm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = datenpannenTemplates[value];
@@ -1369,6 +1389,11 @@ const dsrArten: Record<string, string> = {
 function DsrForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ art: "auskunft", antragsteller: "", eingangsdatum: new Date().toISOString().split("T")[0], fristDatum: "", beschreibung: "", status: "offen", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1525,6 +1550,11 @@ function TomForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", pruefintervall: "", schutzziel: "", nachweis: "", wirksamkeit: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = tomTemplates[value];
@@ -1687,6 +1717,11 @@ function AuditForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", followUpDatum: "", naechstesAuditAm: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = auditTemplates[value];
@@ -1752,10 +1787,27 @@ const loeschklassen = [
   { key: "LK5", label: "LK5 Besondere Kategorien / Hochrisikodaten" },
 ];
 
+const gesetzlicheAufbewahrungsfristen = [
+  { key: "frei", label: "Freie / manuelle Frist", frist: "", hinweis: "Individuelle Eingabe ohne gesetzliche Vorbelegung" },
+  { key: "6_monate_bewerber", label: "6 Monate, Bewerbungsverfahren", frist: "6 Monate", hinweis: "Regelmäßig für abgelehnte Bewerbungen nach AGG-Verteidigungsinteresse" },
+  { key: "2_jahre_handelsbriefe", label: "2 Jahre, steuerlich relevante Unterlagen bei Überschusseinkünften", frist: "2 Jahre", hinweis: "Sonderfall nach Steuerrecht" },
+  { key: "3_jahre_regel", label: "3 Jahre, regelmäßige Verjährung", frist: "3 Jahre", hinweis: "Typisch für zivilrechtliche Nachweis- und Abwehrinteressen" },
+  { key: "5_jahre_gw", label: "5 Jahre, Geldwäsche- und Sanktionsunterlagen", frist: "5 Jahre", hinweis: "Regelmäßig nach GwG, teils Verlängerungsoptionen" },
+  { key: "6_jahre_hgb", label: "6 Jahre, Handels- und Geschäftsbriefe", frist: "6 Jahre", hinweis: "§ 257 HGB, § 147 AO für bestimmte Unterlagen" },
+  { key: "8_jahre_buchung", label: "8 Jahre, Buchungsbelege", frist: "8 Jahre", hinweis: "Aktuelle steuerrechtliche Aufbewahrung für Buchungsbelege" },
+  { key: "10_jahre_ao_hgb", label: "10 Jahre, Buchführungs- und Steuerunterlagen", frist: "10 Jahre", hinweis: "§ 147 AO, § 257 HGB für Bücher, Inventare, Abschlüsse usw." },
+  { key: "30_jahre_titel", label: "30 Jahre, titulierte Forderungen / bestimmte Spezialunterlagen", frist: "30 Jahre", hinweis: "Nur für besondere Fallgruppen" },
+];
+
 function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   const { data: vvts = [] } = useModuleData("vvt");
-  const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
+  const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const importFromVvt = (value: string) => {
     set("quelleVvtId", value);
     if (value === "none") return;
@@ -1780,7 +1832,14 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
             <SelectContent>{loeschklassen.map((k) => <SelectItem key={k.key} value={k.key}>{k.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Aufbewahrungsfrist</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Fristgruppe / gesetzliche Aufbewahrung</Label>
+          <Select value={form.fristKategorie || "frei"} onValueChange={applyFristKategorie}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{gesetzlicheAufbewahrungsfristen.map((item) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1"><Label className="text-xs">Aufbewahrungsfrist</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 10 Jahre oder 6 Monate" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Gesetzliche Frist / Referenz</Label><Input value={form.gesetzlicheFrist || ""} onChange={e => set("gesetzlicheFrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. § 147 AO / § 257 HGB" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Löschereignis / Trigger</Label><Textarea value={form.loeschereignis} onChange={e => set("loeschereignis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="space-y-1"><Label className="text-xs">Rechtsgrundlage / Normbezug</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
@@ -1815,9 +1874,10 @@ function LoeschkonzeptPage() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {loeschklassen.map((k) => <Card key={k.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{k.key}</p><p className="text-sm font-semibold">{k.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.loeschklasse === k.key).length}</p></CardContent></Card>)}
+            {gesetzlicheAufbewahrungsfristen.filter((f) => f.key !== "frei").slice(0,3).map((f) => <Card key={f.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fristgruppe</p><p className="text-sm font-semibold">{f.frist}</p><p className="text-xs text-muted-foreground mt-1">{f.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.fristKategorie === f.key).length}</p></CardContent></Card>)}
           </div>
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch kein Löschkonzept dokumentiert.</CardContent></Card>}
-          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
+          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer Löschkonzept-Eintrag" : "Löschkonzept bearbeiten"}</DialogTitle></DialogHeader></div>{modal && <LoeschkonzeptForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
@@ -1900,6 +1960,11 @@ function AuditsPage() {
 function AufgabeForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", beschreibung: "", typ: "task", prioritaet: "mittel", status: "offen", fortschritt: 0, verantwortlicher: "", startDatum: "", faelligAm: "", abgeschlossenAm: "", kategorie: "sonstige", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2027,6 +2092,11 @@ function AufgabenPage() {
 function DokumentForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", kategorie: "richtlinie", dokumentTyp: "richtlinie", beschreibung: "", version: "1.0", status: "aktiv", gueltigBis: "", verantwortlicher: "", freigegebenVon: "", freigegebenAm: "", naechstePruefungAm: "", inhalt: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
   const handleKategorieChange = (value: string) => {
     if (value === "leitlinie") {
       setForm((p: any) => ({
@@ -2521,6 +2591,11 @@ function MandantenPage() {
   const [form, setForm] = useState<any>(emptyForm);
   const { toast } = useToast();
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
 
   const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
   const openEdit = (m: any) => {

@@ -295,6 +295,8 @@ export const loeschkonzept = sqliteTable("loeschkonzept", {
   bezeichnung: text("bezeichnung").notNull(),
   datenart: text("datenart"),
   loeschklasse: text("loeschklasse").notNull(),
+  fristKategorie: text("frist_kategorie"),
+  gesetzlicheFrist: text("gesetzliche_frist"),
   quelleVvtId: integer("quelle_vvt_id"),
   quelleVvtBezeichnung: text("quelle_vvt_bezeichnung"),
   aufbewahrungsfrist: text("aufbewahrungsfrist"),
