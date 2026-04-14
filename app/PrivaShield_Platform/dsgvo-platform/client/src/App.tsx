@@ -1367,7 +1367,7 @@ function MandantenPage() {
     queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
   });
   const emptyForm = {
-    name: "", rechtsform: "", anschrift: "", branche: "", webseite: "", notizen: "", gruppeId: "none",
+    name: "", rechtsform: "", anschrift: "", branche: "", webseite: "", notizen: "", gruppenOrganisation: false, gruppeId: "none",
     dsb: "", dsbEmail: "", dsbTelefon: "",
     verantwortlicherName: "", verantwortlicherEmail: "", verantwortlicherTelefon: "",
     datenschutzmanagerName: "", datenschutzmanagerEmail: "", datenschutzmanagerTelefon: "",
@@ -1377,13 +1377,13 @@ function MandantenPage() {
   };
   const [form, setForm] = useState<any>(emptyForm);
   const { toast } = useToast();
-  const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
   const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
   const openEdit = (m: any) => {
     setSetupStep(3);
     setSetupPaketId("none");
-    setForm({ ...emptyForm, ...m, gruppeId: m.gruppeId ? String(m.gruppeId) : "none" });
+    setForm({ ...emptyForm, ...m, gruppenOrganisation: !!(m.gruppenOrganisation || m.gruppeId), gruppeId: m.gruppeId ? String(m.gruppeId) : "none" });
     setModal(m);
   };
   const quickSetup = () => {
@@ -1405,7 +1405,12 @@ function MandantenPage() {
 
   const save = async () => {
     try {
-      const payload = { ...form, gruppeId: form.gruppeId === "none" ? null : Number(form.gruppeId) };
+      const hasGroupAssignment = form.gruppeId !== "none";
+      const payload = {
+        ...form,
+        gruppenOrganisation: !!form.gruppenOrganisation || hasGroupAssignment,
+        gruppeId: hasGroupAssignment ? Number(form.gruppeId) : null,
+      };
       if (modal === "new") {
         const res = await apiRequest("POST", "/api/mandanten", payload);
         const created = await res.json();
@@ -1488,14 +1493,36 @@ function MandantenPage() {
               <div className="space-y-1"><Label className="text-xs">Branche</Label><Input value={form.branche} onChange={e => set("branche", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Anschrift</Label><Input value={form.anschrift} onChange={e => set("anschrift", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Webseite</Label><Input value={form.webseite} onChange={e => set("webseite", e.target.value)} className="h-8 text-sm" placeholder="https://..." /></div>
+              <div className="space-y-2">
+                <Label className="text-xs">Gruppenorganisation</Label>
+                <label className="flex items-center gap-2 text-xs rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-secondary/40">
+                  <input
+                    type="checkbox"
+                    checked={!!form.gruppenOrganisation}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      set("gruppenOrganisation", checked);
+                      if (!checked) set("gruppeId", "none");
+                    }}
+                    className="rounded"
+                  />
+                  <span>Mandant ist Teil einer Gruppenstruktur</span>
+                </label>
+              </div>
               <div className="space-y-1"><Label className="text-xs">Gruppe</Label>
-                <Select value={form.gruppeId} onValueChange={v => set("gruppeId", v)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Keine Gruppe" /></SelectTrigger>
+                <Select value={form.gruppeId} onValueChange={v => {
+                  set("gruppeId", v);
+                  if (v !== "none") set("gruppenOrganisation", true);
+                }}>
+                  <SelectTrigger className="h-8 text-xs" disabled={!form.gruppenOrganisation}><SelectValue placeholder="Keine Gruppe" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Keine Gruppe</SelectItem>
                     {gruppen.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Nur wenn Gruppenorganisation aktiviert ist, fließt dieser Punkt in den Mandantenstatus ein.
+                </p>
               </div>
             </div>
             {setupStep >= 2 && <Separator />}
@@ -2623,7 +2650,8 @@ function MandantenOverviewPage() {
   });
   const ampel = (() => {
     const hasDS = !!mandant && !!mandant.verantwortlicherName;
-    const hasGroup = !!mandant?.gruppeId;
+    const needsGroup = !!mandant?.gruppenOrganisation;
+    const hasGroup = !needsGroup || !!mandant?.gruppeId;
     const offene = stats?.offeneAufgaben ?? 0;
     const hasPrivacy = !!mandant?.dsb || !!mandant?.datenschutzmanagerName;
     const hasIT = !!mandant?.itVerantwortlicherName;
@@ -2636,7 +2664,7 @@ function MandantenOverviewPage() {
   })();
   const ampelKriterien = [
     { label: "Verantwortlicher gepflegt", ok: !!mandant?.verantwortlicherName },
-    { label: "Gruppe zugeordnet", ok: !!mandant?.gruppeId },
+    { label: mandant?.gruppenOrganisation ? "Gruppe zugeordnet" : "Gruppenorganisation nicht erforderlich", ok: !mandant?.gruppenOrganisation || !!mandant?.gruppeId },
     { label: "Datenschutzfunktion vorhanden", ok: !!mandant?.dsb || !!mandant?.datenschutzmanagerName },
     { label: "IT-Verantwortlicher vorhanden", ok: !!mandant?.itVerantwortlicherName },
     { label: "Webseite gepflegt", ok: !!mandant?.webseite },
@@ -2677,6 +2705,7 @@ function MandantenOverviewPage() {
               <div className="space-y-1 text-muted-foreground">
                 <p>Anschrift: {mandant?.anschrift || "—"}</p>
                 <p>Webseite: {mandant?.webseite || "—"}</p>
+                <p>Gruppenorganisation: {mandant?.gruppenOrganisation ? "Ja" : "Nein"}</p>
                 <p>Gruppe: {gruppen.find((g: any) => g.id === mandant?.gruppeId)?.name || "—"}</p>
                 <p>Notizen: {mandant?.notizen || "—"}</p>
               </div>

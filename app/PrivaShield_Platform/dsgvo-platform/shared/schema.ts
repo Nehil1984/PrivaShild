@@ -35,6 +35,7 @@ export const mandanten = sqliteTable("mandanten", {
   webseitenbetreuerName: text("webseitenbetreuer_name"),
   webseitenbetreuerEmail: text("webseitenbetreuer_email"),
   webseitenbetreuerTelefon: text("webseitenbetreuer_telefon"),
+  gruppenOrganisation: integer("gruppen_organisation", { mode: "boolean" }).default(false),
   gruppeId: integer("gruppe_id"),
   notizen: text("notizen"),
   aktiv: integer("aktiv", { mode: "boolean" }).default(true),
