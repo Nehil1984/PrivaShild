@@ -1116,6 +1116,7 @@ const dsfaTemplates: Record<string, any> = {
 };
 
 function DsfaForm({ initial, onSave, onCancel }: any) {
+  const { t } = useI18n();
   const { data: dokumente = [] } = useModuleData("dokumente");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
   const kiTools = (() => {
@@ -1139,7 +1140,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">DSFA-Musterfall</Label>
+          <Label className="text-xs">{t("dsfaTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
             <SelectContent>
@@ -1150,10 +1151,10 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaTitleLabel")} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         {kiTools.length > 0 && (
           <div className="col-span-2 space-y-1">
-            <Label className="text-xs">KI-Tool als vordefinierter Name</Label>
+            <Label className="text-xs">{t("dsfaToolLabel")}</Label>
             <Select value={kiTools.includes(form.titel) ? form.titel : "none"} onValueChange={v => v !== "none" && set("titel", v)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="KI-Tool auswählen" /></SelectTrigger>
               <SelectContent>
@@ -1163,29 +1164,29 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
             </Select>
           </div>
         )}
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung der Verarbeitung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Notwendigkeit & Verhältnismäßigkeit</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Risikominderungsmaßnahmen</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Risikoquelle / Auslöser</Label><Input value={form.risikoquelle} onChange={e => set("risikoquelle", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Gruppen</Label><Textarea value={form.betroffeneGruppen} onChange={e => set("betroffeneGruppen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">Eintrittswahrscheinlichkeit</Label><Input value={form.eintrittswahrscheinlichkeit} onChange={e => set("eintrittswahrscheinlichkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="space-y-1"><Label className="text-xs">Schweregrad</Label><Input value={form.schweregrad} onChange={e => set("schweregrad", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="space-y-1"><Label className="text-xs">Restrisiko</Label><Input value={form.restrisiko} onChange={e => set("restrisiko", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Restmaßnahmen / Follow-up</Label><Textarea value={form.restmassnahmen} onChange={e => set("restmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">Ergebnis</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDescriptionLabel")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaNecessityLabel")}</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaMeasuresLabel")}</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaRiskSourceLabel")}</Label><Input value={form.risikoquelle} onChange={e => set("risikoquelle", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaAffectedGroupsLabel")}</Label><Textarea value={form.betroffeneGruppen} onChange={e => set("betroffeneGruppen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDataTypesLabel")}</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaProbabilityLabel")}</Label><Input value={form.eintrittswahrscheinlichkeit} onChange={e => set("eintrittswahrscheinlichkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaSeverityLabel")}</Label><Input value={form.schweregrad} onChange={e => set("schweregrad", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaResidualRiskLabel")}</Label><Input value={form.restrisiko} onChange={e => set("restrisiko", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaFollowUpLabel")}</Label><Textarea value={form.restmassnahmen} onChange={e => set("restmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaResultLabel")}</Label>
           <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
             <SelectContent><SelectItem value="akzeptabel">Akzeptabel</SelectItem><SelectItem value="nicht_akzeptabel">Nicht akzeptabel</SelectItem><SelectItem value="bedingt">Bedingt akzeptabel</SelectItem></SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaStatusLabel")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem><SelectItem value="überprüfung">In Überprüfung</SelectItem></SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Reviewer</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("dsfaReviewerLabel")}</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="kons" checked={!!form.konsultation} onChange={e => set("konsultation", e.target.checked)} className="rounded" /><Label htmlFor="kons" className="text-xs">Behördenkonsultation (Art. 36)</Label></div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
