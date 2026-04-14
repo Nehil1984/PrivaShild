@@ -2215,6 +2215,7 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
 }
 
 function KiCompliancePage() {
+  const { t } = useI18n();
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { data: dsfas = [] } = useModuleData("dsfa");
   const { toast } = useToast();
@@ -2295,7 +2296,7 @@ function KiCompliancePage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title="KI-Tools & Compliance" desc="Erfassung des KI-Einsatzes nach DSGVO und KI-VO" />
+        <PageHeader title={t("aiTitle")} desc={t("aiDesc")} />
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
@@ -2464,6 +2465,7 @@ function BackupsPage() {
 }
 
 function BeschaeftigtenDatenschutzPage() {
+  const { t } = useI18n();
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { data: schulungsMeta = [] } = useQuery({
     queryKey: ["/api/meta/beschaeftigten-datenschutz"],
@@ -2533,7 +2535,7 @@ function BeschaeftigtenDatenschutzPage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title="Beschäftigtendatenschutz" desc="Erfassung von Datenschutzerklärung, Verpflichtungen und Schulungsstatus für Beschäftigte" />
+        <PageHeader title={t("employeePrivacyTitle")} desc={t("employeePrivacyDesc")} />
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
@@ -2591,6 +2593,7 @@ function BeschaeftigtenDatenschutzPage() {
 }
 
 function WebDatenschutzPage() {
+  const { t } = useI18n();
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { toast } = useToast();
   const websitePrivacy = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
@@ -2686,7 +2689,7 @@ function WebDatenschutzPage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title="Web-Datenschutz" desc="Prüfung von Datenschutzerklärung, Impressum und Datenschutzhinweisen" />
+        <PageHeader title={t("webPrivacyTitle")} desc={t("webPrivacyDesc")} />
 
         <Card>
           <CardHeader>
@@ -2832,6 +2835,7 @@ function DokumentePage() {
 
 // ─── MANDANTEN ADMIN PAGE ──────────────────────────────────────────────────
 function MandantenPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: mandanten = [], isLoading } = useQuery({
     queryKey: ["/api/mandanten"],
@@ -2913,7 +2917,7 @@ function MandantenPage() {
 
   return (
     <div>
-      <PageHeader title="Mandantenverwaltung" desc="Alle Mandanten der Plattform verwalten"
+      <PageHeader title={t("tenantsTitle")} desc={t("tenantsDesc")}
         action={<div className="flex gap-2"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={quickSetup}>Quick-Setup</Button><Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neuer Mandant</Button></div>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -3091,6 +3095,7 @@ function MandantenPage() {
 }
 
 function GruppenPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: gruppen = [], isLoading } = useQuery({
     queryKey: ["/api/mandanten-gruppen"],
@@ -3172,7 +3177,7 @@ function GruppenPage() {
 
   return (
     <div>
-      <PageHeader title="Mandantengruppen" desc="Konzern-, Holding- und Standortstrukturen verwalten"
+      <PageHeader title={t("groupsTitle")} desc={t("groupsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neue Gruppe</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-4">
@@ -3321,6 +3326,7 @@ function GruppenPage() {
 }
 
 function VorlagenpaketePage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: pakete = [], isLoading } = useQuery({
     queryKey: ["/api/vorlagenpakete"],
@@ -3390,7 +3396,7 @@ function VorlagenpaketePage() {
 
   return (
     <div>
-      <PageHeader title="Vorlagenpakete" desc="Standardpakete für Aufgaben, Leitlinien und Dokumente verwalten"
+      <PageHeader title={t("templatesTitle")} desc={t("templatesDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neues Paket</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
@@ -3469,6 +3475,7 @@ function VorlagenpaketePage() {
 
 // ─── BENUTZER ADMIN PAGE ───────────────────────────────────────────────────
 function BenutzerPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -3508,7 +3515,7 @@ function BenutzerPage() {
 
   return (
     <div>
-      <PageHeader title="Benutzerverwaltung" desc="Benutzer, Rollen und Mandantenzugänge verwalten"
+      <PageHeader title={t("usersTitle")} desc={t("usersDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neuer Benutzer</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
@@ -3994,6 +4001,7 @@ function ExportPage() {
 }
 
 function MandantenExtrasPage() {
+  const { t } = useI18n();
   const { activeMandantId } = useMandant();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -4060,7 +4068,7 @@ function MandantenExtrasPage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title="Mandanten-Extras" desc="Vorlagenpakete anwenden und Änderungen nachverfolgen" />
+        <PageHeader title={t("extrasTitle")} desc={t("extrasDesc")} />
 
         <Card>
           <CardHeader>
