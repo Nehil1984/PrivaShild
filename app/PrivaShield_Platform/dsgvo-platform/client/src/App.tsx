@@ -98,7 +98,7 @@ function StatusBadge({ value, className = "" }: { value: string; className?: str
 function ConfirmDialog({ open, title, desc, onConfirm, onCancel }: any) {
   return (
     <Dialog open={open} onOpenChange={o => !o && onCancel()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">{desc}</p>
         <DialogFooter>
@@ -817,7 +817,7 @@ function VvtPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neue Verarbeitungstätigkeit" : "Verarbeitungstätigkeit bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <VvtForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
@@ -989,7 +989,7 @@ function AvvPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer AVV" : "AVV bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer AVV" : "AVV bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <AvvForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1168,7 +1168,7 @@ function DsfaPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <DsfaForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1328,7 +1328,7 @@ function DatenpannenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Datenpanne" : "Datenpanne bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Datenpanne" : "Datenpanne bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <DatenpanneForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1418,7 +1418,7 @@ function DsrPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSR-Anfrage" : "DSR-Anfrage bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSR-Anfrage" : "DSR-Anfrage bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <DsrForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1606,7 +1606,7 @@ function TomPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neue TOM-Maßnahme" : "TOM bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue TOM-Maßnahme" : "TOM bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <TomForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1778,7 +1778,7 @@ function AuditsPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Audit" : "Audit bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Audit" : "Audit bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <AuditForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1903,7 +1903,7 @@ function AufgabenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Aufgabe" : "Aufgabe bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Aufgabe" : "Aufgabe bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <AufgabeForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -2368,7 +2368,7 @@ function DokumentePage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Dokument" : "Dokument bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Dokument" : "Dokument bearbeiten"}</DialogTitle></DialogHeader>
           {modal && <DokumentForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -2499,7 +2499,7 @@ function MandantenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Mandant" : "Mandant bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
             {modal === "new" && (
@@ -2810,7 +2810,7 @@ function GruppenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neue Gruppe" : "Gruppe bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
@@ -2943,7 +2943,7 @@ function VorlagenpaketePage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neues Vorlagenpaket" : "Vorlagenpaket bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -3058,7 +3058,7 @@ function BenutzerPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Benutzer" : "Benutzer bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
