@@ -627,13 +627,122 @@ function useModuleData(endpoint: string) {
 
 // ─── VVT PAGE ──────────────────────────────────────────────────────────────
 const rechtsgrundlagen = ["Art. 6 Abs. 1 lit. a (Einwilligung)", "Art. 6 Abs. 1 lit. b (Vertrag)", "Art. 6 Abs. 1 lit. c (rechtl. Verpflichtung)", "Art. 6 Abs. 1 lit. d (lebenswichtige Interessen)", "Art. 6 Abs. 1 lit. e (öffentliche Aufgabe)", "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)"];
+const vvtTemplates: Record<string, any> = {
+  none: null,
+  personalverwaltung: {
+    bezeichnung: "Personalverwaltung",
+    zweck: "Verwaltung von Beschäftigtenverhältnissen einschließlich Lohnabrechnung, Zeiterfassung und Personalentwicklung.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+    verantwortlicher: "Personalabteilung",
+    loeschfrist: "10 Jahre nach Ausscheiden, soweit gesetzlich erforderlich",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Stammdaten, Vertragsdaten, Abrechnungsdaten, Qualifikationen",
+    betroffenePersonen: "Beschäftigte, Bewerber, ehemalige Beschäftigte",
+    empfaenger: "Steuerberater, Sozialversicherungsträger, Behörden",
+    tomHinweis: "Zugriffsbeschränkung nach Rollen, verschlüsselte Ablage, Berechtigungskonzept",
+  },
+  bewerbermanagement: {
+    bezeichnung: "Bewerbermanagement",
+    zweck: "Durchführung des Bewerbungsprozesses und Auswahl geeigneter Kandidaten.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+    verantwortlicher: "HR / Recruiting",
+    loeschfrist: "6 Monate nach Abschluss des Bewerbungsverfahrens",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Kontaktdaten, Lebenslauf, Zeugnisse, Interviewnotizen",
+    betroffenePersonen: "Bewerber",
+    empfaenger: "Fachabteilungen, Recruiting-Dienstleister",
+    tomHinweis: "Need-to-know-Zugriff, geschütztes Bewerberportal, Löschkonzept",
+  },
+  kundenverwaltung: {
+    bezeichnung: "Kundenverwaltung / CRM",
+    zweck: "Verwaltung von Kundenbeziehungen, Verträgen, Kommunikation und Vertriebschancen.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+    verantwortlicher: "Vertrieb / Kundenservice",
+    loeschfrist: "3 Jahre nach Ende der Geschäftsbeziehung, steuerrechtliche Daten länger",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Stammdaten, Kontaktdaten, Vertragsdaten, Kommunikationsdaten",
+    betroffenePersonen: "Kunden, Ansprechpartner bei Kunden",
+    empfaenger: "Vertrieb, Support, Auftragsverarbeiter",
+    tomHinweis: "CRM-Berechtigungskonzept, Protokollierung, Verschlüsselung",
+  },
+  newsletter: {
+    bezeichnung: "Newsletter-Versand",
+    zweck: "Versand von Informationen und Marketinginhalten an Interessenten und Kunden.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. a (Einwilligung)",
+    verantwortlicher: "Marketing",
+    loeschfrist: "Bis Widerruf der Einwilligung bzw. 3 Jahre nach letztem Kontakt",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: true,
+    datenkategorien: "E-Mail-Adresse, Name, Nutzungsdaten, Einwilligungsnachweise",
+    betroffenePersonen: "Interessenten, Kunden",
+    empfaenger: "Newsletter-Dienstleister",
+    tomHinweis: "Double-Opt-In, Abmeldemechanismus, Anbieterprüfung",
+  },
+  video: {
+    bezeichnung: "Videoüberwachung",
+    zweck: "Wahrnehmung des Hausrechts, Schutz von Eigentum und Aufklärung von Vorfällen.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+    verantwortlicher: "Geschäftsführung / Facility Management",
+    loeschfrist: "72 Stunden, sofern kein Vorfall vorliegt",
+    status: "aktiv",
+    dsfa: true,
+    drittlandtransfer: false,
+    datenkategorien: "Bilddaten, Zeitstempel, Standortdaten",
+    betroffenePersonen: "Besucher, Beschäftigte, Lieferanten",
+    empfaenger: "Sicherheitsdienst, Strafverfolgungsbehörden bei Vorfällen",
+    tomHinweis: "Beschilderung, Zugriff nur für Berechtigte, kurze Speicherfristen",
+  },
+  ki: {
+    bezeichnung: "Einsatz von KI-Tools im Unternehmen",
+    zweck: "Unterstützung von Analyse-, Text-, Automatisierungs- und Entscheidungsprozessen durch KI-Anwendungen.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+    verantwortlicher: "Fachbereich mit KI-Einsatz / Datenschutzkoordination",
+    loeschfrist: "Gemäß Löschkonzept des jeweiligen Einsatzszenarios",
+    status: "aktiv",
+    dsfa: true,
+    drittlandtransfer: true,
+    datenkategorien: "Prompt-Inhalte, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Kontextdaten",
+    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige betroffene Personen je Use Case",
+    empfaenger: "KI-Anbieter, IT-Dienstleister, interne Fachbereiche",
+    tomHinweis: "Richtlinie für KI-Nutzung, Anbieterauswahl, Minimierung personenbezogener Daten, Transferbewertung",
+  },
+};
 
 function VvtForm({ initial, onSave, onCancel }: any) {
-  const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", loeschfrist: "", status: "aktiv", dsfa: false, drittlandtransfer: false, ...initial });
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", loeschfrist: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = vvtTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Muster-Verarbeitungstätigkeit</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="personalverwaltung">Personalverwaltung</SelectItem>
+              <SelectItem value="bewerbermanagement">Bewerbermanagement</SelectItem>
+              <SelectItem value="kundenverwaltung">Kundenverwaltung / CRM</SelectItem>
+              <SelectItem value="newsletter">Newsletter-Versand</SelectItem>
+              <SelectItem value="video">Videoüberwachung</SelectItem>
+              <SelectItem value="ki">Einsatz von KI-Tools</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Bezeichnung *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Zweck der Verarbeitung</Label><Textarea value={form.zweck} onChange={e => set("zweck", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="space-y-1">
@@ -651,6 +760,10 @@ function VvtForm({ initial, onSave, onCancel }: any) {
         </div>
         <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Löschfrist</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 3 Jahre" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenkategorien</Label><Textarea value={form.datenkategorien} onChange={e => set("datenkategorien", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Empfänger / Dritte</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">TOM-Hinweis</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dsfa" checked={!!form.dsfa} onChange={e => set("dsfa", e.target.checked)} className="rounded" /><Label htmlFor="dsfa" className="text-xs">DSFA erforderlich</Label></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dritt" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dritt" className="text-xs">Drittlandtransfer</Label></div>
       </div>
