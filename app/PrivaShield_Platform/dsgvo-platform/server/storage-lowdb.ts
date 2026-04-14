@@ -24,6 +24,7 @@ import type {
   Loeschkonzept, InsertLoeschkonzept,
   Aufgabe, InsertAufgabe,
   Dokument, InsertDokument,
+  InterneNotiz, InsertInterneNotiz,
 } from "@shared/schema";
 
 interface DbSchema {
@@ -44,6 +45,7 @@ interface DbSchema {
   loeschkonzept: Loeschkonzept[];
   aufgaben: Aufgabe[];
   dokumente: Dokument[];
+  interneNotizen: InterneNotiz[];
 }
 
 const defaultData: DbSchema = {
@@ -84,6 +86,7 @@ const defaultData: DbSchema = {
   loeschkonzept: [],
   aufgaben: [],
   dokumente: [],
+  interneNotizen: [],
 };
 
 let _db: Low<DbSchema> | null = null;
@@ -131,6 +134,9 @@ function syncNextIds(db: Low<DbSchema>) {
     "tom",
     "aufgaben",
     "dokumente",
+    "loeschkonzept",
+    "audits",
+    "interneNotizen",
   ];
 
   for (const col of collections) {
@@ -542,6 +548,12 @@ export class LowdbStorage implements IStorage {
   async updateDokument(id: number, data: Partial<InsertDokument>) { return this._update<Dokument>("dokumente", id, data); }
   async deleteDokument(id: number) { return this._delete("dokumente", id); }
 
+  async getInterneNotizenByMandant(mandantId: number) { return this._getAll<InterneNotiz>("interneNotizen", mandantId); }
+  async getInterneNotiz(id: number) { return this._getOne<InterneNotiz>("interneNotizen", id); }
+  async createInterneNotiz(data: InsertInterneNotiz) { const now = new Date().toISOString(); return this._create<InterneNotiz>("interneNotizen", { ...data, createdAt: now, updatedAt: now } as any); }
+  async updateInterneNotiz(id: number, data: Partial<InsertInterneNotiz>) { return this._update<InterneNotiz>("interneNotizen", id, { ...data, updatedAt: new Date().toISOString() } as any); }
+  async deleteInterneNotiz(id: number) { return this._delete("interneNotizen", id); }
+
   // ─── Stats ────────────────────────────────────────────────────────────────
   async getStatsForMandant(mandantId: number): Promise<Record<string, number>> {
     const db = await getDb();
@@ -561,3 +573,7 @@ export class LowdbStorage implements IStorage {
     };
   }
 }
+
+
+// interne notizen
+export interface __LowdbStorageInterneNotizenMarker {}

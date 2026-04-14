@@ -152,3 +152,33 @@ Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Da
 - LowDB-Backend: Backup der JSON-Datei `privashield.json`
 - Standard-Backup-Verzeichnis: `<data>/backups`
 - Die Rotation wird beim Erstellen eines Backups direkt serverseitig durchgesetzt.
+
+
+## Interne Notizen und Exportfreigabe
+
+Die Plattform unterstützt jetzt mandantenbezogene **interne Notizen** als eigenen Bereich.
+
+Funktionen:
+- Ereignisse, Risiken und anstehende Themen dokumentieren
+- Priorität und Fälligkeit setzen
+- explizit festlegen, ob eine Notiz im Export erscheinen darf
+
+Wichtig: Nur Notizen mit aktivierter Exportfreigabe werden in den Druck-/PDF-Export übernommen.
+
+## In-App-Backup-Scheduler
+
+Die Backup-Funktion läuft jetzt nicht nur manuell oder über externe Trigger, sondern kann direkt **in der App stündlich automatisiert** werden.
+
+Hinweise:
+- Bei aktivierter Verschlüsselung sollte für unbeaufsichtigte Läufe `PRIVASHIELD_BACKUP_PASSWORD` gesetzt sein.
+- Die serverseitige Rotation bleibt aktiv und erzwingt die konfigurierten Aufbewahrungs-Slots.
+
+## Mehrsprachigkeit
+
+Die App besitzt jetzt eine erste **DE/EN-Sprachumschaltung** in der Topbar neben dem Dark-Mode-Button.
+
+Stand aktuell:
+- Sprachumschalter ist aktiv
+- erste globale UI-Texte sind an die Übersetzungsstruktur angebunden
+- Deutsch bleibt Standardsprache
+- Englisch wird schrittweise für die gesamte Oberfläche erweitert

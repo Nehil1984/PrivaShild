@@ -411,3 +411,25 @@ Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Da
 - LowDB-Backend: Backup der JSON-Datei `privashield.json`
 - Standard-Backup-Verzeichnis: `<data>/backups`
 - Die Rotation wird beim Erstellen eines Backups direkt serverseitig durchgesetzt.
+
+
+## Automatische Backups
+
+PrivaShield unterstützt jetzt eine eingebaute Backup-Routine mit stündlicher Scheduler-Ausführung in der App.
+
+Retention:
+- 24 stündlich
+- 7 täglich
+- 4 wöchentlich
+- 12 monatlich
+- 2 jährlich
+
+Wenn verschlüsselte automatische Backups genutzt werden sollen, setze zusätzlich:
+
+```env
+PRIVASHIELD_BACKUP_PASSWORD=dein-sicheres-backup-kennwort
+```
+
+## Exportierbare interne Notizen
+
+Zusätzlich gibt es einen eigenen Bereich für mandantenbezogene interne Notizen. Diese werden nur dann in den Export übernommen, wenn sie ausdrücklich für den Export freigegeben wurden.

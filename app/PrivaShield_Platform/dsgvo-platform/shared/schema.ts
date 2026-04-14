@@ -351,6 +351,27 @@ export type Audit = typeof audits.$inferSelect;
 
 
 
+// ─── Interne Notizen ───────────────────────────────────────────────────────
+export const interneNotizen = sqliteTable("interne_notizen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mandantId: integer("mandant_id").notNull(),
+  titel: text("titel").notNull(),
+  inhalt: text("inhalt").notNull(),
+  kategorie: text("kategorie").default("allgemein"),
+  prioritaet: text("prioritaet").default("mittel"),
+  exportieren: integer("exportieren", { mode: "boolean" }).default(false),
+  faelligAm: text("faellig_am"),
+  createdAt: text("created_at").default(new Date().toISOString()),
+  updatedAt: text("updated_at").default(new Date().toISOString()),
+});
+export const insertInterneNotizSchema = createInsertSchema(interneNotizen).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+  inhalt: z.string().trim().min(1, "Inhalt ist erforderlich"),
+});
+export const requestInterneNotizSchema = insertInterneNotizSchema.omit({ mandantId: true });
+export type InsertInterneNotiz = z.infer<typeof insertInterneNotizSchema>;
+export type InterneNotiz = typeof interneNotizen.$inferSelect;
+
 // ─── Backup-Konfiguration ───────────────────────────────────────────────────
 export const backupConfig = sqliteTable("backup_config", {
   id: integer("id").primaryKey({ autoIncrement: true }),

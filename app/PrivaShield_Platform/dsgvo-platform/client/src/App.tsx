@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useComplianceMeta } from "@/hooks/useComplianceMeta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { messages, type Lang, type MessageKey } from "./i18n";
 import { useState, createContext, useContext, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -42,6 +43,11 @@ const MandantCtx = createContext<{ activeMandantId: number | null; setActiveMand
   activeMandantId: null, setActiveMandantId: () => {}
 });
 function useMandant() { return useContext(MandantCtx); }
+
+const LangCtx = createContext<{ lang: Lang; setLang: (lang: Lang) => void; t: (key: MessageKey) => string }>({
+  lang: "de", setLang: () => {}, t: (key) => messages.de[key]
+});
+function useI18n() { return useContext(LangCtx); }
 
 // ─── Theme ─────────────────────────────────────────────────────────────────
 function useTheme() {
@@ -187,8 +193,8 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
 
 // ─── SIDEBAR ───────────────────────────────────────────────────────────────
 const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/overview", label: "Mandanten-Übersicht", icon: Eye },
+  { path: "/", label: "dashboard", icon: LayoutDashboard },
+  { path: "/overview", label: "overview", icon: Eye },
   { path: "/vvt", label: "VVT", icon: FileText },
   { path: "/avv", label: "AVV", icon: Shield },
   { path: "/dsfa", label: "DSFA", icon: AlertTriangle },
@@ -203,8 +209,8 @@ const navItems = [
   { path: "/ki-compliance", label: "KI-Tools & Compliance", icon: Bot },
   { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
-  { path: "/export", label: "Export / Druck", icon: Printer },
-  { path: "/backups", label: "Backups", icon: Archive },
+  { path: "/export", label: "exportPrint", icon: Printer },
+  { path: "/backups", label: "backups", icon: Archive },
 ];
 
 const adminNavItems = [
@@ -217,6 +223,7 @@ const adminNavItems = [
 
 function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const { activeMandantId, setActiveMandantId } = useMandant();
   const [location] = useHashLocation();
 
@@ -236,18 +243,18 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">PrivaShield</p>
-          <p className="text-xs text-sidebar-foreground/60 truncate">DSM-Plattform</p>
+          <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">{t("appName")}</p>
+          <p className="text-xs text-sidebar-foreground/60 truncate">{t("dsmPlatform")}</p>
         </div>
         {mobile && <button onClick={onClose} className="text-sidebar-foreground/60 hover:text-sidebar-accent-foreground"><X className="h-4 w-4" /></button>}
       </div>
 
       {/* Mandanten-Auswahl */}
       <div className="px-3 py-3 border-b border-sidebar-border">
-        <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-1">Mandant</p>
+        <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-1">{t("tenant")}</p>
         <Select value={activeMandantId?.toString() || ""} onValueChange={v => setActiveMandantId(Number(v))}>
           <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground" data-testid="select-mandant">
-            <SelectValue placeholder="Mandant wählen..." />
+            <SelectValue placeholder={t("selectTenant")} />
           </SelectTrigger>
           <SelectContent>
             {mandanten.map((m: any) => (
@@ -269,7 +276,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
                     ? "bg-primary/15 text-primary font-medium"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}>
-                  <Icon className="h-4 w-4 shrink-0" />{label}
+                  <Icon className="h-4 w-4 shrink-0" />{(["dashboard","overview","exportPrint","backups","internalNotes"] as string[]).includes(label) ? t(label as MessageKey) : label}
                 </a>
               </Link>
             );
@@ -278,7 +285,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
           {user?.role === "admin" && (
             <>
               <div className="pt-3 pb-1 px-1">
-                <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider">Administration</p>
+                <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider">{t("administration")}</p>
               </div>
               {adminNavItems.map(({ path, label, icon: Icon }) => {
                 const active = location.startsWith(path);
@@ -287,7 +294,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
                     <a onClick={onClose} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                       active ? "bg-primary/15 text-primary font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     }`}>
-                      <Icon className="h-4 w-4 shrink-0" />{label}
+                      <Icon className="h-4 w-4 shrink-0" />{(["dashboard","overview","exportPrint","backups","internalNotes"] as string[]).includes(label) ? t(label as MessageKey) : label}
                     </a>
                   </Link>
                 );
@@ -305,11 +312,11 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{user?.name}</p>
-            <p className="text-xs text-sidebar-foreground/50 truncate">{user?.role === "admin" ? "Administrator" : "Nutzer"}</p>
+            <p className="text-xs text-sidebar-foreground/50 truncate">{user?.role === "admin" ? t("administrator") : t("user")}</p>
           </div>
         </div>
         <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-xs text-sidebar-foreground hover:bg-sidebar-accent hover:text-red-400 transition-colors">
-          <LogOut className="h-3.5 w-3.5" /> Abmelden
+          <LogOut className="h-3.5 w-3.5" /> {t("logout")}
         </button>
       </div>
     </div>
@@ -319,6 +326,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
 // ─── LAYOUT ────────────────────────────────────────────────────────────────
 function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
+  const { lang, setLang, t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -346,7 +354,8 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 ml-auto">
-            <button onClick={toggle} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+            <Select value={lang} onValueChange={(v: Lang) => setLang(v)}><SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="de">{t("german")}</SelectItem><SelectItem value="en">{t("english")}</SelectItem></SelectContent></Select>
+            <button title={t("darkMode")} onClick={toggle} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           </div>
@@ -376,10 +385,11 @@ function PageHeader({ title, desc, action }: { title: string; desc?: string; act
 // ─── MANDANT GUARD ─────────────────────────────────────────────────────────
 function MandantGuard({ children }: { children: React.ReactNode }) {
   const { activeMandantId } = useMandant();
+  const { t } = useI18n();
   if (!activeMandantId) return (
     <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
       <Building2 className="h-10 w-10 text-muted-foreground/40" />
-      <p className="text-sm text-muted-foreground">Bitte wähle links einen Mandanten aus.</p>
+      <p className="text-sm text-muted-foreground">{t("chooseTenantLeft")}</p>
     </div>
   );
   return <>{children}</>;
@@ -407,6 +417,21 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/aufgaben`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: vvt = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/vvt`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/vvt`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: dsfa = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/dsfa`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dsfa`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: loeschkonzept = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/loeschkonzept`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const activeMandant = mandanten.find((m: any) => m.id === activeMandantId);
   const { data: gruppen = [] } = useQuery({
     queryKey: ["/api/mandanten-gruppen"],
@@ -417,20 +442,36 @@ function Dashboard() {
   const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
+  const beschaeftigtenDok = dokumente.find((d: any) => d.dokumentTyp === "beschaeftigten_datenschutz_check");
   const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
   const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
   const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
-  const reifegradScore = Math.max(0, Math.min(100,
-    (activeMandant?.verantwortlicherName ? 15 : 0) +
-    (activeMandant?.datenschutzmanagerName ? 10 : 0) +
-    (activeMandant?.itVerantwortlicherName ? 10 : 0) +
-    (activeMandant?.isbName ? 10 : 0) +
-    (activeMandant?.gruppeId ? 10 : 0) +
-    (leitlinieVorhanden ? 15 : 0) +
-    (stats?.offeneAufgaben === 0 ? 15 : (stats?.offeneAufgaben ?? 0) <= 3 ? 10 : 0) +
-    (offeneReviews.length === 0 ? 15 : 5)
-  ));
+  const dokumenteCount = dokumente.length;
+  const leitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
+  const prozessDokCount = dokumente.filter((d: any) => d.kategorie === "prozessbeschreibung" || d.kategorie === "verfahrensdokumentation").length;
+  const dsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(activeMandant?.dsb || activeMandant?.dsbEmail || activeMandant?.datenschutzmanagerName));
+  const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
+  const tomUmfangreich = (stats?.tom ?? 0) >= 8;
+  const auditsVorhanden = (stats?.audits ?? 0) > 0;
+  const avvVorhanden = (stats?.avv ?? 0) > 0;
+  const governanceChecks = [
+    leitlinienCount >= 2,
+    prozessDokCount >= 2,
+    (stats?.vvt ?? 0) >= 3,
+    dsfaMitDsbCheck,
+    vvtOhneLoeschkonzept === 0,
+    auditsVorhanden,
+    tomUmfangreich,
+    avvVorhanden,
+    kritischeOderNotwendigeAufgaben === 0,
+    !!webDatenschutzCheck,
+    !!datenschutzhinweiseCheck,
+    !!beschaeftigtenDok,
+    dokumenteCount >= 6,
+  ];
+  const reifegradScore = Math.round((governanceChecks.filter(Boolean).length / governanceChecks.length) * 100);
   const complianceKpis = {
     offeneAufgaben: stats?.offeneAufgaben ?? 0,
     leitlinien: leitlinieVorhanden ? 1 : 0,
@@ -489,11 +530,11 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Leitlinienstatus</CardTitle>
-                <CardDescription>Grundsatzdokument für Datenschutz und Informationssicherheit</CardDescription>
+                <CardTitle className="text-sm">Leitlinien- und Governance-Status</CardTitle>
+                <CardDescription>Grundsatzdokumente für Datenschutz und Informationssicherheit</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <p>Leitlinie vorhanden: <span className="font-medium">{leitlinieVorhanden ? "Ja" : "Nein"}</span></p>
+                <p>Datenschutz- und Informationssicherheitsleitlinie vorhanden: <span className="font-medium">{leitlinieVorhanden ? "Ja" : "Nein"}</span></p>
                 {leitlinieVorhanden ? (
                   leitlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)
                 ) : (
@@ -568,12 +609,19 @@ function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Reifegrad</CardTitle>
-              <CardDescription>Vereinfachter Governance-Score</CardDescription>
+              <CardDescription>Ganzheitlicher Score aus Leitlinien, VVT, Löschkonzept, DSFA/DSB, Audits, TOM, AVV und Aufgabenlage</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{reifegradScore}%</p>
               <div className="mt-3 h-3 w-full rounded bg-secondary overflow-hidden">
                 <div className="h-full bg-primary transition-all" style={{ width: `${reifegradScore}%` }} />
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                <p>Leitlinien vorhanden: {leitlinienCount >= 2 ? "ja" : `nein (${leitlinienCount}/2)`}</p>
+                <p>VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschkonzept}</p>
+                <p>Interne Audits dokumentiert: {auditsVorhanden ? "ja" : "nein"}</p>
+                <p>TOM-Katalog umfangreich: {tomUmfangreich ? "ja" : `nein (${stats?.tom ?? 0})`}</p>
+                <p>Offene kritische/notwendige Tasks: {kritischeOderNotwendigeAufgaben}</p>
               </div>
             </CardContent>
           </Card>
@@ -2326,6 +2374,7 @@ function KiCompliancePage() {
 
 function BackupsPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const configQuery = useQuery({ queryKey: ["/api/admin/backups/config"], queryFn: () => apiRequest("GET", "/api/admin/backups/config").then(r => r.json()) });
   const backupsQuery = useQuery({ queryKey: ["/api/admin/backups"], queryFn: () => apiRequest("GET", "/api/admin/backups").then(r => r.json()) });
   const [form, setForm] = useState<any>(null);
@@ -2350,7 +2399,7 @@ function BackupsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Backups" desc="Backup-Rotation, Aufbewahrung und optionale Kennwortverschlüsselung verwalten" />
+      <PageHeader title={t("backups")} desc="Backup-Rotation, Aufbewahrung und optionale Kennwortverschlüsselung verwalten" />
       <Card>
         <CardHeader><CardTitle className="text-sm">Backup-Konfiguration</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
@@ -3741,6 +3790,7 @@ function SystemPage() {
 
 // ─── EXPORT PAGE (Druckansicht-Auswahl) ──────────────────────────────────────
 const EXPORT_MODULES = [
+  { key: "interne_notizen", label: "Interne Notizen (freigegeben)", icon: NotebookPen, color: "text-amber-400" },
   { key: "vvt", label: "Verarbeitungsverzeichnis (VVT)", icon: FileText, color: "text-teal-400" },
   { key: "avv", label: "Auftragsverarbeitungsverträge (AVV)", icon: Shield, color: "text-blue-400" },
   { key: "dsfa", label: "Datenschutz-Folgenabschätzung (DSFA)", icon: AlertTriangle, color: "text-yellow-400" },
@@ -3781,6 +3831,26 @@ function ExportPage() {
   const { data: aufgaben = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/aufgaben`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: dokumente = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/dokumente`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dokumente`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: vvt = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/vvt`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/vvt`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: loeschkonzept = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/loeschkonzept`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: interneNotizen = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
   const auditTodos = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
@@ -4117,6 +4187,7 @@ function MandantenExtrasPage() {
 }
 
 function MandantenOverviewPage() {
+  const { t } = useI18n();
   const { activeMandantId } = useMandant();
   const { data: mandant } = useQuery({
     queryKey: ["/api/mandanten-overview", activeMandantId],
@@ -4159,7 +4230,7 @@ function MandantenOverviewPage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title="Mandanten-Übersicht" desc="Stammdaten, Rollen und Compliance-Status des aktiven Mandanten" />
+        <PageHeader title={t("overview")} desc="Stammdaten, Rollen und Compliance-Status des aktiven Mandanten" />
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Konsistenzprüfung</CardTitle>
@@ -4260,7 +4331,12 @@ function AppRoutes() {
     return () => { window.fetch = orig; };
   }, [token]);
 
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("privashield_lang") as Lang) || "de");
+  useEffect(() => { localStorage.setItem("privashield_lang", lang); }, [lang]);
+  const t = (key: MessageKey) => messages[lang][key] || messages.de[key];
+
   return (
+    <LangCtx.Provider value={{ lang, setLang, t }}>
     <MandantCtx.Provider value={{ activeMandantId, setActiveMandantId }}>
       <Layout>
         <Switch>
@@ -4290,6 +4366,7 @@ function AppRoutes() {
         </Switch>
       </Layout>
     </MandantCtx.Provider>
+    </LangCtx.Provider>
   );
 }
 

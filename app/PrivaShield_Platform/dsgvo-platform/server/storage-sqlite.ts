@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import { eq, and, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
-  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, loeschkonzept, audits, aufgaben, dokumente,
+  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, loeschkonzept, audits, aufgaben, dokumente, interneNotizen,
   type Mandant, type InsertMandant,
   type MandantenGruppe, type InsertMandantenGruppe,
   type Vorlagenpaket, type InsertVorlagenpaket,
@@ -25,6 +25,7 @@ import {
   type Loeschkonzept, type InsertLoeschkonzept,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
+  type InterneNotiz, type InsertInterneNotiz,
 } from "@shared/schema";
 import type { IStorage } from "./storage.js";
 
@@ -152,6 +153,12 @@ export class DatabaseStorage implements IStorage {
   async createDokument(data: InsertDokument) { const now = new Date().toISOString(); return db.insert(dokumente).values({ ...data, createdAt: now, updatedAt: now }).returning().get(); }
   async updateDokument(id: number, data: Partial<InsertDokument>) { return db.update(dokumente).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(dokumente.id, id)).returning().get(); }
   async deleteDokument(id: number) { db.delete(dokumente).where(eq(dokumente.id, id)).run(); }
+
+  async getInterneNotizenByMandant(mandantId: number) { return db.select().from(interneNotizen).where(eq(interneNotizen.mandantId, mandantId)).orderBy(desc(interneNotizen.updatedAt)).all(); }
+  async getInterneNotiz(id: number) { return db.select().from(interneNotizen).where(eq(interneNotizen.id, id)).get(); }
+  async createInterneNotiz(data: InsertInterneNotiz) { const now = new Date().toISOString(); return db.insert(interneNotizen).values({ ...data, createdAt: now, updatedAt: now }).returning().get(); }
+  async updateInterneNotiz(id: number, data: Partial<InsertInterneNotiz>) { return db.update(interneNotizen).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(interneNotizen.id, id)).returning().get(); }
+  async deleteInterneNotiz(id: number) { db.delete(interneNotizen).where(eq(interneNotizen.id, id)).run(); }
 
   // Stats
   async getStatsForMandant(mandantId: number) {

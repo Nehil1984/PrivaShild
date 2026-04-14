@@ -23,6 +23,7 @@ import {
   type Loeschkonzept, type InsertLoeschkonzept,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
+  type InterneNotiz, type InsertInterneNotiz,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -133,6 +134,13 @@ export interface IStorage {
   createDokument(data: InsertDokument): Promise<Dokument>;
   updateDokument(id: number, data: Partial<InsertDokument>): Promise<Dokument | undefined>;
   deleteDokument(id: number): Promise<void>;
+
+  // Interne Notizen
+  getInterneNotizenByMandant(mandantId: number): Promise<InterneNotiz[]>;
+  getInterneNotiz(id: number): Promise<InterneNotiz | undefined>;
+  createInterneNotiz(data: InsertInterneNotiz): Promise<InterneNotiz>;
+  updateInterneNotiz(id: number, data: Partial<InsertInterneNotiz>): Promise<InterneNotiz | undefined>;
+  deleteInterneNotiz(id: number): Promise<void>;
 
   // Stats
   getStatsForMandant(mandantId: number): Promise<Record<string, number>>;

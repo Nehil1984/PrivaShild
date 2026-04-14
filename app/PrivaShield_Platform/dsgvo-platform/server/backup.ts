@@ -246,3 +246,39 @@ export function runBackupNow(passwordOverride?: string) {
     backups: listBackups(),
   };
 }
+
+
+export function nextBackupRunEstimate() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setMinutes(0, 0, 0);
+  next.setHours(next.getHours() + 1);
+  return next.toISOString();
+}
+
+let backupTimer: NodeJS.Timeout | null = null;
+export function startBackupScheduler() {
+  if (backupTimer) clearTimeout(backupTimer);
+  const cfg = readBackupConfig();
+  if (!cfg.enabled) return;
+  const schedule = () => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setMinutes(0, 0, 0);
+    next.setHours(next.getHours() + 1);
+    const delay = Math.max(1000, next.getTime() - now.getTime());
+    backupTimer = setTimeout(() => {
+      try {
+        const current = readBackupConfig();
+        if (current.enabled && (!current.encrypt || current.passwordHash)) {
+          runBackupNow(process.env.PRIVASHIELD_BACKUP_PASSWORD);
+        }
+      } catch (error) {
+        console.error('[Backup] Scheduler-Lauf fehlgeschlagen', error);
+      } finally {
+        schedule();
+      }
+    }, delay);
+  };
+  schedule();
+}

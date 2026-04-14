@@ -5,9 +5,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
-import { listBackups, readBackupConfig, runBackupNow, writeBackupConfig } from "./backup";
+import { listBackups, nextBackupRunEstimate, readBackupConfig, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
-import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
+import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -273,7 +273,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/mandanten/:mid/export-context", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
-    const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente] = await Promise.all([
+    const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente, interneNotizen] = await Promise.all([
       storage.getMandant(mandantId),
       storage.getMandantenLogs(mandantId),
       storage.getStatsForMandant(mandantId),
@@ -287,8 +287,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       storage.getLoeschkonzeptByMandant(mandantId),
       storage.getAufgabenByMandant(mandantId),
       storage.getDokumenteByMandant(mandantId),
+      storage.getInterneNotizenByMandant(mandantId),
     ]);
-    res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente } });
+    res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente, interne_notizen: interneNotizen } });
   });
 
   // ─── BENUTZER (Admin only) ────────────────────────────────────────────────
@@ -590,6 +591,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── STATS ────────────────────────────────────────────────────────────────
+  app.get("/api/mandanten/:mid/interne-notizen", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    res.json(await storage.getInterneNotizenByMandant(mandantId));
+  });
+  app.post("/api/mandanten/:mid/interne-notizen", authMiddleware, validateBody(requestInterneNotizSchema as ZodTypeAny), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    res.status(201).json(await storage.createInterneNotiz({ ...req.body, mandantId }));
+  });
+  app.put("/api/interne-notizen/:id", authMiddleware, async (req: any, res) => {
+    const item = await storage.getInterneNotiz(Number(req.params.id));
+    if (!(await requireEntityAccess(req, res, item))) return;
+    res.json(await storage.updateInterneNotiz(Number(req.params.id), req.body));
+  });
+  app.delete("/api/interne-notizen/:id", authMiddleware, async (req: any, res) => {
+    const item = await storage.getInterneNotiz(Number(req.params.id));
+    if (!(await requireEntityAccess(req, res, item))) return;
+    await storage.deleteInterneNotiz(Number(req.params.id));
+    res.json({ ok: true });
+  });
+
   app.get("/api/mandanten/:id/stats", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
@@ -722,6 +745,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
       updatedAt: cfg.updatedAt,
+      nextRunAt: nextBackupRunEstimate(),
     });
   });
 
@@ -735,6 +759,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
       updatedAt: cfg.updatedAt,
+      nextRunAt: nextBackupRunEstimate(),
     });
   });
 
