@@ -1433,12 +1433,97 @@ const tomKategorien: Record<string, string> = {
   verfuegbarkeit: "Verfügbarkeitskontrolle", trennung: "Trennungsgebot"
 };
 
+const tomTemplates: Record<string, any> = {
+  none: null,
+  mfa: {
+    massnahme: "Mehr-Faktor-Authentisierung für kritische Systeme",
+    kategorie: "zugangskontrolle",
+    beschreibung: "Absicherung administrativer und sensibler Benutzerzugänge durch MFA.",
+    status: "implementiert",
+    verantwortlicher: "IT / Informationssicherheit",
+    pruefintervall: "jährlich",
+    schutzziel: "Vertraulichkeit und Integrität",
+    nachweis: "MFA-Konfiguration, Rollout-Dokumentation, Richtlinie",
+    wirksamkeit: "hoch",
+    notizen: "Regelmäßige Überprüfung privilegierter Konten erforderlich",
+  },
+  backup: {
+    massnahme: "Backup- und Wiederherstellungskonzept",
+    kategorie: "verfuegbarkeit",
+    beschreibung: "Regelmäßige Datensicherungen mit dokumentierten Restore-Tests.",
+    status: "implementiert",
+    verantwortlicher: "IT-Betrieb",
+    pruefintervall: "halbjährlich",
+    schutzziel: "Verfügbarkeit",
+    nachweis: "Backup-Protokolle, Restore-Test, Betriebsdokumentation",
+    wirksamkeit: "hoch",
+    notizen: "Offline-/Immutable-Backups prüfen",
+  },
+  rollen: {
+    massnahme: "Rollen- und Berechtigungskonzept",
+    kategorie: "zugriffskontrolle",
+    beschreibung: "Vergabe von Zugriffsrechten nach Rollen- und Need-to-know-Prinzip.",
+    status: "implementiert",
+    verantwortlicher: "IT / Fachbereich",
+    pruefintervall: "jährlich",
+    schutzziel: "Vertraulichkeit",
+    nachweis: "Berechtigungsmatrix, Freigabeprozess, Rezertifizierung",
+    wirksamkeit: "hoch",
+    notizen: "Regelmäßige Rezertifizierung von Berechtigungen einplanen",
+  },
+  loeschung: {
+    massnahme: "Lösch- und Aufbewahrungskonzept",
+    kategorie: "trennung",
+    beschreibung: "Regelbasierte Löschung und Trennung von Datenbeständen nach Zweck und Frist.",
+    status: "geplant",
+    verantwortlicher: "Datenschutz / Fachbereich / IT",
+    pruefintervall: "jährlich",
+    schutzziel: "Vertraulichkeit und Datenminimierung",
+    nachweis: "Löschkonzept, Löschprotokolle, Richtlinie",
+    wirksamkeit: "mittel",
+    notizen: "Systemübergreifende Fristen harmonisieren",
+  },
+  logging: {
+    massnahme: "Protokollierung sicherheitsrelevanter Zugriffe",
+    kategorie: "eingabe",
+    beschreibung: "Nachvollziehbarkeit von Zugriffen, Änderungen und sicherheitsrelevanten Ereignissen.",
+    status: "implementiert",
+    verantwortlicher: "IT / SOC / Administratoren",
+    pruefintervall: "quartalsweise",
+    schutzziel: "Integrität und Nachvollziehbarkeit",
+    nachweis: "Log-Policy, Audit-Logs, SIEM-Auswertung",
+    wirksamkeit: "hoch",
+    notizen: "Datenschutzkonforme Logspeicherung beachten",
+  },
+};
+
 function TomForm({ initial, onSave, onCancel }: any) {
-  const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", notizen: "", ...initial });
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", pruefintervall: "", schutzziel: "", nachweis: "", wirksamkeit: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = tomTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Muster-TOM</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="mfa">Mehr-Faktor-Authentisierung</SelectItem>
+              <SelectItem value="backup">Backup- und Wiederherstellungskonzept</SelectItem>
+              <SelectItem value="rollen">Rollen- und Berechtigungskonzept</SelectItem>
+              <SelectItem value="loeschung">Lösch- und Aufbewahrungskonzept</SelectItem>
+              <SelectItem value="logging">Protokollierung sicherheitsrelevanter Zugriffe</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Maßnahme *</Label><Input value={form.massnahme} onChange={e => set("massnahme", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Kategorie</Label>
           <Select value={form.kategorie} onValueChange={v => set("kategorie", v)}>
@@ -1454,7 +1539,12 @@ function TomForm({ initial, onSave, onCancel }: any) {
         </div>
         <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.pruefDatum} onChange={e => set("pruefDatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Prüfintervall</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
+        <div className="space-y-1"><Label className="text-xs">Schutzziel</Label><Input value={form.schutzziel} onChange={e => set("schutzziel", e.target.value)} className="h-8 text-sm" placeholder="Vertraulichkeit, Integrität, Verfügbarkeit" /></div>
+        <div className="space-y-1"><Label className="text-xs">Wirksamkeit</Label><Input value={form.wirksamkeit} onChange={e => set("wirksamkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Dokumentation</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-12" /></div>
       </div>
       <DialogFooter>
         <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
