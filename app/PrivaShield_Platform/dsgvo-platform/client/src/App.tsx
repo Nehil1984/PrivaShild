@@ -405,9 +405,10 @@ function Dashboard() {
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then(r => r.json()),
   });
   const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
+  const richtlinien = dokumente.filter((d: any) => d.kategorie === "richtlinie");
+  const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
   const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
-  const fehlendeLeitlinien = ["leitlinie_datenschutz", "leitlinie_informationssicherheit"].filter((k) => !dokumente.some((d: any) => d.kategorie === k));
   const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
   const reifegradScore = Math.max(0, Math.min(100,
     (activeMandant?.verantwortlicherName ? 15 : 0) +
@@ -415,13 +416,13 @@ function Dashboard() {
     (activeMandant?.itVerantwortlicherName ? 10 : 0) +
     (activeMandant?.isbName ? 10 : 0) +
     (activeMandant?.gruppeId ? 10 : 0) +
-    (leitlinien.length >= 2 ? 15 : leitlinien.length * 7) +
+    (leitlinieVorhanden ? 15 : 0) +
     (stats?.offeneAufgaben === 0 ? 15 : (stats?.offeneAufgaben ?? 0) <= 3 ? 10 : 0) +
     (offeneReviews.length === 0 ? 15 : 5)
   ));
   const complianceKpis = {
     offeneAufgaben: stats?.offeneAufgaben ?? 0,
-    leitlinien: leitlinien.length,
+    leitlinien: leitlinieVorhanden ? 1 : 0,
     reviews: offeneReviews.length,
     kritische: kritischeAufgaben.length,
   };
@@ -477,21 +478,25 @@ function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Leitlinienstatus</CardTitle>
-                <CardDescription>Datenschutz und Informationssicherheit</CardDescription>
+                <CardDescription>Grundsatzdokument für Datenschutz und Informationssicherheit</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <p>Leitlinien vorhanden: <span className="font-medium">{leitlinien.length}</span></p>
-                {leitlinien.length === 0 ? <p className="text-muted-foreground">Noch keine Leitlinien vorhanden.</p> : leitlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)}
+                <p>Leitlinie vorhanden: <span className="font-medium">{leitlinieVorhanden ? "Ja" : "Nein"}</span></p>
+                {leitlinieVorhanden ? (
+                  leitlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)
+                ) : (
+                  <p className="text-muted-foreground">Noch keine Leitlinie vorhanden.</p>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Offene Reviews</CardTitle>
-                <CardDescription>Überfällige oder offene Prüfungen</CardDescription>
+                <CardTitle className="text-sm">Richtlinienstatus</CardTitle>
+                <CardDescription>Vorhandene Richtlinien des aktiven Mandanten</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <p>Reviews offen: <span className="font-medium">{offeneReviews.length}</span></p>
-                {offeneReviews.length === 0 ? <p className="text-muted-foreground">Keine offenen Reviews.</p> : offeneReviews.slice(0, 5).map((a: any) => <p key={a.id} className="text-muted-foreground">{a.titel}</p>)}
+                <p>Richtlinien vorhanden: <span className="font-medium">{richtlinien.length > 0 ? "Ja" : "Nein"}</span></p>
+                {richtlinien.length === 0 ? <p className="text-muted-foreground">Noch keine Richtlinien vorhanden.</p> : richtlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)}
               </CardContent>
             </Card>
           </div>
@@ -502,13 +507,12 @@ function Dashboard() {
               <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {kritischeAufgaben.length === 0 && fehlendeLeitlinien.length === 0 && offeneReviews.length === 0 && (
+              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && (
                 <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
               {offeneReviews.length > 0 && <p className="text-yellow-400">Offene Reviews: {offeneReviews.length}</p>}
-              {fehlendeLeitlinien.includes("leitlinie_datenschutz") && <p className="text-orange-400">Datenschutzleitlinie fehlt.</p>}
-              {fehlendeLeitlinien.includes("leitlinie_informationssicherheit") && <p className="text-orange-400">Informationssicherheitsleitlinie fehlt.</p>}
+              {!leitlinieVorhanden && <p className="text-orange-400">Leitliniendokument für Datenschutz und Informationssicherheit fehlt.</p>}
             </CardContent>
           </Card>
 
@@ -559,7 +563,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 text-sm">
               <div><p className="text-2xl font-bold">{complianceKpis.offeneAufgaben}</p><p className="text-xs text-muted-foreground">offene Aufgaben</p></div>
-              <div><p className="text-2xl font-bold">{complianceKpis.leitlinien}</p><p className="text-xs text-muted-foreground">Leitlinien</p></div>
+              <div><p className="text-2xl font-bold">{complianceKpis.leitlinien ? "Ja" : "Nein"}</p><p className="text-xs text-muted-foreground">Leitlinie vorhanden</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.reviews}</p><p className="text-xs text-muted-foreground">offene Reviews</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.kritische}</p><p className="text-xs text-muted-foreground">kritische Aufgaben</p></div>
             </CardContent>
