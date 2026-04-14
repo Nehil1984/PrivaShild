@@ -1456,6 +1456,7 @@ function DsrForm({ initial, onSave, onCancel }: any) {
 }
 
 function DsrPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("dsr");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -1467,7 +1468,7 @@ function DsrPage() {
   const today = new Date().toISOString().split("T")[0];
   return (
     <MandantGuard>
-      <PageHeader title="Betroffenenrechte / DSR" desc="Tracking von Anfragen gem. Art. 12–22 DSGVO — Frist: 30 Tage"
+      <PageHeader title={t("dsrTitle")} desc={t("dsrDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Anfrage</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
@@ -1638,6 +1639,7 @@ function TomForm({ initial, onSave, onCancel }: any) {
 }
 
 function TomPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("tom");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -1654,7 +1656,7 @@ function TomPage() {
   }, {});
   return (
     <MandantGuard>
-      <PageHeader title="TOM-Katalog" desc="Technische und organisatorische Maßnahmen gem. Art. 32 DSGVO"
+      <PageHeader title={t("tomTitle")} desc={t("tomDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue TOM</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-4">
@@ -1911,6 +1913,7 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
 }
 
 function LoeschkonzeptPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("loeschkonzept");
   const { fristen: gesetzlicheAufbewahrungsfristen } = useComplianceMeta();
   const [modal, setModal] = useState<null | "new" | any>(null);
@@ -1930,7 +1933,7 @@ function LoeschkonzeptPage() {
   ));
   return (
     <MandantGuard>
-      <PageHeader title="Löschkonzept" desc="Löschklassen, Fristen und Übernahme aus dem VVT zu einem operativen Lösch- und Aufbewahrungskonzept"
+      <PageHeader title={t("retentionTitle")} desc={t("retentionDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer Eintrag</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
@@ -1951,6 +1954,7 @@ function LoeschkonzeptPage() {
 }
 
 function AuditsPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("audits");
   const { data: aufgaben = [] } = useModuleData("aufgaben");
   const [modal, setModal] = useState<null | "new" | any>(null);
@@ -1964,7 +1968,7 @@ function AuditsPage() {
   const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + (String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length || 0), 0);
   return (
     <MandantGuard>
-      <PageHeader title="Interne Audits" desc="Planung, Durchführung und Auditprotokolle mit Abweichungen, Findings und To-dos"
+      <PageHeader title={t("auditsTitle")} desc={t("auditsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Audit</Button>} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Audits gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
@@ -2070,6 +2074,7 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
 }
 
 function AufgabenPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("aufgaben");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -2084,7 +2089,7 @@ function AufgabenPage() {
   const filtered = data.filter((a: any) => (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter));
   return (
     <MandantGuard>
-      <PageHeader title="Aufgaben & Maßnahmenplan" desc="Compliance-Aufgaben, Fristen und Verantwortlichkeiten"
+      <PageHeader title={t("tasksTitle")} desc={t("tasksDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Aufgabe</Button>} />
       <div className="flex gap-2 mb-4">
         {["alle", "offen", "in_bearbeitung", "erledigt"].map(f => (
@@ -2765,6 +2770,7 @@ function WebDatenschutzPage() {
 }
 
 function DokumentePage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("dokumente");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -2778,7 +2784,7 @@ function DokumentePage() {
   const filtered = filter === "alle" ? data : data.filter((item: any) => item.kategorie === filter);
   return (
     <MandantGuard>
-      <PageHeader title="Dokumente & Vorlagen" desc="Datenschutzdokumente und Vorlagen des Mandanten"
+      <PageHeader title={t("docsTitle")} desc={t("docsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Dokument</Button>} />
       <div className="flex gap-2 mb-4 flex-wrap">
         {["alle", "leitlinie", "richtlinie", "prozessbeschreibung", "risikobewertung", "verfahrensdokumentation", "vorlage"].map((f) => (
