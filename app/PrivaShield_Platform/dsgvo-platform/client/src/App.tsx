@@ -397,6 +397,7 @@ function MandantGuard({ children }: { children: React.ReactNode }) {
 
 // ─── DASHBOARD ─────────────────────────────────────────────────────────────
 function Dashboard() {
+  const { t } = useI18n();
   const { activeMandantId } = useMandant();
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/stats", activeMandantId],
@@ -494,8 +495,8 @@ function Dashboard() {
   return (
     <div>
       <PageHeader
-        title={activeMandant ? `Dashboard – ${activeMandant.name}` : "Dashboard"}
-        desc="Übersicht aller Datenschutzaktivitäten"
+        title={activeMandant ? `${t("dashboard")} – ${activeMandant.name}` : t("dashboard")}
+        desc={t("dashboardDesc")}
       />
       {!activeMandantId ? (
         <Card className="border-dashed border-border/60">
@@ -2399,9 +2400,9 @@ function BackupsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("backups")} desc="Backup-Rotation, Aufbewahrung und optionale Kennwortverschlüsselung verwalten" />
+      <PageHeader title={t("backups")} desc={t("backupDesc")} />
       <Card>
-        <CardHeader><CardTitle className="text-sm">Backup-Konfiguration</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
           <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.enabled} onChange={e => setForm((p: any) => ({ ...p, enabled: e.target.checked }))} /><span>Automatische Backup-Routine aktivieren</span></label>
           <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>Backups mit Kennwort verschlüsseln</span></label>
@@ -2425,7 +2426,7 @@ function BackupsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">Backup jetzt ausführen</CardTitle><CardDescription>Erstellt bei Bedarf stündliche, tägliche, wöchentliche, monatliche und jährliche Sicherungsstände.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{t("backupRunNow")}</CardTitle><CardDescription>Erstellt bei Bedarf stündliche, tägliche, wöchentliche, monatliche und jährliche Sicherungsstände.</CardDescription></CardHeader>
         <CardContent className="space-y-3 text-sm">
           {form.encrypt && <div className="space-y-1"><Label className="text-xs">Kennwort für verschlüsseltes Backup</Label><Input type="password" value={runPassword} onChange={e => setRunPassword(e.target.value)} className="h-8 text-sm" /></div>}
           <Button size="sm" onClick={() => runMutation.mutate()} className="bg-primary">Backup starten</Button>
@@ -2433,7 +2434,7 @@ function BackupsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">Vorhandene Backups</CardTitle><CardDescription>{(backupsQuery.data || []).length} Sicherungen erkannt</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{t("existingBackups")}</CardTitle><CardDescription>{(backupsQuery.data || []).length} Sicherungen erkannt</CardDescription></CardHeader>
         <CardContent className="space-y-2 text-sm">
           {(backupsQuery.data || []).map((item: any) => (
             <div key={item.fileName} className="rounded-lg border p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -2446,7 +2447,7 @@ function BackupsPage() {
               </div>
             </div>
           ))}
-          {!(backupsQuery.data || []).length && <div className="text-sm text-muted-foreground">Noch keine Backups vorhanden.</div>}
+          {!(backupsQuery.data || []).length && <div className="text-sm text-muted-foreground">{t("noBackups")}</div>}
         </CardContent>
       </Card>
     </div>
@@ -3804,6 +3805,7 @@ const EXPORT_MODULES = [
 ];
 
 function ExportPage() {
+  const { t } = useI18n();
   const { activeMandantId } = useMandant();
   const [selected, setSelected] = useState<Set<string>>(new Set(EXPORT_MODULES.map((m) => m.key)));
 
@@ -3902,11 +3904,10 @@ function ExportPage() {
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <Printer className="h-5 w-5 text-primary" />
-          Export &amp; Druck
+          {t("exportPrint")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Wähle die Module aus, die in der Druckansicht erscheinen sollen.
-          Die Ansicht öffnet sich als neue Seite und kann direkt gedruckt oder als PDF gespeichert werden.
+          {t("selectModulesPrint")} {t("exportDesc")}
         </p>
       </div>
 
@@ -3971,11 +3972,11 @@ function ExportPage() {
       {/* Aktionsleiste */}
       <div className="flex items-center justify-between pt-1">
         <p className="text-xs text-muted-foreground">
-          {selected.size} von {EXPORT_MODULES.length} Modulen ausgewählt
+          {selected.size} / {EXPORT_MODULES.length} {t("modulesSelected")}
         </p>
         <Button onClick={handlePrint} disabled={selected.size === 0} className="gap-2">
           <Printer className="h-4 w-4" />
-          Druckansicht öffnen
+          {t("printOpen")}
         </Button>
       </div>
     </div>
@@ -4230,7 +4231,7 @@ function MandantenOverviewPage() {
   return (
     <MandantGuard>
       <div className="space-y-6">
-        <PageHeader title={t("overview")} desc="Stammdaten, Rollen und Compliance-Status des aktiven Mandanten" />
+        <PageHeader title={t("overview")} desc={t("tenantOverviewDesc")} />
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Konsistenzprüfung</CardTitle>
