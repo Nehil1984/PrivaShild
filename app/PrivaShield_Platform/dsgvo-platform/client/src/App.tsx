@@ -405,7 +405,7 @@ function Dashboard() {
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then(r => r.json()),
   });
-  const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
+  const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
   const richtlinien = dokumente.filter((d: any) => d.kategorie === "richtlinie");
   const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
@@ -1251,16 +1251,27 @@ function AufgabenPage() {
 function DokumentForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", kategorie: "richtlinie", dokumentTyp: "richtlinie", beschreibung: "", version: "1.0", status: "aktiv", gueltigBis: "", verantwortlicher: "", freigegebenVon: "", freigegebenAm: "", naechstePruefungAm: "", inhalt: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const handleKategorieChange = (value: string) => {
+    if (value === "leitlinie") {
+      setForm((p: any) => ({
+        ...p,
+        kategorie: "leitlinie",
+        dokumentTyp: p.dokumentTyp === "richtlinie" ? "leitlinie" : p.dokumentTyp,
+        titel: p.titel || "Leitlinie Datenschutz und Informationssicherheit",
+      }));
+      return;
+    }
+    set("kategorie", value);
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Kategorie</Label>
-          <Select value={form.kategorie} onValueChange={v => set("kategorie", v)}>
+          <Select value={form.kategorie} onValueChange={handleKategorieChange}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="leitlinie_datenschutz">Datenschutzleitlinie</SelectItem>
-              <SelectItem value="leitlinie_informationssicherheit">Informationssicherheitsleitlinie</SelectItem>
+              <SelectItem value="leitlinie">Leitlinie Datenschutz und Informationssicherheit</SelectItem>
               <SelectItem value="richtlinie">Richtlinie</SelectItem>
               <SelectItem value="prozessbeschreibung">Prozessbeschreibung</SelectItem>
               <SelectItem value="risikobewertung">Risikobewertung</SelectItem>
@@ -1485,14 +1496,14 @@ function DokumentePage() {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
-  const catIcons: Record<string, string> = { leitlinie_datenschutz: "🛡️", leitlinie_informationssicherheit: "🔐", richtlinie: "📋", prozessbeschreibung: "🧭", risikobewertung: "⚠️", verfahrensdokumentation: "🗂️", vorlage: "📄", vertrag: "📝", protokoll: "📒", sonstige: "📁" };
+  const catIcons: Record<string, string> = { leitlinie: "🛡️", leitlinie_datenschutz: "🛡️", leitlinie_informationssicherheit: "🛡️", richtlinie: "📋", prozessbeschreibung: "🧭", risikobewertung: "⚠️", verfahrensdokumentation: "🗂️", vorlage: "📄", vertrag: "📝", protokoll: "📒", sonstige: "📁" };
   const filtered = filter === "alle" ? data : data.filter((item: any) => item.kategorie === filter);
   return (
     <MandantGuard>
       <PageHeader title="Dokumente & Vorlagen" desc="Datenschutzdokumente und Vorlagen des Mandanten"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Dokument</Button>} />
       <div className="flex gap-2 mb-4 flex-wrap">
-        {["alle", "leitlinie_datenschutz", "leitlinie_informationssicherheit", "richtlinie", "prozessbeschreibung", "risikobewertung", "verfahrensdokumentation", "vorlage"].map((f) => (
+        {["alle", "leitlinie", "richtlinie", "prozessbeschreibung", "risikobewertung", "verfahrensdokumentation", "vorlage"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 rounded-full text-xs transition-colors ${filter === f ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
             {f === "alle" ? "Alle" : f}
           </button>
