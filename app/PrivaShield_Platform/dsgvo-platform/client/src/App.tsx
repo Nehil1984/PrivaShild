@@ -788,9 +788,9 @@ function VvtForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">{t("vvtTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
               <SelectItem value="personalverwaltung">Personalverwaltung</SelectItem>
               <SelectItem value="bewerbermanagement">Bewerbermanagement</SelectItem>
               <SelectItem value="kundenverwaltung">Kundenverwaltung / CRM</SelectItem>
@@ -805,32 +805,32 @@ function VvtForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1">
           <Label className="text-xs">{t("vvtLegalBasis")}</Label>
           <Select value={form.rechtsgrundlage} onValueChange={v => set("rechtsgrundlage", v)}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("choose")} /></SelectTrigger>
             <SelectContent>{rechtsgrundlagen.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">{t("vvtStatusLabel")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="archiviert">Archiviert</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="aktiv">{t("active")}</SelectItem><SelectItem value="entwurf">{t("draft")}</SelectItem><SelectItem value="archiviert">{t("archived")}</SelectItem></SelectContent>
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">{t("vvtOwner")}</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("vvtOwnerEmail")}</Label><Input type="email" value={form.verantwortlicherEmail || ""} onChange={e => set("verantwortlicherEmail", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("vvtOwnerPhone")}</Label><Input value={form.verantwortlicherTelefon || ""} onChange={e => set("verantwortlicherTelefon", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionPeriod")}</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 3 Jahre" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionClass")}</Label><Input value={form.loeschklasse || ""} onChange={e => set("loeschklasse", e.target.value)} className="h-8 text-sm" placeholder="z. B. LK1 operativ" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionPeriod")}</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder={t("vvtRetentionPeriodPlaceholder")} /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionClass")}</Label><Input value={form.loeschklasse || ""} onChange={e => set("loeschklasse", e.target.value)} className="h-8 text-sm" placeholder={t("vvtRetentionClassPlaceholder")} /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRetentionReason")}</Label><Textarea value={form.aufbewahrungsgrund || ""} onChange={e => set("aufbewahrungsgrund", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataCategories")}</Label><Textarea value={form.datenkategorien} onChange={e => set("datenkategorien", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRecipients")}</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtTomHint")}</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="flex items-center gap-2"><input type="checkbox" id="dsfa" checked={!!form.dsfa} onChange={e => set("dsfa", e.target.checked)} className="rounded" /><Label htmlFor="dsfa" className="text-xs">DSFA erforderlich</Label></div>
-        <div className="flex items-center gap-2"><input type="checkbox" id="dritt" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dritt" className="text-xs">Drittlandtransfer</Label></div>
+        <div className="flex items-center gap-2"><input type="checkbox" id="dsfa" checked={!!form.dsfa} onChange={e => set("dsfa", e.target.checked)} className="rounded" /><Label htmlFor="dsfa" className="text-xs">{t("dsfaRequired")}</Label></div>
+        <div className="flex items-center gap-2"><input type="checkbox" id="dritt" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dritt" className="text-xs">{t("thirdCountryTransfer")}</Label></div>
       </div>
       <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.bezeichnung}>Speichern</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>{t("cancel")}</Button>
+        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.bezeichnung}>{t("save")}</Button>
       </DialogFooter>
     </div>
   );
