@@ -349,6 +349,38 @@ export const requestAuditSchema = insertAuditSchema.omit({ mandantId: true });
 export type InsertAudit = z.infer<typeof insertAuditSchema>;
 export type Audit = typeof audits.$inferSelect;
 
+
+
+// ─── Backup-Konfiguration ───────────────────────────────────────────────────
+export const backupConfig = sqliteTable("backup_config", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  enabled: integer("enabled", { mode: "boolean" }).default(false),
+  backupDir: text("backup_dir"),
+  retentionHourly: integer("retention_hourly").default(24),
+  retentionDaily: integer("retention_daily").default(7),
+  retentionWeekly: integer("retention_weekly").default(4),
+  retentionMonthly: integer("retention_monthly").default(12),
+  retentionYearly: integer("retention_yearly").default(2),
+  encrypt: integer("encrypt", { mode: "boolean" }).default(false),
+  passwordHint: text("password_hint"),
+  updatedAt: text("updated_at").default(new Date().toISOString()),
+});
+export const requestBackupConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  backupDir: z.string().trim().optional(),
+  retention: z.object({
+    hourly: z.number().int().min(1).max(168).optional(),
+    daily: z.number().int().min(1).max(31).optional(),
+    weekly: z.number().int().min(1).max(52).optional(),
+    monthly: z.number().int().min(1).max(120).optional(),
+    yearly: z.number().int().min(1).max(20).optional(),
+  }).optional(),
+  encrypt: z.boolean().optional(),
+  password: z.string().min(8).optional(),
+  passwordHint: z.string().trim().max(200).optional(),
+});
+export type RequestBackupConfig = z.infer<typeof requestBackupConfigSchema>;
+
 // ─── Aufgaben ─────────────────────────────────────────────────────────────────
 export const aufgaben = sqliteTable("aufgaben", {
   id: integer("id").primaryKey({ autoIncrement: true }),

@@ -5,8 +5,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
+import { listBackups, readBackupConfig, runBackupNow, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
-import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
+import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -709,6 +710,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── DB-BACKEND UMSCHALTER (Admin only) ─────────────────────────────────
   app.get("/api/admin/db-config", authMiddleware, adminOnly, (_req, res) => {
     res.json({ backend: readDbBackend() });
+  });
+
+  app.get("/api/admin/backups/config", authMiddleware, adminOnly, (_req, res) => {
+    const cfg = readBackupConfig();
+    res.json({
+      enabled: cfg.enabled,
+      backupDir: cfg.backupDir,
+      retention: cfg.retention,
+      encrypt: cfg.encrypt,
+      passwordConfigured: !!cfg.passwordHash,
+      passwordHint: cfg.passwordHint || "",
+      updatedAt: cfg.updatedAt,
+    });
+  });
+
+  app.post("/api/admin/backups/config", authMiddleware, adminOnly, validateBody(requestBackupConfigSchema as ZodTypeAny), async (req: any, res) => {
+    const cfg = writeBackupConfig(req.body || {});
+    res.json({
+      enabled: cfg.enabled,
+      backupDir: cfg.backupDir,
+      retention: cfg.retention,
+      encrypt: cfg.encrypt,
+      passwordConfigured: !!cfg.passwordHash,
+      passwordHint: cfg.passwordHint || "",
+      updatedAt: cfg.updatedAt,
+    });
+  });
+
+  app.get("/api/admin/backups", authMiddleware, adminOnly, (_req, res) => {
+    res.json(listBackups());
+  });
+
+  app.post("/api/admin/backups/run", authMiddleware, adminOnly, async (req, res) => {
+    try {
+      const result = runBackupNow(req.body?.password);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Backup fehlgeschlagen" });
+    }
   });
 
   app.post("/api/admin/db-config", authMiddleware, adminOnly, (req: any, res) => {

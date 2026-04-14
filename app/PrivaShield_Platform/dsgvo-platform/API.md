@@ -351,3 +351,29 @@ Zusätzliche Meta-API:
   - Schulungsformate
   - Standardintervall in Monaten
   - fachliche Teilmodule
+
+
+## Backup-Routine und Verschlüsselung
+
+Die Plattform unterstützt nun eine serverseitige Backup-Verwaltung mit folgender Aufbewahrungslogik:
+
+- 24 stündliche Backups
+- 7 tägliche Backups
+- 4 wöchentliche Backups
+- 12 monatliche Backups
+- 2 jährliche Backups
+
+### API
+- `GET /api/admin/backups/config` – aktuelle Backup-Konfiguration
+- `POST /api/admin/backups/config` – Backup-Konfiguration speichern
+- `GET /api/admin/backups` – vorhandene Backups auflisten
+- `POST /api/admin/backups/run` – Backup sofort ausführen
+
+### Verschlüsselung
+Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Dateien werden serverseitig mit AES-256-GCM erzeugt. Das Kennwort selbst wird nicht im Klartext gespeichert; in der Konfiguration liegt nur eine abgeleitete Prüfsumme sowie optional ein Kennworthinweis.
+
+### Technische Umsetzung
+- SQLite-Backend: Backup der Datenbankdatei unter `DATABASE_PATH`
+- LowDB-Backend: Backup der JSON-Datei `privashield.json`
+- Standard-Backup-Verzeichnis: `<data>/backups`
+- Die Rotation wird beim Erstellen eines Backups direkt serverseitig durchgesetzt.

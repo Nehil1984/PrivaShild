@@ -26,7 +26,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -204,6 +204,7 @@ const navItems = [
   { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
   { path: "/export", label: "Export / Druck", icon: Printer },
+  { path: "/backups", label: "Backups", icon: Archive },
 ];
 
 const adminNavItems = [
@@ -2322,6 +2323,87 @@ function KiCompliancePage() {
 }
 
 
+
+function BackupsPage() {
+  const { toast } = useToast();
+  const configQuery = useQuery({ queryKey: ["/api/admin/backups/config"], queryFn: () => apiRequest("GET", "/api/admin/backups/config").then(r => r.json()) });
+  const backupsQuery = useQuery({ queryKey: ["/api/admin/backups"], queryFn: () => apiRequest("GET", "/api/admin/backups").then(r => r.json()) });
+  const [form, setForm] = useState<any>(null);
+  const [runPassword, setRunPassword] = useState("");
+
+  useEffect(() => { if (configQuery.data) setForm(configQuery.data); }, [configQuery.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => apiRequest("POST", "/api/admin/backups/config", form).then(r => r.json()),
+    onSuccess: () => { toast({ title: "Backup-Konfiguration gespeichert" }); configQuery.refetch(); },
+    onError: (e: any) => toast({ title: "Fehler", description: e?.message || "Konfiguration konnte nicht gespeichert werden", variant: "destructive" })
+  });
+
+  const runMutation = useMutation({
+    mutationFn: async () => apiRequest("POST", "/api/admin/backups/run", { password: runPassword || undefined }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
+    onSuccess: (data) => { toast({ title: "Backup erstellt", description: `${data.created?.length || 0} Backup-Slots aktualisiert` }); backupsQuery.refetch(); },
+    onError: (e: any) => toast({ title: "Backup fehlgeschlagen", description: e?.message || "Backup konnte nicht erstellt werden", variant: "destructive" })
+  });
+
+  if (!form) return <div className="p-6"><Skeleton className="h-32 w-full" /></div>;
+  const setRetention = (key: string, value: number) => setForm((prev: any) => ({ ...prev, retention: { ...prev.retention, [key]: value } }));
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Backups" desc="Backup-Rotation, Aufbewahrung und optionale Kennwortverschlüsselung verwalten" />
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Backup-Konfiguration</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.enabled} onChange={e => setForm((p: any) => ({ ...p, enabled: e.target.checked }))} /><span>Automatische Backup-Routine aktivieren</span></label>
+          <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>Backups mit Kennwort verschlüsseln</span></label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1"><Label className="text-xs">Backup-Verzeichnis</Label><Input value={form.backupDir || ""} onChange={e => setForm((p: any) => ({ ...p, backupDir: e.target.value }))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Kennworthinweis</Label><Input value={form.passwordHint || ""} onChange={e => setForm((p: any) => ({ ...p, passwordHint: e.target.value }))} placeholder="z. B. interner Safe" className="h-8 text-sm" /></div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="space-y-1"><Label className="text-xs">Stündlich</Label><Input type="number" value={form.retention?.hourly || 24} onChange={e => setRetention("hourly", Number(e.target.value || 24))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Täglich</Label><Input type="number" value={form.retention?.daily || 7} onChange={e => setRetention("daily", Number(e.target.value || 7))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Wöchentlich</Label><Input type="number" value={form.retention?.weekly || 4} onChange={e => setRetention("weekly", Number(e.target.value || 4))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Monatlich</Label><Input type="number" value={form.retention?.monthly || 12} onChange={e => setRetention("monthly", Number(e.target.value || 12))} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Jährlich</Label><Input type="number" value={form.retention?.yearly || 2} onChange={e => setRetention("yearly", Number(e.target.value || 2))} className="h-8 text-sm" /></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1"><Label className="text-xs">Neues Backup-Kennwort</Label><Input type="password" value={form.password || ""} onChange={e => setForm((p: any) => ({ ...p, password: e.target.value }))} placeholder={form.passwordConfigured ? "Kennwort ändern" : "Kennwort setzen"} className="h-8 text-sm" /></div>
+            <div className="flex items-end"><Button size="sm" className="bg-primary" onClick={() => saveMutation.mutate()}>Konfiguration speichern</Button></div>
+          </div>
+          <div className="rounded-lg border p-3 text-xs text-muted-foreground">Automatische Ausführung ist über die API vorbereitet. Für produktive Scheduler-Auslösung kann der Endpunkt zyklisch von Cron oder Container-Scheduler aufgerufen werden. Die Aufbewahrungslogik wird serverseitig strikt angewendet.</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Backup jetzt ausführen</CardTitle><CardDescription>Erstellt bei Bedarf stündliche, tägliche, wöchentliche, monatliche und jährliche Sicherungsstände.</CardDescription></CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {form.encrypt && <div className="space-y-1"><Label className="text-xs">Kennwort für verschlüsseltes Backup</Label><Input type="password" value={runPassword} onChange={e => setRunPassword(e.target.value)} className="h-8 text-sm" /></div>}
+          <Button size="sm" onClick={() => runMutation.mutate()} className="bg-primary">Backup starten</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Vorhandene Backups</CardTitle><CardDescription>{(backupsQuery.data || []).length} Sicherungen erkannt</CardDescription></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {(backupsQuery.data || []).map((item: any) => (
+            <div key={item.fileName} className="rounded-lg border p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div>
+                <div className="font-medium text-foreground">{item.fileName}</div>
+                <div className="text-xs text-muted-foreground">{item.slot} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge value={item.encrypted ? "aktiv" : "entwurf"} className="capitalize" />
+              </div>
+            </div>
+          ))}
+          {!(backupsQuery.data || []).length && <div className="text-sm text-muted-foreground">Noch keine Backups vorhanden.</div>}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function BeschaeftigtenDatenschutzPage() {
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { data: schulungsMeta = [] } = useQuery({
@@ -4204,6 +4286,7 @@ function AppRoutes() {
           <Route path="/benutzer" component={BenutzerPage} />
           <Route path="/system" component={SystemPage} />
           <Route path="/export" component={ExportPage} />
+          <Route path="/backups" component={BackupsPage} />
         </Switch>
       </Layout>
     </MandantCtx.Provider>

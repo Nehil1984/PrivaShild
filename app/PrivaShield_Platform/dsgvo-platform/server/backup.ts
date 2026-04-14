@@ -1,0 +1,248 @@
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
+import { readDbBackend } from "./db-config";
+
+export type BackupRetentionConfig = {
+  hourly: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
+  yearly: number;
+};
+
+export type BackupConfig = {
+  enabled: boolean;
+  backupDir: string;
+  retention: BackupRetentionConfig;
+  encrypt: boolean;
+  passwordHash?: string;
+  passwordHint?: string;
+  updatedAt: string;
+};
+
+export type BackupRecord = {
+  fileName: string;
+  filePath: string;
+  createdAt: string;
+  size: number;
+  encrypted: boolean;
+  slot: "hourly" | "daily" | "weekly" | "monthly" | "yearly";
+  label: string;
+};
+
+const defaultRetention: BackupRetentionConfig = {
+  hourly: 24,
+  daily: 7,
+  weekly: 4,
+  monthly: 12,
+  yearly: 2,
+};
+
+function getDataDir() {
+  return process.env.DATABASE_PATH ? path.dirname(process.env.DATABASE_PATH) : path.resolve("data");
+}
+
+function getBackupDir() {
+  return path.join(getDataDir(), "backups");
+}
+
+function getConfigPath() {
+  return path.join(getBackupDir(), "backup-config.json");
+}
+
+function ensureBackupDir() {
+  fs.mkdirSync(getBackupDir(), { recursive: true });
+}
+
+export function readBackupConfig(): BackupConfig {
+  ensureBackupDir();
+  const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) {
+    const cfg: BackupConfig = {
+      enabled: false,
+      backupDir: getBackupDir(),
+      retention: defaultRetention,
+      encrypt: false,
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), "utf-8");
+    return cfg;
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    return {
+      enabled: !!parsed.enabled,
+      backupDir: parsed.backupDir || getBackupDir(),
+      retention: { ...defaultRetention, ...(parsed.retention || {}) },
+      encrypt: !!parsed.encrypt,
+      passwordHash: parsed.passwordHash || undefined,
+      passwordHint: parsed.passwordHint || "",
+      updatedAt: parsed.updatedAt || new Date().toISOString(),
+    };
+  } catch {
+    return {
+      enabled: false,
+      backupDir: getBackupDir(),
+      retention: defaultRetention,
+      encrypt: false,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+}
+
+export function writeBackupConfig(next: Partial<BackupConfig> & { retention?: Partial<BackupRetentionConfig>; password?: string }) {
+  const current = readBackupConfig();
+  const passwordHash = next.password ? crypto.scryptSync(next.password, "privashield-backup", 32).toString("hex") : current.passwordHash;
+  const cfg: BackupConfig = {
+    ...current,
+    ...next,
+    retention: { ...current.retention, ...(next.retention || {}) },
+    passwordHash,
+    backupDir: next.backupDir || current.backupDir || getBackupDir(),
+    updatedAt: new Date().toISOString(),
+  };
+  delete (cfg as any).password;
+  fs.mkdirSync(cfg.backupDir, { recursive: true });
+  fs.writeFileSync(getConfigPath(), JSON.stringify(cfg, null, 2), "utf-8");
+  return cfg;
+}
+
+function getSourceFile() {
+  const backend = readDbBackend();
+  if (backend === "sqlite") return process.env.DATABASE_PATH || path.resolve("data.db");
+  const dataDir = getDataDir();
+  return path.join(dataDir, "privashield.json");
+}
+
+function startOfDay(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+function weekStart(d: Date) {
+  const day = d.getUTCDay() || 7;
+  const base = startOfDay(d);
+  base.setUTCDate(base.getUTCDate() - (day - 1));
+  return base;
+}
+function monthStart(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+function yearStart(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+}
+
+function buildLabel(slot: BackupRecord["slot"], d: Date) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  if (slot === "hourly") return `${y}${m}${day}-${h}`;
+  if (slot === "daily") return `${y}${m}${day}`;
+  if (slot === "weekly") {
+    const ws = weekStart(d);
+    return `${ws.getUTCFullYear()}-W${String(Math.ceil((((ws.getTime() - Date.UTC(ws.getUTCFullYear(),0,1))/86400000)+1)/7)).padStart(2, "0")}`;
+  }
+  if (slot === "monthly") return `${y}-${m}`;
+  return `${y}`;
+}
+
+function slotMatches(slot: BackupRecord["slot"], createdAt: Date, now: Date) {
+  if (slot === "hourly") return true;
+  if (slot === "daily") return startOfDay(createdAt).getTime() === startOfDay(now).getTime();
+  if (slot === "weekly") return weekStart(createdAt).getTime() === weekStart(now).getTime();
+  if (slot === "monthly") return monthStart(createdAt).getTime() === monthStart(now).getTime();
+  return yearStart(createdAt).getTime() === yearStart(now).getTime();
+}
+
+function encryptBuffer(buffer: Buffer, password: string) {
+  const salt = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12);
+  const key = crypto.scryptSync(password, salt, 32);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([Buffer.from("PSB1"), salt, iv, tag, encrypted]);
+}
+
+function parseFile(filePath: string): BackupRecord | null {
+  const name = path.basename(filePath);
+  const match = /^backup-(hourly|daily|weekly|monthly|yearly)-([^.]+)\.(bak|enc)$/.exec(name);
+  if (!match) return null;
+  const stat = fs.statSync(filePath);
+  return {
+    fileName: name,
+    filePath,
+    createdAt: stat.mtime.toISOString(),
+    size: stat.size,
+    encrypted: match[3] === "enc",
+    slot: match[1] as any,
+    label: match[2],
+  };
+}
+
+export function listBackups(): BackupRecord[] {
+  const cfg = readBackupConfig();
+  fs.mkdirSync(cfg.backupDir, { recursive: true });
+  return fs.readdirSync(cfg.backupDir)
+    .map((f) => parseFile(path.join(cfg.backupDir, f)))
+    .filter(Boolean)
+    .sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))) as BackupRecord[];
+}
+
+function pruneSlot(slot: BackupRecord["slot"], keep: number) {
+  const rows = listBackups().filter((r) => r.slot === slot);
+  const grouped = new Map<string, BackupRecord[]>();
+  for (const row of rows) {
+    const arr = grouped.get(row.label) || [];
+    arr.push(row);
+    grouped.set(row.label, arr);
+  }
+  const labels = Array.from(grouped.keys()).sort().reverse();
+  labels.slice(keep).forEach((label) => {
+    for (const row of grouped.get(label) || []) {
+      if (fs.existsSync(row.filePath)) fs.unlinkSync(row.filePath);
+    }
+  });
+}
+
+export function runBackupNow(passwordOverride?: string) {
+  const cfg = readBackupConfig();
+  const source = getSourceFile();
+  if (!fs.existsSync(source)) throw new Error(`Quelldatei nicht gefunden: ${source}`);
+  fs.mkdirSync(cfg.backupDir, { recursive: true });
+  const now = new Date();
+  const buffer = fs.readFileSync(source);
+  const useEncryption = cfg.encrypt;
+  const password = passwordOverride || undefined;
+  if (useEncryption && !password) throw new Error("Verschlüsselung aktiv, aber kein Kennwort übergeben.");
+  const payload = useEncryption ? encryptBuffer(buffer, password!) : buffer;
+  const ext = useEncryption ? "enc" : "bak";
+
+  const slots: BackupRecord["slot"][] = ["hourly", "daily", "weekly", "monthly", "yearly"];
+  const created: BackupRecord[] = [];
+  for (const slot of slots) {
+    const label = buildLabel(slot, now);
+    const existing = listBackups().find((row) => row.slot === slot && row.label === label);
+    if (existing && slotMatches(slot, new Date(existing.createdAt), now)) continue;
+    const fileName = `backup-${slot}-${label}.${ext}`;
+    const filePath = path.join(cfg.backupDir, fileName);
+    fs.writeFileSync(filePath, payload);
+    const stat = fs.statSync(filePath);
+    created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label });
+  }
+
+  pruneSlot("hourly", cfg.retention.hourly);
+  pruneSlot("daily", cfg.retention.daily);
+  pruneSlot("weekly", cfg.retention.weekly);
+  pruneSlot("monthly", cfg.retention.monthly);
+  pruneSlot("yearly", cfg.retention.yearly);
+
+  return {
+    source,
+    backend: readDbBackend(),
+    encrypted: useEncryption,
+    created,
+    retention: cfg.retention,
+    backups: listBackups(),
+  };
+}
