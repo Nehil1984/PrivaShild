@@ -279,6 +279,17 @@ const MODULES = {
       { key: "status", label: "Status" },
     ],
   },
+  loeschkonzept: {
+    label: "Löschkonzept & Löschklassen",
+    columns: [
+      { key: "bezeichnung", label: "Eintrag" },
+      { key: "loeschklasse", label: "Löschklasse" },
+      { key: "fristKategorie", label: "Fristgruppe" },
+      { key: "aufbewahrungsfrist", label: "Frist" },
+      { key: "loeschverantwortlicher", label: "Löschverantwortlicher" },
+      { key: "status", label: "Status" },
+    ],
+  },
   aufgaben: {
     label: "Aufgaben & Maßnahmenplan",
     columns: [
@@ -433,6 +444,25 @@ function buildAuditSummary(audits, auditTodos) {
     </div>`;
 }
 
+function buildLoeschkonzeptSummary(rows) {
+  if (!rows || rows.length === 0) return "";
+  const red = rows.filter(r => String(r.loeschklasse || "") === "LK5" && (!r.nachweis || !r.kontrolle)).length;
+  const withLegal = rows.filter(r => r.fristKategorie && r.fristKategorie !== "frei").length;
+  const classes = Array.from(new Set(rows.map(r => r.loeschklasse).filter(Boolean)));
+  return `
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Löschkonzept, Löschklassen und Ampelstatus</h2>
+        <span class="badge">${fmt(rows.length)} Einträge</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Übersicht</h3><p><strong>Einträge:</strong> ${fmt(rows.length)}</p><p><strong>Mit gesetzlicher Frist:</strong> ${fmt(withLegal)}</p><p><strong>Kritische Ampelfälle:</strong> ${fmt(red)}</p></div>
+        <div class="info-card"><h3>Löschklassen</h3><p>${classes.length ? classes.map(c => `• ${fmt(c)}`).join("<br>") : "Keine Klassen dokumentiert"}</p></div>
+        <div class="info-card"><h3>Prüfhinweis</h3><p>${red > 0 ? "Es bestehen Einträge mit erhöhtem Prüfbedarf, insbesondere bei LK5 ohne ausreichenden Nachweis oder Kontrolle." : "Keine offensichtlichen kritischen Ampelfälle im Druckkontext erkannt."}</p></div>
+      </div>
+    </div>`;
+}
+
 // ─── API-Abruf ────────────────────────────────────────────────────────────
 // Token aus localStorage holen (App speichert ihn dort)
 const token = localStorage.getItem("privashield_token") ||
@@ -520,6 +550,7 @@ async function render() {
         <p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p>
         <p><strong>Audit-Abweichungen:</strong> ${fmt(config.managementSummary?.auditDeviationCount)}</p>
         <p><strong>Offene Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p>
+        <p><strong>Löschkonzept-Einträge:</strong> ${fmt((dataMap.loeschkonzept || []).length)}</p>
         <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
         <p><strong>Management-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
         <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
@@ -546,6 +577,7 @@ async function render() {
     });
 
     html += buildAuditSummary(config.audits || [], config.auditTodos || []);
+    html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
     html += buildLogsBox(config.logs || []);
 
     html += `
