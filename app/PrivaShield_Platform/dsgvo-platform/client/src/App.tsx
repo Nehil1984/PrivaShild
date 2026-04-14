@@ -2383,6 +2383,45 @@ function KiCompliancePage() {
 
 
 
+
+function InterneNotizenForm({ initial, onSave, onCancel }: any) {
+  const { t } = useI18n();
+  const [form, setForm] = useState({ titel: "", inhalt: "", kategorie: "allgemein", prioritaet: "mittel", exportieren: false, faelligAm: "", ...initial });
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  return <div className="space-y-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="col-span-2 space-y-1"><Label className="text-xs">{t("notesTitle")} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+      <div className="space-y-1"><Label className="text-xs">{t("notesCategory")}</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" /></div>
+      <div className="space-y-1"><Label className="text-xs">{t("notesPriority")}</Label><Select value={form.prioritaet} onValueChange={v => set("prioritaet", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="niedrig">Niedrig</SelectItem><SelectItem value="mittel">Mittel</SelectItem><SelectItem value="hoch">Hoch</SelectItem><SelectItem value="kritisch">Kritisch</SelectItem></SelectContent></Select></div>
+      <div className="space-y-1"><Label className="text-xs">{t("notesDueDate")}</Label><Input type="date" value={form.faelligAm || ""} onChange={e => set("faelligAm", e.target.value)} className="h-8 text-sm" /></div>
+      <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.exportieren} onChange={e => set("exportieren", e.target.checked)} /><Label className="text-xs">{t("notesExport")}</Label></div>
+      <div className="col-span-2 space-y-1"><Label className="text-xs">{t("notesContent")} *</Label><Textarea value={form.inhalt} onChange={e => set("inhalt", e.target.value)} className="text-sm min-h-24" /></div>
+    </div>
+    <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1"><DialogFooter><Button variant="outline" size="sm" onClick={onCancel}>{t("cancel")}</Button><Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel || !form.inhalt}>{t("save")}</Button></DialogFooter></div>
+  </div>;
+}
+
+function InterneNotizenPage() {
+  const { t } = useI18n();
+  const { data, isLoading, create, update, remove } = useModuleData("interne-notizen");
+  const [modal, setModal] = useState<null | "new" | any>(null);
+  const [delId, setDelId] = useState<number | null>(null);
+  const { toast } = useToast();
+  const save = (form: any) => {
+    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Notiz konnte nicht gespeichert werden", variant: "destructive" }));
+  };
+  return <MandantGuard>
+    <PageHeader title={t("internalNotes")} desc={t("internalNotesDesc")} action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />{t("newNote")}</Button>} />
+    {isLoading ? <Skeleton className="h-32 w-full" /> : <div className="space-y-2">
+      {data.map((item: any) => <Card key={item.id}><CardContent className="py-3 px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{item.titel}</p><p className="text-xs text-muted-foreground">{item.kategorie || "allgemein"} · {item.prioritaet}{item.faelligAm ? ` · fällig ${item.faelligAm}` : ""}{item.exportieren ? " · exportiert" : ""}</p><p className="text-sm mt-1 whitespace-pre-wrap">{item.inhalt}</p></div><div className="flex items-center gap-2"><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div></CardContent></Card>)}
+      {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{t("notesEmpty")}</CardContent></Card>}
+    </div>}
+    <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? t("newNote") : t("internalNotes")}</DialogTitle></DialogHeader></div>{modal && <InterneNotizenForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
+    <ConfirmDialog open={delId !== null} title="Notiz löschen?" desc="Dieser Vorgang kann nicht rückgängig gemacht werden." onConfirm={() => { remove.mutate(delId!); setDelId(null); }} onCancel={() => setDelId(null)} />
+  </MandantGuard>;
+}
+
 function BackupsPage() {
   const { toast } = useToast();
   const { t } = useI18n();
@@ -4382,6 +4421,7 @@ function AppRoutes() {
           <Route path="/system" component={SystemPage} />
           <Route path="/export" component={ExportPage} />
           <Route path="/backups" component={BackupsPage} />
+          <Route path="/interne-notizen" component={InterneNotizenPage} />
         </Switch>
       </Layout>
     </MandantCtx.Provider>
