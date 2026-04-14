@@ -1879,8 +1879,16 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
     setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
   const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
+  const classRequirements: Record<string, string[]> = {
+    LK3: ["gesetzlicheFrist", "aufbewahrungsfrist", "nachweis"],
+    LK4: ["loeschereignis", "loeschverantwortlicher"],
+    LK5: ["kontrolle", "nachweis", "loeschverantwortlicher", "systeme"],
+  };
+  const missingRequired = (classRequirements[form.loeschklasse] || []).filter((field) => !String((form as any)[field] || "").trim());
+
   const plausibility = (() => {
     const mapped = gesetzlicheAufbewahrungsfristen.find((x) => x.key === form.fristKategorie);
+    if (missingRequired.length > 0) return { level: "error", text: `Für ${form.loeschklasse} fehlen Pflichtangaben: ${missingRequired.join(", ")}.` };
     if (form.loeschklasse === "LK5" && !form.kontrolle) return { level: "error", text: "Für LK5 sollte eine dokumentierte Kontrolle oder Überwachung hinterlegt sein." };
     if (form.loeschklasse === "LK5" && !form.nachweis) return { level: "error", text: "Für LK5 sollte ein Nachweis oder Löschprotokoll dokumentiert sein." };
     if ((form.fristKategorie === "10_jahre_ao_hgb" || form.fristKategorie === "8_jahre_buchung") && !/jahr/i.test(form.aufbewahrungsfrist || "")) return { level: "error", text: "Die gewählte Fristgruppe erwartet eine mehrjährige steuer- oder handelsrechtliche Aufbewahrungsfrist." };
@@ -1948,6 +1956,7 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
         </div>
         <div className="col-span-2 rounded-lg border border-border/60 px-3 py-2 text-xs text-muted-foreground">
           {klassenHinweis}
+          {missingRequired.length > 0 && <p className="mt-2 text-red-400">Pflichtfelder für {form.loeschklasse}: {missingRequired.join(", ")}</p>}
         </div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
