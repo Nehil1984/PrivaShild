@@ -1812,6 +1812,7 @@ const loeschklassen = [
 ];
 
 function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
+  const { t } = useI18n();
   const { data: vvts = [] } = useModuleData("vvt");
   const { fristen: gesetzlicheAufbewahrungsfristen, vvtLoeschMapping } = useComplianceMeta();
   const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", loeschverantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
@@ -1858,28 +1859,28 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Übernahme aus VVT</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionImportVvt")}</Label>
           <Select value={String(form.quelleVvtId || "none")} onValueChange={importFromVvt}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="VVT auswählen" /></SelectTrigger>
             <SelectContent><SelectItem value="none">Keine VVT-Übernahme</SelectItem>{vvts.map((item:any) => <SelectItem key={item.id} value={String(item.id)}>{item.bezeichnung}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Bezeichnung *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten / Datensätze</Label><Textarea value={form.datenart} onChange={e => set("datenart", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">Löschklasse *</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionName")} *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionDataTypes")}</Label><Textarea value={form.datenart} onChange={e => set("datenart", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionClass")} *</Label>
           <Select value={form.loeschklasse} onValueChange={v => set("loeschklasse", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{loeschklassen.map((k) => <SelectItem key={k.key} value={k.key}>{k.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Fristgruppe / gesetzliche Aufbewahrung</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionPeriodGroup")}</Label>
           <Select value={form.fristKategorie || "frei"} onValueChange={applyFristKategorie}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{gesetzlicheAufbewahrungsfristen.map((item: any) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Aufbewahrungsfrist</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 10 Jahre oder 6 Monate" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Gesetzliche Frist / Referenz</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionPeriod")}</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 10 Jahre oder 6 Monate" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionLegalRef")}</Label>
           <Select value={form.gesetzlicheFrist || (selectedFrist.referenzen?.[0] || "Freie Eingabe / interne Vorgabe")} onValueChange={v => set("gesetzlicheFrist", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1887,13 +1888,13 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Löschereignis / Trigger</Label><Textarea value={form.loeschereignis} onChange={e => set("loeschereignis", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">Rechtsgrundlage / Normbezug</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Fachlich Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Löschverantwortlicher</Label><Input value={form.loeschverantwortlicher || ""} onChange={e => set("loeschverantwortlicher", e.target.value)} className="h-8 text-sm" placeholder="z. B. HR, IT, Buchhaltung" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Systeme / Speicherorte</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Kontrolle / Überwachung</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Löschprotokoll</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionTrigger")}</Label><Textarea value={form.loeschereignis} onChange={e => set("loeschereignis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionLegalBasis")}</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionOwner")}</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("retentionDeleteOwner")}</Label><Input value={form.loeschverantwortlicher || ""} onChange={e => set("loeschverantwortlicher", e.target.value)} className="h-8 text-sm" placeholder="z. B. HR, IT, Buchhaltung" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionSystems")}</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionControl")}</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("retentionEvidence")}</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className={`col-span-2 rounded-lg border px-3 py-2 text-xs ${plausibility.level === "ok" ? "border-emerald-500/30 text-emerald-400" : plausibility.level === "warn" ? "border-yellow-500/30 text-yellow-400" : plausibility.level === "error" ? "border-red-500/30 text-red-400" : "border-blue-500/30 text-blue-400"}`}>
           {plausibility.level === "ok" ? "Ampel Grün" : plausibility.level === "warn" ? "Ampel Gelb" : plausibility.level === "error" ? "Ampel Rot" : "Hinweis"} , {plausibility.text}
         </div>
