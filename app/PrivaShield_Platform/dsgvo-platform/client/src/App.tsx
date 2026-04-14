@@ -959,6 +959,7 @@ const avvTemplates: Record<string, any> = {
 };
 
 function AvvForm({ initial, onSave, onCancel }: any) {
+  const { t } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: "", pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -972,7 +973,7 @@ function AvvForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Muster-Auftragsverarbeiter</Label>
+          <Label className="text-xs">{t("avvTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
             <SelectContent>
@@ -985,28 +986,28 @@ function AvvForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Auftragsverarbeiter *</Label><Input value={form.auftragsverarbeiter} onChange={e => set("auftragsverarbeiter", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Gegenstand</Label><Input value={form.gegenstand} onChange={e => set("gegenstand", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Vertragsdatum</Label><Input type="date" value={form.vertragsdatum} onChange={e => set("vertragsdatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Laufzeit</Label><Input value={form.laufzeit} onChange={e => set("laufzeit", e.target.value)} className="h-8 text-sm" placeholder="z. B. unbefristet" /></div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvProcessor")} *</Label><Input value={form.auftragsverarbeiter} onChange={e => set("auftragsverarbeiter", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvSubject")}</Label><Input value={form.gegenstand} onChange={e => set("gegenstand", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvContractDate")}</Label><Input type="date" value={form.vertragsdatum} onChange={e => set("vertragsdatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvTerm")}</Label><Input value={form.laufzeit} onChange={e => set("laufzeit", e.target.value)} className="h-8 text-sm" placeholder="z. B. unbefristet" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvStatusLabel")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="gekündigt">Gekündigt</SelectItem><SelectItem value="abgelaufen">Abgelaufen</SelectItem></SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">AV-Kontaktperson</Label><Input value={form.avKontaktName || ""} onChange={e => set("avKontaktName", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">AV-Kontakt E-Mail</Label><Input type="email" value={form.avKontaktEmail || ""} onChange={e => set("avKontaktEmail", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">AV-Kontakt Telefon</Label><Input value={form.avKontaktTelefon || ""} onChange={e => set("avKontaktTelefon", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.pruefFaellig} onChange={e => set("pruefFaellig", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Prüfintervall</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvContactName")}</Label><Input value={form.avKontaktName || ""} onChange={e => set("avKontaktName", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvContactEmail")}</Label><Input type="email" value={form.avKontaktEmail || ""} onChange={e => set("avKontaktEmail", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvContactPhone")}</Label><Input value={form.avKontaktTelefon || ""} onChange={e => set("avKontaktTelefon", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvNextReview")}</Label><Input type="date" value={form.pruefFaellig} onChange={e => set("pruefFaellig", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvReviewInterval")}</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
         <div className="flex items-center gap-2 col-span-2"><input type="checkbox" id="sccs" checked={!!form.sccs} onChange={e => set("sccs", e.target.checked)} className="rounded" /><Label htmlFor="sccs" className="text-xs">EU-Standardvertragsklauseln (SCCs) vorhanden</Label></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Technische und organisatorische Maßnahmen</Label><Textarea value={form.technischeMassnahmen} onChange={e => set("technischeMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Genehmigte Subdienstleister</Label><Textarea value={form.genehmigteSubdienstleister || ""} onChange={e => set("genehmigteSubdienstleister", e.target.value)} className="text-sm min-h-12" placeholder="z. B. Rechenzentrum XY, Mailgateway Z" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Hinweis zu Subauftragsverarbeitern</Label><Textarea value={form.subauftragnehmerHinweis} onChange={e => set("subauftragnehmerHinweis", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvDataTypes")}</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvToms")}</Label><Textarea value={form.technischeMassnahmen} onChange={e => set("technischeMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvApprovedSubprocessors")}</Label><Textarea value={form.genehmigteSubdienstleister || ""} onChange={e => set("genehmigteSubdienstleister", e.target.value)} className="text-sm min-h-12" placeholder="z. B. Rechenzentrum XY, Mailgateway Z" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvSubprocessorNote")}</Label><Textarea value={form.subauftragnehmerHinweis} onChange={e => set("subauftragnehmerHinweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvNotes")}</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-16" /></div>
       </div>
       <DialogFooter>
         <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
