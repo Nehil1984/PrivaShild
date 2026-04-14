@@ -1879,6 +1879,13 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
     setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
   const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
+  const plausibility = (() => {
+    const mapped = gesetzlicheAufbewahrungsfristen.find((x) => x.key === form.fristKategorie);
+    if (!mapped || mapped.key === "frei") return { level: "info", text: "Freie Frist gewählt, bitte fachlich begründen." };
+    if (!form.aufbewahrungsfrist) return { level: "warn", text: "Zur Fristgruppe fehlt eine konkrete Aufbewahrungsfrist." };
+    if (mapped.frist && form.aufbewahrungsfrist !== mapped.frist) return { level: "warn", text: `Die manuelle Frist (${form.aufbewahrungsfrist}) weicht von der Fristgruppe (${mapped.frist}) ab.` };
+    return { level: "ok", text: "Fristgruppe und Aufbewahrungsfrist wirken plausibel." };
+  })();
   const importFromVvt = (value: string) => {
     set("quelleVvtId", value);
     if (value === "none") return;
@@ -1926,6 +1933,9 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Systeme / Speicherorte</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Kontrolle / Überwachung</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Löschprotokoll</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className={`col-span-2 rounded-lg border px-3 py-2 text-xs ${plausibility.level === "ok" ? "border-emerald-500/30 text-emerald-400" : plausibility.level === "warn" ? "border-yellow-500/30 text-yellow-400" : "border-blue-500/30 text-blue-400"}`}>
+          {plausibility.level === "ok" ? "Ampel Grün" : plausibility.level === "warn" ? "Ampel Gelb" : "Hinweis"} , {plausibility.text}
+        </div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
         <DialogFooter>
