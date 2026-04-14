@@ -725,8 +725,9 @@ function VvtForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = vvtTemplates[value];
@@ -915,8 +916,9 @@ function AvvForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = avvTemplates[value];
@@ -1085,8 +1087,9 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = dsfaTemplates[value];
@@ -1261,8 +1264,9 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = datenpannenTemplates[value];
@@ -1392,8 +1396,9 @@ function DsrForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1553,8 +1558,9 @@ function TomForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = tomTemplates[value];
@@ -1720,8 +1726,9 @@ function AuditForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = auditTemplates[value];
@@ -1788,26 +1795,81 @@ const loeschklassen = [
 ];
 
 const gesetzlicheAufbewahrungsfristen = [
-  { key: "frei", label: "Freie / manuelle Frist", frist: "", hinweis: "Individuelle Eingabe ohne gesetzliche Vorbelegung" },
-  { key: "6_monate_bewerber", label: "6 Monate, Bewerbungsverfahren", frist: "6 Monate", hinweis: "Regelmäßig für abgelehnte Bewerbungen nach AGG-Verteidigungsinteresse" },
-  { key: "2_jahre_handelsbriefe", label: "2 Jahre, steuerlich relevante Unterlagen bei Überschusseinkünften", frist: "2 Jahre", hinweis: "Sonderfall nach Steuerrecht" },
-  { key: "3_jahre_regel", label: "3 Jahre, regelmäßige Verjährung", frist: "3 Jahre", hinweis: "Typisch für zivilrechtliche Nachweis- und Abwehrinteressen" },
-  { key: "5_jahre_gw", label: "5 Jahre, Geldwäsche- und Sanktionsunterlagen", frist: "5 Jahre", hinweis: "Regelmäßig nach GwG, teils Verlängerungsoptionen" },
-  { key: "6_jahre_hgb", label: "6 Jahre, Handels- und Geschäftsbriefe", frist: "6 Jahre", hinweis: "§ 257 HGB, § 147 AO für bestimmte Unterlagen" },
-  { key: "8_jahre_buchung", label: "8 Jahre, Buchungsbelege", frist: "8 Jahre", hinweis: "Aktuelle steuerrechtliche Aufbewahrung für Buchungsbelege" },
-  { key: "10_jahre_ao_hgb", label: "10 Jahre, Buchführungs- und Steuerunterlagen", frist: "10 Jahre", hinweis: "§ 147 AO, § 257 HGB für Bücher, Inventare, Abschlüsse usw." },
-  { key: "30_jahre_titel", label: "30 Jahre, titulierte Forderungen / bestimmte Spezialunterlagen", frist: "30 Jahre", hinweis: "Nur für besondere Fallgruppen" },
+  {
+    key: "frei",
+    label: "Freie / manuelle Frist",
+    frist: "",
+    referenzen: ["Freie Eingabe / interne Vorgabe"],
+    hinweis: "Individuelle Eingabe ohne gesetzliche Vorbelegung"
+  },
+  {
+    key: "6_monate_bewerber",
+    label: "6 Monate, Bewerbungsverfahren",
+    frist: "6 Monate",
+    referenzen: ["§ 15 Abs. 4 AGG / Verteidigung gegen AGG-Ansprüche"],
+    hinweis: "Regelmäßig für abgelehnte Bewerbungen nach AGG-Verteidigungsinteresse"
+  },
+  {
+    key: "2_jahre_handelsbriefe",
+    label: "2 Jahre, steuerliche Sonderfälle",
+    frist: "2 Jahre",
+    referenzen: ["§ 147a AO in Sonderkonstellationen"],
+    hinweis: "Sonderfall nach Steuerrecht"
+  },
+  {
+    key: "3_jahre_regel",
+    label: "3 Jahre, regelmäßige Verjährung",
+    frist: "3 Jahre",
+    referenzen: ["§§ 195, 199 BGB"],
+    hinweis: "Typisch für zivilrechtliche Nachweis- und Abwehrinteressen"
+  },
+  {
+    key: "5_jahre_gw",
+    label: "5 Jahre, Geldwäsche- und Sanktionsunterlagen",
+    frist: "5 Jahre",
+    referenzen: ["§ 8 GwG"],
+    hinweis: "Regelmäßig nach GwG, teils Verlängerungsoptionen"
+  },
+  {
+    key: "6_jahre_hgb",
+    label: "6 Jahre, Handels- und Geschäftsbriefe",
+    frist: "6 Jahre",
+    referenzen: ["§ 257 Abs. 1 Nr. 2 und 3 HGB", "§ 147 Abs. 1 Nr. 2, 3, 5 AO"],
+    hinweis: "Geschäftsbriefe und sonstige relevante Unterlagen"
+  },
+  {
+    key: "8_jahre_buchung",
+    label: "8 Jahre, Buchungsbelege",
+    frist: "8 Jahre",
+    referenzen: ["§ 147 Abs. 3 AO"],
+    hinweis: "Aktuelle steuerrechtliche Aufbewahrung für Buchungsbelege"
+  },
+  {
+    key: "10_jahre_ao_hgb",
+    label: "10 Jahre, Buchführungs- und Steuerunterlagen",
+    frist: "10 Jahre",
+    referenzen: ["§ 257 Abs. 1 Nr. 1 und 4 HGB", "§ 147 Abs. 1 Nr. 1, 4, 4a AO"],
+    hinweis: "Bücher, Inventare, Abschlüsse, Lageberichte, Verfahrensdoku"
+  },
+  {
+    key: "30_jahre_titel",
+    label: "30 Jahre, titulierte Forderungen / Spezialfälle",
+    frist: "30 Jahre",
+    referenzen: ["§ 197 BGB"],
+    hinweis: "Nur für besondere Fallgruppen"
+  },
 ];
 
 function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   const { data: vvts = [] } = useModuleData("vvt");
-  const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
+  const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", loeschverantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const importFromVvt = (value: string) => {
     set("quelleVvtId", value);
     if (value === "none") return;
@@ -1839,10 +1901,18 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">Aufbewahrungsfrist</Label><Input value={form.aufbewahrungsfrist} onChange={e => set("aufbewahrungsfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 10 Jahre oder 6 Monate" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Gesetzliche Frist / Referenz</Label><Input value={form.gesetzlicheFrist || ""} onChange={e => set("gesetzlicheFrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. § 147 AO / § 257 HGB" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Gesetzliche Frist / Referenz</Label>
+          <Select value={form.gesetzlicheFrist || (selectedFrist.referenzen?.[0] || "Freie Eingabe / interne Vorgabe")} onValueChange={v => set("gesetzlicheFrist", v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(selectedFrist.referenzen || ["Freie Eingabe / interne Vorgabe"]).map((ref) => <SelectItem key={ref} value={ref}>{ref}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Löschereignis / Trigger</Label><Textarea value={form.loeschereignis} onChange={e => set("loeschereignis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="space-y-1"><Label className="text-xs">Rechtsgrundlage / Normbezug</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Fachlich Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Löschverantwortlicher</Label><Input value={form.loeschverantwortlicher || ""} onChange={e => set("loeschverantwortlicher", e.target.value)} className="h-8 text-sm" placeholder="z. B. HR, IT, Buchhaltung" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Systeme / Speicherorte</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Kontrolle / Überwachung</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Löschprotokoll</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
@@ -1877,7 +1947,7 @@ function LoeschkonzeptPage() {
             {gesetzlicheAufbewahrungsfristen.filter((f) => f.key !== "frei").slice(0,3).map((f) => <Card key={f.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fristgruppe</p><p className="text-sm font-semibold">{f.frist}</p><p className="text-xs text-muted-foreground mt-1">{f.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.fristKategorie === f.key).length}</p></CardContent></Card>)}
           </div>
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch kein Löschkonzept dokumentiert.</CardContent></Card>}
-          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
+          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p><p className="font-medium mt-3 mb-1">Löschverantwortlicher</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschverantwortlicher || item.verantwortlicher || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer Löschkonzept-Eintrag" : "Löschkonzept bearbeiten"}</DialogTitle></DialogHeader></div>{modal && <LoeschkonzeptForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
@@ -1963,8 +2033,9 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2095,8 +2166,9 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const handleKategorieChange = (value: string) => {
     if (value === "leitlinie") {
       setForm((p: any) => ({
@@ -2594,8 +2666,9 @@ function MandantenPage() {
   const applyFristKategorie = (value: string) => {
     const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
     if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
   };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
 
   const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
   const openEdit = (m: any) => {

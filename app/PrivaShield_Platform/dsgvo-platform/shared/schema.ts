@@ -304,6 +304,7 @@ export const loeschkonzept = sqliteTable("loeschkonzept", {
   rechtsgrundlage: text("rechtsgrundlage"),
   systeme: text("systeme"),
   verantwortlicher: text("verantwortlicher"),
+  loeschverantwortlicher: text("loeschverantwortlicher"),
   kontrolle: text("kontrolle"),
   nachweis: text("nachweis"),
   status: text("status").default("aktiv"),
