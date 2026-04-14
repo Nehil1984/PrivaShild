@@ -303,26 +303,22 @@ Die wichtigsten neuen Fachmodule sind API-seitig vorhanden:
 ### Aktueller technischer Befund
 Die API-Struktur ist grundsätzlich konsistent aufgebaut, weil sie weitgehend über die generische `crudRoutes(...)`-Factory läuft.
 
-### Sinnvolle nächste API-Ergänzungen
-Ich empfehle als nächste sinnvolle Ausbaustufe:
+### Meta- und Hilfs-APIs
 
 1. **GET `/api/meta/loeschfristen`**
-   - liefert Fristgruppen + gesetzliche Referenzen zentral aus dem Backend
-   - Vorteil: Frontend muss diese Listen nicht hart codieren
+   - liefert Fristgruppen, Standardfristen und gesetzliche Referenzen zentral aus dem Backend
 
 2. **GET `/api/meta/branchen`**
-   - liefert Standard-Branchenliste für Mandantenmaske
+   - liefert Standard-Branchen für Mandantenanlage und Pflege
 
 3. **GET `/api/meta/vvt-loeschmapping`**
-   - liefert die Zuordnung von VVT-Typen zu Löschklasse/Fristgruppe
-   - Vorteil: fachliche Regeln liegen zentral im Backend
+   - liefert die fachliche Zuordnung von VVT-Mustern zu Löschklasse, Fristgruppe und Referenz
 
 4. **POST `/api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId`**
-   - expliziter Backend-Endpunkt zur Übernahme eines VVT in das Löschkonzept
-   - aktuell erfolgt die Vorschlagslogik im Frontend
+   - erzeugt einen serverseitigen Löschkonzept-Draft aus einem vorhandenen VVT-Eintrag
 
 5. **GET `/api/mandanten/:mid/export-context`**
-   - zentrale Sammel-API für Export/Druck statt vieler Einzelabfragen im Frontend
+   - zentrale Sammel-API für Export-/Druckkontexte mit Mandant, Logs, Stats und Modul-Daten
 
 ---
 
