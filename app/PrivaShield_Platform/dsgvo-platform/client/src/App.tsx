@@ -407,6 +407,8 @@ function Dashboard() {
   });
   const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
   const richtlinien = dokumente.filter((d: any) => d.kategorie === "richtlinie");
+  const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
+  const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
   const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
   const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
@@ -508,12 +510,14 @@ function Dashboard() {
               <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && (
+              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && (
                 <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
               {offeneReviews.length > 0 && <p className="text-yellow-400">Offene Reviews: {offeneReviews.length}</p>}
               {!leitlinieVorhanden && <p className="text-orange-400">Leitliniendokument für Datenschutz und Informationssicherheit fehlt.</p>}
+              {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
+              {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
             </CardContent>
           </Card>
 
@@ -1378,6 +1382,13 @@ function WebDatenschutzPage() {
   const setNotice = (key: string, value: any) => setNoticeForm((prev: any) => ({ ...prev, [key]: value }));
   const toggleGroup = (key: string) => setNoticeForm((prev: any) => ({ ...prev, groups: { ...prev.groups, [key]: !prev.groups[key] } }));
 
+  const websiteChecks = [websiteForm.consentTool, websiteForm.datenschutzerklaerungGeprueft, websiteForm.impressumGeprueft];
+  const websiteDone = websiteChecks.filter(Boolean).length;
+  const websiteStatus = websiteDone === websiteChecks.length ? { label: "Vollständig", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" } : websiteDone > 0 ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" } : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+  const selectedGroupCount = Object.values(noticeForm.groups || {}).filter(Boolean).length;
+  const noticeDistributionCount = [noticeForm.distributionEmail, noticeForm.distributionQr, noticeForm.websiteSubpage].filter(Boolean).length;
+  const noticeStatus = selectedGroupCount > 0 && noticeDistributionCount > 0 ? { label: "Vollständig", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" } : selectedGroupCount > 0 || noticeDistributionCount > 0 ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" } : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+
   return (
     <MandantGuard>
       <div className="space-y-6">
@@ -1385,8 +1396,13 @@ function WebDatenschutzPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Webseite: Datenschutzerklärung & Impressum</CardTitle>
-            <CardDescription>Prüfkriterien für die öffentliche Webseite des Mandanten</CardDescription>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm">Webseite: Datenschutzerklärung & Impressum</CardTitle>
+                <CardDescription>Prüfkriterien für die öffentliche Webseite des Mandanten</CardDescription>
+              </div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${websiteStatus.cls}`}>{websiteStatus.label}</span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentTool} onChange={e => setWebsite("consentTool", e.target.checked)} className="rounded" /><span>Consent-Tool vorhanden und geprüft</span></label>
@@ -1396,6 +1412,7 @@ function WebDatenschutzPage() {
               <Label className="text-xs">Empfohlener Pfad der Datenschutz-Unterseite</Label>
               <Input value={websiteForm.privacyPagePath || ""} onChange={e => setWebsite("privacyPagePath", e.target.value)} className="h-8 text-sm" placeholder="/ds" />
             </div>
+            <p className="text-xs text-muted-foreground">Erfüllte Prüfpunkte: {websiteDone} / {websiteChecks.length}</p>
             <div className="space-y-1">
               <Label className="text-xs">Notizen</Label>
               <Textarea value={websiteForm.notes || ""} onChange={e => setWebsite("notes", e.target.value)} className="text-sm min-h-20" />
@@ -1406,8 +1423,13 @@ function WebDatenschutzPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Datenschutzhinweise für Personengruppen</CardTitle>
-            <CardDescription>Prüfung für Betroffene, Interessenten, Bewerber, Lieferanten und weitere Gruppen</CardDescription>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm">Datenschutzhinweise für Personengruppen</CardTitle>
+                <CardDescription>Prüfung für Betroffene, Interessenten, Bewerber, Lieferanten und weitere Gruppen</CardDescription>
+              </div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${noticeStatus.cls}`}>{noticeStatus.label}</span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="space-y-1">
@@ -1440,6 +1462,7 @@ function WebDatenschutzPage() {
               <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!noticeForm.distributionQr} onChange={e => setNotice("distributionQr", e.target.checked)} className="rounded" /><span>Per QR-Code erreichbar</span></label>
               <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!noticeForm.websiteSubpage} onChange={e => setNotice("websiteSubpage", e.target.checked)} className="rounded" /><span>Auf Webseite als Unterseite `/ds` eingebunden</span></label>
             </div>
+            <p className="text-xs text-muted-foreground">Ausgewählte Personengruppen: {selectedGroupCount} · Ausspielwege aktiv: {noticeDistributionCount}</p>
             <div className="space-y-1">
               <Label className="text-xs">Notizen</Label>
               <Textarea value={noticeForm.notes || ""} onChange={e => setNotice("notes", e.target.value)} className="text-sm min-h-20" />
