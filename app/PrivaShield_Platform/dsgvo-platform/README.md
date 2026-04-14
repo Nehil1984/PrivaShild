@@ -1,5 +1,15 @@
 # dsgvo-platform
 
+## Lizenz
+
+Dieses Projekt steht unter der **Apache License 2.0**.
+
+- SPDX: `Apache-2.0`
+- Volltext der Lizenz: `LICENSE.md`
+- Offizielle Quelle: <https://www.apache.org/licenses/LICENSE-2.0>
+
+Die Software wird unter den Bedingungen der Apache License 2.0 bereitgestellt, einschließlich der dort geregelten Hinweise zu Nutzung, Weitergabe, Änderung, Patentlizenz und Haftungsausschluss.
+
 ## Unraid Schnellstart
 
 Für Unraid liegen drei passende Artefakte im Repository:

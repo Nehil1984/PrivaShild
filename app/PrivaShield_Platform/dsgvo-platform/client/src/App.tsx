@@ -1,4 +1,5 @@
 import { Switch, Route, Router, useLocation, Link } from "wouter";
+import licenseText from "./assets/LICENSE.md?raw";
 import { useHashLocation } from "wouter/use-hash-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -3596,6 +3597,10 @@ function SystemPage() {
             <span className="font-mono">1.0.0</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-muted-foreground">Lizenz</span>
+            <span className="font-mono">Apache-2.0</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-muted-foreground">Stack</span>
             <span className="font-mono">Express · React · Drizzle · lowdb</span>
           </div>
@@ -3607,6 +3612,21 @@ function SystemPage() {
             <span className="text-muted-foreground">Aktives Backend</span>
             <Badge variant="outline" className="font-mono">{current}</Badge>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-primary" />
+            Lizenztext, Apache License 2.0
+          </CardTitle>
+          <CardDescription>
+            Aktueller Lizenztext der Anwendung in Markdown-Form.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground">{licenseText}</pre>
         </CardContent>
       </Card>
     </div>
