@@ -1881,10 +1881,20 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const plausibility = (() => {
     const mapped = gesetzlicheAufbewahrungsfristen.find((x) => x.key === form.fristKategorie);
+    if (form.loeschklasse === "LK5" && !form.kontrolle) return { level: "error", text: "Für LK5 sollte eine dokumentierte Kontrolle oder Überwachung hinterlegt sein." };
+    if (form.loeschklasse === "LK5" && !form.nachweis) return { level: "error", text: "Für LK5 sollte ein Nachweis oder Löschprotokoll dokumentiert sein." };
+    if ((form.fristKategorie === "10_jahre_ao_hgb" || form.fristKategorie === "8_jahre_buchung") && !/jahr/i.test(form.aufbewahrungsfrist || "")) return { level: "error", text: "Die gewählte Fristgruppe erwartet eine mehrjährige steuer- oder handelsrechtliche Aufbewahrungsfrist." };
+    if (form.fristKategorie === "6_monate_bewerber" && !/monat/i.test(form.aufbewahrungsfrist || "")) return { level: "error", text: "Für Bewerberdaten sollte die Frist typischerweise in Monaten angegeben werden." };
     if (!mapped || mapped.key === "frei") return { level: "info", text: "Freie Frist gewählt, bitte fachlich begründen." };
     if (!form.aufbewahrungsfrist) return { level: "warn", text: "Zur Fristgruppe fehlt eine konkrete Aufbewahrungsfrist." };
     if (mapped.frist && form.aufbewahrungsfrist !== mapped.frist) return { level: "warn", text: `Die manuelle Frist (${form.aufbewahrungsfrist}) weicht von der Fristgruppe (${mapped.frist}) ab.` };
     return { level: "ok", text: "Fristgruppe und Aufbewahrungsfrist wirken plausibel." };
+  })();
+  const klassenHinweis = (() => {
+    if (form.loeschklasse === "LK5") return "LK5: erhöhte Anforderungen an Nachweis, Kontrolle und dokumentierte Verantwortlichkeit.";
+    if (form.loeschklasse === "LK4") return "LK4: Personal- und Bewerberdaten sollten mit klaren Triggern und Rollenzuordnung dokumentiert werden.";
+    if (form.loeschklasse === "LK3") return "LK3: Handels- und Steuerdaten regelmäßig an AO/HGB-Fristen ausrichten.";
+    return "Löschklasse dokumentiert den Schutz- und Aufbewahrungskontext der Daten.";
   })();
   const importFromVvt = (value: string) => {
     set("quelleVvtId", value);
@@ -1933,8 +1943,11 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Systeme / Speicherorte</Label><Textarea value={form.systeme} onChange={e => set("systeme", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Kontrolle / Überwachung</Label><Textarea value={form.kontrolle} onChange={e => set("kontrolle", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Löschprotokoll</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className={`col-span-2 rounded-lg border px-3 py-2 text-xs ${plausibility.level === "ok" ? "border-emerald-500/30 text-emerald-400" : plausibility.level === "warn" ? "border-yellow-500/30 text-yellow-400" : "border-blue-500/30 text-blue-400"}`}>
-          {plausibility.level === "ok" ? "Ampel Grün" : plausibility.level === "warn" ? "Ampel Gelb" : "Hinweis"} , {plausibility.text}
+        <div className={`col-span-2 rounded-lg border px-3 py-2 text-xs ${plausibility.level === "ok" ? "border-emerald-500/30 text-emerald-400" : plausibility.level === "warn" ? "border-yellow-500/30 text-yellow-400" : plausibility.level === "error" ? "border-red-500/30 text-red-400" : "border-blue-500/30 text-blue-400"}`}>
+          {plausibility.level === "ok" ? "Ampel Grün" : plausibility.level === "warn" ? "Ampel Gelb" : plausibility.level === "error" ? "Ampel Rot" : "Hinweis"} , {plausibility.text}
+        </div>
+        <div className="col-span-2 rounded-lg border border-border/60 px-3 py-2 text-xs text-muted-foreground">
+          {klassenHinweis}
         </div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
