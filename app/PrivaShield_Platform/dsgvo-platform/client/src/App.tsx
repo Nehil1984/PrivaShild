@@ -590,7 +590,7 @@ function Dashboard() {
               <CardTitle className="text-sm">Management-KPIs</CardTitle>
               <CardDescription>Verdichtete Kennzahlen zur Steuerung</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 text-sm">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div><p className="text-2xl font-bold">{complianceKpis.offeneAufgaben}</p><p className="text-xs text-muted-foreground">offene Aufgaben</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.leitlinien ? "Ja" : "Nein"}</p><p className="text-xs text-muted-foreground">Leitlinie vorhanden</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.reviews}</p><p className="text-xs text-muted-foreground">offene Reviews</p></div>
@@ -729,7 +729,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Muster-Verarbeitungstätigkeit</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -797,7 +797,7 @@ function VvtPage() {
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
           {data.map((item: any) => (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <FileText className="h-4 w-4 text-teal-400 shrink-0" />
                   <div className="min-w-0">
@@ -805,7 +805,7 @@ function VvtPage() {
                     <p className="text-xs text-muted-foreground truncate">{item.rechtsgrundlage || "Keine Rechtsgrundlage"}{item.dsfa ? " · DSFA erforderlich" : ""}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                   {item.drittlandtransfer && <Badge variant="outline" className="text-xs">Drittland</Badge>}
                   <StatusBadge value={item.status} />
                   <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -910,7 +910,7 @@ function AvvForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Muster-Auftragsverarbeiter</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -970,7 +970,7 @@ function AvvPage() {
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine AVV-Verträge vorhanden.</CardContent></Card>}
           {data.map((item: any) => (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <Shield className="h-4 w-4 text-blue-400 shrink-0" />
                   <div className="min-w-0">
@@ -978,7 +978,7 @@ function AvvPage() {
                     <p className="text-xs text-muted-foreground">{item.gegenstand || "—"}{item.vertragsdatum ? ` · ${item.vertragsdatum}` : ""}{item.sccs ? " · SCCs vorhanden" : ""}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                   <StatusBadge value={item.status} />
                   <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -989,7 +989,7 @@ function AvvPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer AVV" : "AVV bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer AVV" : "AVV bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <AvvForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1071,7 +1071,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">DSFA-Musterfall</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -1122,10 +1122,12 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Reviewer</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="kons" checked={!!form.konsultation} onChange={e => set("konsultation", e.target.checked)} className="rounded" /><Label htmlFor="kons" className="text-xs">Behördenkonsultation (Art. 36)</Label></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -1148,7 +1150,7 @@ function DsfaPage() {
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
           {data.map((item: any) => (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
                   <div className="min-w-0">
@@ -1156,7 +1158,7 @@ function DsfaPage() {
                     <p className="text-xs text-muted-foreground">{item.reviewer || "—"}{item.konsultation ? " · Behördenkonsultation" : ""}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                   {item.ergebnis && <StatusBadge value={item.ergebnis} />}
                   <StatusBadge value={item.status} />
                   <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1168,7 +1170,7 @@ function DsfaPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <DsfaForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1240,7 +1242,7 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Muster-Datenpanne</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -1282,10 +1284,12 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Behördenmeldung</Label><Input type="date" value={form.behoerdeMeldung || ""} onChange={e => set("behoerdeMeldung", e.target.value)} className="h-8 text-sm" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="betrinf" checked={!!form.betroffenInformiert} onChange={e => set("betroffenInformiert", e.target.checked)} className="rounded" /><Label htmlFor="betrinf" className="text-xs">Betroffene informiert (Art. 34)</Label></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -1308,7 +1312,7 @@ function DatenpannenPage() {
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Datenpannen erfasst.</CardContent></Card>}
           {data.map((item: any) => (
             <Card key={item.id} className={`group hover:border-border/80 transition-colors ${item.schwere === "kritisch" ? "border-red-500/30" : ""}`}>
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <AlertCircle className={`h-4 w-4 shrink-0 ${item.schwere === "kritisch" ? "text-red-400" : item.schwere === "hoch" ? "text-orange-400" : "text-yellow-400"}`} />
                   <div className="min-w-0">
@@ -1316,7 +1320,7 @@ function DatenpannenPage() {
                     <p className="text-xs text-muted-foreground">{item.entdecktAm} · {item.betroffenePersonen} Betr. · {item.meldepflichtig ? "Meldepflichtig" : "Nicht meldepflichtig"}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                   <StatusBadge value={item.schwere} />
                   <StatusBadge value={item.status} />
                   <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1328,7 +1332,7 @@ function DatenpannenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Datenpanne" : "Datenpanne bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Datenpanne" : "Datenpanne bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <DatenpanneForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1349,7 +1353,7 @@ function DsrForm({ initial, onSave, onCancel }: any) {
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1"><Label className="text-xs">Art der Anfrage *</Label>
           <Select value={form.art} onValueChange={v => set("art", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -1397,7 +1401,7 @@ function DsrPage() {
             const ueberfaellig = item.fristDatum && item.fristDatum < today && item.status !== "abgeschlossen" && item.status !== "abgelehnt";
             return (
               <Card key={item.id} className={`group hover:border-border/80 transition-colors ${ueberfaellig ? "border-red-500/30" : ""}`}>
-                <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+                <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <UserCheck className="h-4 w-4 text-purple-400 shrink-0" />
                     <div className="min-w-0">
@@ -1405,7 +1409,7 @@ function DsrPage() {
                       <p className="text-xs text-muted-foreground">{item.antragsteller || "Anonym"} · Eingang: {item.eingangsdatum}{item.fristDatum ? ` · Frist: ${item.fristDatum}` : ""}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                     {ueberfaellig && <StatusBadge value="kritisch" className="animate-pulse" />}
                     <StatusBadge value={item.status} />
                     <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1418,7 +1422,7 @@ function DsrPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSR-Anfrage" : "DSR-Anfrage bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSR-Anfrage" : "DSR-Anfrage bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <DsrForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1511,7 +1515,7 @@ function TomForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Muster-TOM</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -1548,10 +1552,12 @@ function TomForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Dokumentation</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-12" /></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.massnahme}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.massnahme}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -1584,7 +1590,7 @@ function TomPage() {
               <div className="space-y-1.5">
                 {items.map((item: any) => (
                   <Card key={item.id} className="group hover:border-border/80 transition-colors">
-                    <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+                    <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <Lock className="h-4 w-4 text-emerald-400 shrink-0" />
                         <div className="min-w-0">
@@ -1592,7 +1598,7 @@ function TomPage() {
                           <p className="text-xs text-muted-foreground truncate">{item.verantwortlicher || "Kein Verantwortlicher"}{item.pruefintervall ? ` · ${item.pruefintervall}` : ""}{item.wirksamkeit ? ` · Wirksamkeit: ${item.wirksamkeit}` : ""}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                         <StatusBadge value={item.status} />
                         <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -1606,7 +1612,7 @@ function TomPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue TOM-Maßnahme" : "TOM bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue TOM-Maßnahme" : "TOM bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <TomForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1671,7 +1677,7 @@ function AuditForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Audit-Vorlage</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
@@ -1710,10 +1716,12 @@ function AuditForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Follow-up am</Label><Input type="date" value={form.followUpDatum || ""} onChange={e => set("followUpDatum", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächstes Audit am</Label><Input type="date" value={form.naechstesAuditAm || ""} onChange={e => set("naechstesAuditAm", e.target.value)} className="h-8 text-sm" /></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -1748,12 +1756,12 @@ function AuditsPage() {
             return (
               <Card key={item.id} className="group hover:border-border/80 transition-colors">
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                     <div>
                       <p className="text-sm font-semibold">{item.titel}</p>
                       <p className="text-xs text-muted-foreground">{item.pruefbereich || "Allgemeiner Prüfbereich"} · {item.auditdatum}{item.auditor ? ` · Auditor: ${item.auditor}` : ""}</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                       <StatusBadge value={item.ergebnis} />
                       <StatusBadge value={item.status} />
                       <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1778,7 +1786,7 @@ function AuditsPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Audit" : "Audit bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Audit" : "Audit bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <AuditForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1794,7 +1802,7 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Typ</Label>
           <Select value={form.typ} onValueChange={v => set("typ", v)}>
@@ -1827,10 +1835,12 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
         </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -1873,7 +1883,7 @@ function AufgabenPage() {
             const ueberfaellig = item.faelligAm && item.faelligAm < today && item.status !== "erledigt";
             return (
               <Card key={item.id} className={`group hover:border-border/80 transition-colors ${ueberfaellig ? "border-orange-500/30" : ""}`}>
-                <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+                <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <button onClick={() => update.mutate({ id: item.id, status: item.status === "erledigt" ? "offen" : "erledigt" })}
                       className={`shrink-0 w-4 h-4 rounded border transition-colors ${item.status === "erledigt" ? "bg-emerald-500 border-emerald-500" : "border-border hover:border-primary"}`}>
@@ -1887,7 +1897,7 @@ function AufgabenPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                     <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) - 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">-10%</button>
                     <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) + 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">+10%</button>
                     <button onClick={() => update.mutate({ id: item.id, status: item.status === "offen" ? "in_bearbeitung" : item.status === "in_bearbeitung" ? "erledigt" : "offen" })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">Status</button>
@@ -1903,7 +1913,7 @@ function AufgabenPage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Aufgabe" : "Aufgabe bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue Aufgabe" : "Aufgabe bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <AufgabeForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -1931,7 +1941,7 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Kategorie</Label>
           <Select value={form.kategorie} onValueChange={handleKategorieChange}>
@@ -1965,10 +1975,12 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Inhalt / Notizen</Label><Textarea value={form.inhalt} onChange={e => set("inhalt", e.target.value)} className="text-sm min-h-20" /></div>
       </div>
-      <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
-      </DialogFooter>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -2368,7 +2380,7 @@ function DokumentePage() {
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Dokument" : "Dokument bearbeiten"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Dokument" : "Dokument bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <DokumentForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
@@ -2480,7 +2492,7 @@ function MandantenPage() {
                       <p className="text-xs text-muted-foreground">{m.rechtsform || "—"}{m.branche ? ` · ${m.branche}` : ""}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <div className="flex gap-1 opacity-100 transition-all sm:opacity-0 sm:group-hover:opacity-100">
                     <button onClick={() => openEdit(m)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                     <button onClick={() => setDelId(m.id)} className="p-1 rounded text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
@@ -2500,8 +2512,10 @@ function MandantenPage() {
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Mandant" : "Mandant bearbeiten"}</DialogTitle></DialogHeader>
-          <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+          <div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1">
+            <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Mandant" : "Mandant bearbeiten"}</DialogTitle></DialogHeader>
+          </div>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1 py-1">
             {modal === "new" && (
               <div className="flex gap-2 text-xs">
                 {[1,2,3].map((step) => <button key={step} onClick={() => setSetupStep(step)} className={`px-3 py-1 rounded-full ${setupStep === step ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>Schritt {step}</button>)}
@@ -2518,7 +2532,7 @@ function MandantenPage() {
                 </CardContent>
               </Card>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Rechtsform</Label><Input value={form.rechtsform} onChange={e => set("rechtsform", e.target.value)} className="h-8 text-sm" placeholder="GmbH, AG..." /></div>
               <div className="space-y-1"><Label className="text-xs">Branche</Label><Input value={form.branche} onChange={e => set("branche", e.target.value)} className="h-8 text-sm" /></div>
@@ -2559,7 +2573,7 @@ function MandantenPage() {
             {setupStep >= 2 && <Separator />}
             {setupStep >= 2 && <div className="space-y-3">
               <p className="text-sm font-medium">Ansprechpartner und Rollen</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="col-span-3 text-xs font-semibold text-muted-foreground">Datenschutzbeauftragter</div>
                 <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={form.dsb} onChange={e => set("dsb", e.target.value)} className="h-8 text-sm" /></div>
                 <div className="space-y-1"><Label className="text-xs">E-Mail</Label><Input type="email" value={form.dsbEmail} onChange={e => set("dsbEmail", e.target.value)} className="h-8 text-sm" /></div>
@@ -2608,10 +2622,12 @@ function MandantenPage() {
                 <Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-20" />
               </div>
             </div>}
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
-              <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
-            </DialogFooter>
+            <div className="sticky bottom-0 z-10 -mx-6 mt-2 border-t bg-background px-6 pt-3 pb-1">
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
+                <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
+              </DialogFooter>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -2792,7 +2808,7 @@ function GruppenPage() {
           <div className="space-y-2">
           {gruppen.map((g: any) => (
             <Card key={g.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div>
                   <p className="text-sm font-medium">{g.name}</p>
                   <p className="text-xs text-muted-foreground">{g.typ}{g.beschreibung ? ` · ${g.beschreibung}` : ""}</p>
@@ -2836,10 +2852,12 @@ function GruppenPage() {
               </Select>
             </div>
             <div className="space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-20" /></div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
-              <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
-            </DialogFooter>
+            <div className="sticky bottom-0 z-10 -mx-6 mt-2 border-t bg-background px-6 pt-3 pb-1">
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
+                <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
+              </DialogFooter>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -2926,7 +2944,7 @@ function VorlagenpaketePage() {
         <div className="space-y-2">
           {pakete.map((p: any) => (
             <Card key={p.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div>
                   <p className="text-sm font-medium">{p.name}</p>
                   <p className="text-xs text-muted-foreground">{p.kategorie}{p.beschreibung ? ` · ${p.beschreibung}` : ""}</p>
@@ -2946,7 +2964,7 @@ function VorlagenpaketePage() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neues Vorlagenpaket" : "Vorlagenpaket bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Kategorie</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Version</Label><Input value={form.version} onChange={e => set("version", e.target.value)} className="h-8 text-sm" /></div>
@@ -2978,10 +2996,12 @@ function VorlagenpaketePage() {
               </div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Inhalt (JSON)</Label><Textarea value={form.inhaltJson} onChange={e => set("inhaltJson", e.target.value)} className="font-mono text-xs min-h-60" /></div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
-              <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
-            </DialogFooter>
+            <div className="sticky bottom-0 z-10 -mx-6 mt-2 border-t bg-background px-6 pt-3 pb-1">
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setModal(null)}>Abbrechen</Button>
+                <Button size="sm" className="bg-primary" onClick={save} disabled={!form.name}>Speichern</Button>
+              </DialogFooter>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -3039,7 +3059,7 @@ function BenutzerPage() {
         <div className="space-y-2">
           {users.map((u: any) => (
             <Card key={u.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">{u.name.charAt(0)}</div>
                   <div className="min-w-0">
@@ -3047,7 +3067,7 @@ function BenutzerPage() {
                     <p className="text-xs text-muted-foreground">{u.email} · {u.role === "admin" ? "Administrator" : u.role === "dsb" ? "DSB" : "Nutzer"}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                   <Badge variant="outline" className="text-xs">{u.role}</Badge>
                   <button onClick={() => openEdit(u)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setDelId(u.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -3061,7 +3081,7 @@ function BenutzerPage() {
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Benutzer" : "Benutzer bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">E-Mail *</Label><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">{modal === "new" ? "Passwort *" : "Passwort (leer = unverändert)"}</Label><Input type="password" value={form.password} onChange={e => set("password", e.target.value)} className="h-8 text-sm" placeholder="Min. 8 Zeichen" /></div>
