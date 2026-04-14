@@ -772,6 +772,7 @@ const vvtTemplates: Record<string, any> = {
 };
 
 function VvtForm({ initial, onSave, onCancel }: any) {
+  const { t } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -785,7 +786,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Muster-Verarbeitungstätigkeit</Label>
+          <Label className="text-xs">{t("vvtTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
             <SelectContent>
@@ -799,31 +800,31 @@ function VvtForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Bezeichnung *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Zweck der Verarbeitung</Label><Textarea value={form.zweck} onChange={e => set("zweck", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtName")} *</Label><Input value={form.bezeichnung} onChange={e => set("bezeichnung", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtPurpose")}</Label><Textarea value={form.zweck} onChange={e => set("zweck", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="space-y-1">
-          <Label className="text-xs">Rechtsgrundlage</Label>
+          <Label className="text-xs">{t("vvtLegalBasis")}</Label>
           <Select value={form.rechtsgrundlage} onValueChange={v => set("rechtsgrundlage", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
             <SelectContent>{rechtsgrundlagen.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtStatusLabel")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="archiviert">Archiviert</SelectItem></SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Verantwortlicher E-Mail</Label><Input type="email" value={form.verantwortlicherEmail || ""} onChange={e => set("verantwortlicherEmail", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Verantwortlicher Telefon</Label><Input value={form.verantwortlicherTelefon || ""} onChange={e => set("verantwortlicherTelefon", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Löschfrist</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 3 Jahre" /></div>
-        <div className="space-y-1"><Label className="text-xs">Löschklasse</Label><Input value={form.loeschklasse || ""} onChange={e => set("loeschklasse", e.target.value)} className="h-8 text-sm" placeholder="z. B. LK1 operativ" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Aufbewahrungsgrund / Löschereignis</Label><Textarea value={form.aufbewahrungsgrund || ""} onChange={e => set("aufbewahrungsgrund", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenkategorien</Label><Textarea value={form.datenkategorien} onChange={e => set("datenkategorien", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Personen</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Empfänger / Dritte</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">TOM-Hinweis</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtOwner")}</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtOwnerEmail")}</Label><Input type="email" value={form.verantwortlicherEmail || ""} onChange={e => set("verantwortlicherEmail", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtOwnerPhone")}</Label><Input value={form.verantwortlicherTelefon || ""} onChange={e => set("verantwortlicherTelefon", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionPeriod")}</Label><Input value={form.loeschfrist} onChange={e => set("loeschfrist", e.target.value)} className="h-8 text-sm" placeholder="z. B. 3 Jahre" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("vvtRetentionClass")}</Label><Input value={form.loeschklasse || ""} onChange={e => set("loeschklasse", e.target.value)} className="h-8 text-sm" placeholder="z. B. LK1 operativ" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRetentionReason")}</Label><Textarea value={form.aufbewahrungsgrund || ""} onChange={e => set("aufbewahrungsgrund", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataCategories")}</Label><Textarea value={form.datenkategorien} onChange={e => set("datenkategorien", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRecipients")}</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtTomHint")}</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dsfa" checked={!!form.dsfa} onChange={e => set("dsfa", e.target.checked)} className="rounded" /><Label htmlFor="dsfa" className="text-xs">DSFA erforderlich</Label></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dritt" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dritt" className="text-xs">Drittlandtransfer</Label></div>
       </div>
