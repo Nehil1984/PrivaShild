@@ -356,3 +356,19 @@ README.md
 ```
 
 ---
+
+
+## Technischer Stand der aktuellen App-Version
+
+Die aktuelle Version enthält zusätzlich:
+
+- Audit-Modul mit Export-/Druckunterstützung
+- Löschkonzept-Modul mit Löschklassen, Fristgruppen und VVT-Übernahme
+- Meta-APIs für Fristen, Branchen und VVT-Löschmapping
+- Sammel-Endpunkt `GET /api/mandanten/:mid/export-context` für Druck- und Exportkontexte
+
+Für Unraid-Betrieb bedeutet das insbesondere:
+
+- Datenpfad und Persistenz bleiben unverändert
+- bei Reverse Proxy oder externer Veröffentlichung sollte JWT sauber gesetzt und der Zugriff zusätzlich abgesichert werden
+- nach Updates empfiehlt sich ein kurzer Funktionstest von Login, Mandantenauswahl, Löschkonzept und Export/Druck

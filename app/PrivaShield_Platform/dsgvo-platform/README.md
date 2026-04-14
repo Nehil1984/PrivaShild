@@ -90,3 +90,16 @@ Die erwarteten Startmeldungen sehen eher so aus:
 - `[entrypoint] /data bereit ...`
 - `[entrypoint] starte app mit node /app/dist/index.cjs`
 - `[DB] Backend: ...`
+
+
+## API- und Exportstand
+
+Aktuell nutzt die Plattform zusätzliche Meta- und Sammel-APIs, damit fachliche Listen und Exportdaten zentral aus dem Backend kommen:
+
+- `GET /api/meta/loeschfristen`
+- `GET /api/meta/branchen`
+- `GET /api/meta/vvt-loeschmapping`
+- `POST /api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId`
+- `GET /api/mandanten/:mid/export-context`
+
+Die Exportseite und Druckansicht greifen damit nicht mehr nur auf viele Einzelabfragen zu, sondern können den Exportkontext gesammelt laden.

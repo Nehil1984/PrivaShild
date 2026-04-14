@@ -476,6 +476,14 @@ async function fetchData(endpoint) {
   return res.json();
 }
 
+async function fetchExportContext() {
+  const res = await fetch(`/api/mandanten/${config.mandantId}/export-context`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 // ─── Hauptlogik ───────────────────────────────────────────────────────────
 async function render() {
   try {
@@ -506,13 +514,8 @@ async function render() {
       return;
     }
 
-    // Alle ausgewählten Module parallel laden
-    const results = await Promise.all(
-      config.modules.map(key => fetchData(key).then(data => ({ key, data })))
-    );
-
-    const dataMap = {};
-    results.forEach(({ key, data }) => { dataMap[key] = data; });
+    const exportContext = await fetchExportContext();
+    const dataMap = exportContext?.modules || {};
 
     const now = new Date();
     const dateStr = now.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });

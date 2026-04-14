@@ -1816,14 +1816,30 @@ const defaultGesetzlicheAufbewahrungsfristen = [
 ];
 
 const defaultBranchen = ["Dienstleistung", "Handel", "Industrie", "Gesundheit", "IT / SaaS", "Bildung", "Finanzen", "Öffentlicher Bereich", "Immobilien", "Logistik", "Marketing", "Personalwesen"];
-const gesetzlicheAufbewahrungsfristen = defaultGesetzlicheAufbewahrungsfristen;
+
+type LoeschfristMeta = {
+  key: string;
+  label: string;
+  frist: string;
+  referenzen: string[];
+  hinweis?: string;
+};
+
+type VvtLoeschMappingMeta = {
+  pattern: string;
+  fristKategorie: string;
+  loeschklasse: string;
+  gesetzlicheFrist: string;
+};
+
+const gesetzlicheAufbewahrungsfristen: LoeschfristMeta[] = defaultGesetzlicheAufbewahrungsfristen;
 
 function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   const { data: vvts = [] } = useModuleData("vvt");
-  const { data: fristMeta = defaultGesetzlicheAufbewahrungsfristen } = useQuery({ queryKey: ["/api/meta/loeschfristen"], queryFn: () => apiRequest("GET", "/api/meta/loeschfristen").then(r => r.json()) });
-  const { data: mappingMeta = defaultVvtLoeschMapping } = useQuery({ queryKey: ["/api/meta/vvt-loeschmapping"], queryFn: () => apiRequest("GET", "/api/meta/vvt-loeschmapping").then(r => r.json()) });
+  const { data: fristMeta = defaultGesetzlicheAufbewahrungsfristen } = useQuery<LoeschfristMeta[]>({ queryKey: ["/api/meta/loeschfristen"], queryFn: () => apiRequest("GET", "/api/meta/loeschfristen").then(r => r.json()) });
+  const { data: mappingMeta = defaultVvtLoeschMapping } = useQuery<VvtLoeschMappingMeta[]>({ queryKey: ["/api/meta/vvt-loeschmapping"], queryFn: () => apiRequest("GET", "/api/meta/vvt-loeschmapping").then(r => r.json()) });
   const gesetzlicheAufbewahrungsfristen = fristMeta || defaultGesetzlicheAufbewahrungsfristen;
-  const vvtLoeschMapping = useMemo(() => (mappingMeta || defaultVvtLoeschMapping).map((entry: any) => ({ ...entry, match: new RegExp(entry.pattern, "i") })), [mappingMeta]);
+  const vvtLoeschMapping = useMemo(() => (mappingMeta || defaultVvtLoeschMapping).map((entry: VvtLoeschMappingMeta) => ({ ...entry, match: new RegExp(entry.pattern, "i") })), [mappingMeta]);
   const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", loeschverantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyFristKategorie = (value: string) => {
@@ -2656,7 +2672,7 @@ function MandantenPage() {
     queryKey: ["/api/vorlagenpakete"],
     queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
   });
-  const { data: branchenMeta = defaultBranchen } = useQuery({
+  const { data: branchenMeta = defaultBranchen } = useQuery<string[]>({
     queryKey: ["/api/meta/branchen"],
     queryFn: () => apiRequest("GET", "/api/meta/branchen").then(r => r.json()),
   });

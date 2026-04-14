@@ -16,6 +16,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react_vendor: ["react", "react-dom", "wouter"],
+          query_vendor: ["@tanstack/react-query"],
+          ui_vendor: ["@radix-ui/react-dialog", "@radix-ui/react-select", "@radix-ui/react-tabs", "lucide-react"],
+          chart_vendor: ["recharts"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
   },
   server: {
     fs: {
