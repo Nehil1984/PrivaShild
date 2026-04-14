@@ -554,6 +554,7 @@ export class LowdbStorage implements IStorage {
       dsr: f("dsr"),
       tom: f("tom"),
       audits: f("audits"),
+      loeschkonzept: f("loeschkonzept"),
       aufgaben: f("aufgaben"),
       offeneAufgaben: (db.data.aufgaben as Aufgabe[]).filter((x) => x.mandantId === mandantId && x.status === "offen").length,
       dokumente: f("dokumente"),
