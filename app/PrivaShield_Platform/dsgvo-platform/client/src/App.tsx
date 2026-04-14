@@ -24,7 +24,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -196,6 +196,7 @@ const navItems = [
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
   { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
+  { path: "/ki-compliance", label: "KI-Tools & Compliance", icon: Bot },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
   { path: "/export", label: "Export / Druck", icon: Printer },
 ];
@@ -409,6 +410,7 @@ function Dashboard() {
   const richtlinien = dokumente.filter((d: any) => d.kategorie === "richtlinie");
   const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
+  const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
   const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
   const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
@@ -502,6 +504,25 @@ function Dashboard() {
                 {richtlinien.length === 0 ? <p className="text-muted-foreground">Noch keine Richtlinien vorhanden.</p> : richtlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)}
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">KI-Status</CardTitle>
+                <CardDescription>Einsatz von KI-Tools und Konformitätsstatus</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {kiComplianceCheck ? (
+                  <>
+                    <p>KI-Prüfung erfasst: <span className="font-medium">Ja</span></p>
+                    <p className="text-muted-foreground">{kiComplianceCheck.titel} · {kiComplianceCheck.status}</p>
+                  </>
+                ) : (
+                  <>
+                    <p>KI-Prüfung erfasst: <span className="font-medium">Nein</span></p>
+                    <p className="text-muted-foreground">Noch keine KI-Compliance-Prüfung vorhanden.</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
@@ -510,7 +531,7 @@ function Dashboard() {
               <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && (
+              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && kiComplianceCheck && (
                 <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
@@ -518,6 +539,7 @@ function Dashboard() {
               {!leitlinieVorhanden && <p className="text-orange-400">Leitliniendokument für Datenschutz und Informationssicherheit fehlt.</p>}
               {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
               {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
+              {!kiComplianceCheck && <p className="text-orange-400">Prüfung zum Einsatz von KI-Tools und KI-VO-Konformität fehlt.</p>}
             </CardContent>
           </Card>
 
@@ -769,12 +791,34 @@ function AvvPage() {
 
 // ─── DSFA PAGE ─────────────────────────────────────────────────────────────
 function DsfaForm({ initial, onSave, onCancel }: any) {
+  const { data: dokumente = [] } = useModuleData("dokumente");
+  const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
+  const kiTools = (() => {
+    try {
+      const parsed = JSON.parse(kiComplianceCheck?.inhalt || "{}");
+      return Array.isArray(parsed.tools) ? parsed.tools : [];
+    } catch {
+      return [];
+    }
+  })();
   const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        {kiTools.length > 0 && (
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs">KI-Tool als vordefinierter Name</Label>
+            <Select value={kiTools.includes(form.titel) ? form.titel : "none"} onValueChange={v => v !== "none" && set("titel", v)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="KI-Tool auswählen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Kein KI-Tool auswählen</SelectItem>
+                {kiTools.map((tool: string) => <SelectItem key={tool} value={tool}>{tool}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung der Verarbeitung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notwendigkeit & Verhältnismäßigkeit</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Risikominderungsmaßnahmen</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
@@ -1304,6 +1348,172 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
         <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
       </DialogFooter>
     </div>
+  );
+}
+
+function KiCompliancePage() {
+  const { data: dokumente, create, update } = useModuleData("dokumente");
+  const { data: dsfas = [] } = useModuleData("dsfa");
+  const { toast } = useToast();
+  const existingCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
+
+  const parseJson = (raw: string | null | undefined, fallback: any) => {
+    if (!raw) return fallback;
+    try { return JSON.parse(raw); } catch { return fallback; }
+  };
+
+  const [form, setForm] = useState<any>({
+    kiImEinsatz: false,
+    tools: [],
+    toolInput: "",
+    kiRichtlinieVorhanden: false,
+    kiVoGeprueft: false,
+    dsgvoCheckliste: {
+      zweck: false,
+      rechtsgrundlage: false,
+      datenarten: false,
+      empfaenger: false,
+      drittlandtransfer: false,
+      toms: false,
+      auftragsverarbeitung: false,
+      transparenz: false,
+    },
+    dsfaErforderlich: false,
+    dsfaDurchgefuehrt: false,
+    verknuepfteDsfaId: "none",
+    notes: "",
+  });
+
+  useEffect(() => {
+    const parsed = parseJson(existingCheck?.inhalt, form);
+    setForm((prev: any) => ({ ...prev, ...parsed, dsgvoCheckliste: { ...prev.dsgvoCheckliste, ...(parsed.dsgvoCheckliste || {}) } }));
+  }, [existingCheck?.id]);
+
+  const set = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }));
+  const toggleChecklist = (key: string) => setForm((prev: any) => ({ ...prev, dsgvoCheckliste: { ...prev.dsgvoCheckliste, [key]: !prev.dsgvoCheckliste[key] } }));
+  const addTool = () => {
+    const value = String(form.toolInput || "").trim();
+    if (!value) return;
+    if (form.tools.includes(value)) return set("toolInput", "");
+    setForm((prev: any) => ({ ...prev, tools: [...prev.tools, value], toolInput: "" }));
+  };
+  const removeTool = (tool: string) => setForm((prev: any) => ({ ...prev, tools: prev.tools.filter((t: string) => t !== tool) }));
+
+  const checklistDone = Object.values(form.dsgvoCheckliste || {}).filter(Boolean).length;
+  const checklistTotal = Object.keys(form.dsgvoCheckliste || {}).length;
+  const linkedDsfa = dsfas.find((d: any) => String(d.id) === String(form.verknuepfteDsfaId));
+  const status = !form.kiImEinsatz
+    ? { label: "Kein KI-Einsatz", cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30" }
+    : form.kiRichtlinieVorhanden && form.kiVoGeprueft && checklistDone === checklistTotal && (!form.dsfaErforderlich || (form.dsfaDurchgefuehrt && form.verknuepfteDsfaId !== "none"))
+      ? { label: "Konform", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
+      : form.kiRichtlinieVorhanden || form.kiVoGeprueft || checklistDone > 0
+        ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" }
+        : { label: "Kritisch", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+
+  const save = async () => {
+    const payload = {
+      titel: "Prüfung KI-Tools und KI-VO / DSGVO-Konformität",
+      kategorie: "prozessbeschreibung",
+      dokumentTyp: "ki_compliance_check",
+      status: status.label === "Konform" || status.label === "Kein KI-Einsatz" ? "aktiv" : "entwurf",
+      version: "1.0",
+      beschreibung: "Erfassung des KI-Einsatzes inklusive KI-VO-Prüfung, DSGVO-Checkliste und DSFA-Bewertung.",
+      inhalt: JSON.stringify(form),
+    };
+    try {
+      if (existingCheck) await update.mutateAsync({ id: existingCheck.id, ...payload });
+      else await create.mutateAsync(payload);
+      toast({ title: "KI-Compliance gespeichert" });
+    } catch {
+      toast({ title: "Fehler", description: "KI-Compliance konnte nicht gespeichert werden.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <MandantGuard>
+      <div className="space-y-6">
+        <PageHeader title="KI-Tools & Compliance" desc="Erfassung des KI-Einsatzes nach DSGVO und KI-VO" />
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm">Konformitätsprüfung KI-Einsatz</CardTitle>
+                <CardDescription>Prüfung von KI-Richtlinie, KI-VO, DSGVO-Struktur und DSFA-Pflicht</CardDescription>
+              </div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${status.cls}`}>{status.label}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.kiImEinsatz} onChange={e => set("kiImEinsatz", e.target.checked)} className="rounded" /><span>Es werden KI-Tools eingesetzt</span></label>
+
+            {form.kiImEinsatz && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Eingesetzte KI-Tools</Label>
+                  <div className="flex gap-2">
+                    <Input value={form.toolInput || ""} onChange={e => set("toolInput", e.target.value)} className="h-8 text-sm" placeholder="z. B. ChatGPT, Claude, Copilot" />
+                    <Button type="button" variant="outline" size="sm" onClick={addTool}>Hinzufügen</Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(form.tools || []).map((tool: string) => <button key={tool} type="button" onClick={() => removeTool(tool)} className="px-3 py-1 rounded-full text-xs bg-secondary hover:bg-secondary/70">{tool} ✕</button>)}
+                    {(form.tools || []).length === 0 && <p className="text-xs text-muted-foreground">Noch keine KI-Tools erfasst.</p>}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.kiRichtlinieVorhanden} onChange={e => set("kiRichtlinieVorhanden", e.target.checked)} className="rounded" /><span>KI-Richtlinie eingeführt</span></label>
+                <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.kiVoGeprueft} onChange={e => set("kiVoGeprueft", e.target.checked)} className="rounded" /><span>Aktuell geltende Vorgaben der KI-VO geprüft</span></label>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">DSGVO-Prüfstruktur / Checkliste</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {[
+                      ["zweck", "Zweckbestimmung dokumentiert"],
+                      ["rechtsgrundlage", "Rechtsgrundlage geprüft"],
+                      ["datenarten", "Datenarten und Kategorien bewertet"],
+                      ["empfaenger", "Empfänger / Anbieter geprüft"],
+                      ["drittlandtransfer", "Drittlandtransfer bewertet"],
+                      ["toms", "Technische und organisatorische Maßnahmen geprüft"],
+                      ["auftragsverarbeitung", "Auftragsverarbeitung / Rollenmodell geprüft"],
+                      ["transparenz", "Transparenz- und Hinweispflichten geprüft"],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30">
+                        <input type="checkbox" checked={!!form.dsgvoCheckliste?.[key]} onChange={() => toggleChecklist(String(key))} className="rounded" />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Erfüllte DSGVO-Prüfpunkte: {checklistDone} / {checklistTotal}</p>
+                </div>
+
+                <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.dsfaErforderlich} onChange={e => set("dsfaErforderlich", e.target.checked)} className="rounded" /><span>DSFA ist für den KI-Einsatz erforderlich</span></label>
+                {form.dsfaErforderlich && (
+                  <>
+                    <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.dsfaDurchgefuehrt} onChange={e => set("dsfaDurchgefuehrt", e.target.checked)} className="rounded" /><span>DSFA wurde durchgeführt</span></label>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Verknüpfte DSFA</Label>
+                      <Select value={String(form.verknuepfteDsfaId || "none")} onValueChange={v => set("verknuepfteDsfaId", v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="DSFA auswählen" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Keine DSFA ausgewählt</SelectItem>
+                          {dsfas.map((d: any) => <SelectItem key={d.id} value={String(d.id)}>{d.titel}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {linkedDsfa && <p className="text-xs text-muted-foreground">Verknüpft: {linkedDsfa.titel}</p>}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            <div className="space-y-1">
+              <Label className="text-xs">Notizen</Label>
+              <Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} className="text-sm min-h-20" />
+            </div>
+            <DialogFooter><Button size="sm" className="bg-primary" onClick={save}>Speichern</Button></DialogFooter>
+          </CardContent>
+        </Card>
+      </div>
+    </MandantGuard>
   );
 }
 
@@ -2990,6 +3200,7 @@ function AppRoutes() {
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />
           <Route path="/web-datenschutz" component={WebDatenschutzPage} />
+          <Route path="/ki-compliance" component={KiCompliancePage} />
           <Route path="/extras" component={MandantenExtrasPage} />
           <Route path="/mandanten" component={MandantenPage} />
           <Route path="/gruppen" component={GruppenPage} />
