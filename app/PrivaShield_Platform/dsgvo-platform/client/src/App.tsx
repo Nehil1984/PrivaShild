@@ -1377,7 +1377,12 @@ function MandantenPage() {
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
 
   const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
-  const openEdit = (m: any) => { setForm({ ...emptyForm, ...m, gruppeId: m.gruppeId ? String(m.gruppeId) : "none" }); setModal(m); };
+  const openEdit = (m: any) => {
+    setSetupStep(3);
+    setSetupPaketId("none");
+    setForm({ ...emptyForm, ...m, gruppeId: m.gruppeId ? String(m.gruppeId) : "none" });
+    setModal(m);
+  };
   const quickSetup = () => {
     setSetupStep(1);
     setForm({
@@ -2381,12 +2386,12 @@ function MandantenExtrasPage() {
   const gruppenHistorie = mandant?.gruppeId
     ? alleMandanten.filter((m: any) => m.gruppeId === mandant.gruppeId)
     : [];
+  const [selectedPaket, setSelectedPaket] = useState<string>("");
   const selectedPaketObj = pakete.find((p: any) => String(p.id) === selectedPaket);
   const paketPreview = (() => {
     if (!selectedPaketObj?.inhaltJson) return null;
     try { return JSON.parse(selectedPaketObj.inhaltJson); } catch { return null; }
   })();
-  const [selectedPaket, setSelectedPaket] = useState<string>("");
   const [modulFilter, setModulFilter] = useState<string>("alle");
   const [showOnlyUserLogs, setShowOnlyUserLogs] = useState(false);
   const visibleLogs = logs.filter((log: any) => modulFilter === "alle" || log.modul === modulFilter);
