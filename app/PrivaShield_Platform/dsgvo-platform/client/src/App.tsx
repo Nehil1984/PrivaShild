@@ -24,7 +24,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -195,6 +195,7 @@ const navItems = [
   { path: "/tom", label: "TOM-Katalog", icon: Lock },
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
+  { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
   { path: "/export", label: "Export / Druck", icon: Printer },
 ];
@@ -1288,6 +1289,166 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
         <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
       </DialogFooter>
     </div>
+  );
+}
+
+function WebDatenschutzPage() {
+  const { data: dokumente, create, update } = useModuleData("dokumente");
+  const { toast } = useToast();
+  const websitePrivacy = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
+  const companyNotice = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
+
+  const parseJson = (raw: string | null | undefined, fallback: any) => {
+    if (!raw) return fallback;
+    try { return JSON.parse(raw); } catch { return fallback; }
+  };
+
+  const [websiteForm, setWebsiteForm] = useState<any>({
+    consentTool: false,
+    datenschutzerklaerungGeprueft: false,
+    impressumGeprueft: false,
+    privacyPagePath: "/ds",
+    notes: "",
+  });
+  const [noticeForm, setNoticeForm] = useState<any>({
+    format: "einzeldokumente",
+    groups: {
+      betroffene: false,
+      interessenten: false,
+      bewerber: false,
+      lieferanten: false,
+      besucher: false,
+      kunden: false,
+    },
+    distributionEmail: false,
+    distributionQr: false,
+    websiteSubpage: true,
+    notes: "",
+  });
+
+  useEffect(() => {
+    const parsed = parseJson(websitePrivacy?.inhalt, websiteForm);
+    setWebsiteForm((prev: any) => ({ ...prev, ...parsed }));
+  }, [websitePrivacy?.id]);
+
+  useEffect(() => {
+    const parsed = parseJson(companyNotice?.inhalt, noticeForm);
+    setNoticeForm((prev: any) => ({ ...prev, ...parsed, groups: { ...prev.groups, ...(parsed.groups || {}) } }));
+  }, [companyNotice?.id]);
+
+  const saveWebsiteCheck = async () => {
+    const payload = {
+      titel: "Prüfung Webseite: Datenschutzerklärung und Impressum",
+      kategorie: "prozessbeschreibung",
+      dokumentTyp: "web_datenschutz_check",
+      status: websiteForm.consentTool && websiteForm.datenschutzerklaerungGeprueft && websiteForm.impressumGeprueft ? "aktiv" : "entwurf",
+      version: "1.0",
+      beschreibung: "Prüfstatus für Webseiten-Datenschutz, Consent-Tool, Datenschutzerklärung und Impressum.",
+      inhalt: JSON.stringify(websiteForm),
+    };
+    try {
+      if (websitePrivacy) await update.mutateAsync({ id: websitePrivacy.id, ...payload });
+      else await create.mutateAsync(payload);
+      toast({ title: "Web-Datenschutz gespeichert" });
+    } catch {
+      toast({ title: "Fehler", description: "Web-Datenschutz konnte nicht gespeichert werden.", variant: "destructive" });
+    }
+  };
+
+  const saveNoticeCheck = async () => {
+    const payload = {
+      titel: "Prüfung Datenschutzhinweise für Personengruppen",
+      kategorie: "prozessbeschreibung",
+      dokumentTyp: "datenschutzhinweise_check",
+      status: (noticeForm.distributionEmail || noticeForm.distributionQr || noticeForm.websiteSubpage) ? "aktiv" : "entwurf",
+      version: "1.0",
+      beschreibung: "Prüfstatus zu Datenschutzhinweisen für Betroffene, Interessenten, Bewerber, Lieferanten und weitere Gruppen.",
+      inhalt: JSON.stringify(noticeForm),
+    };
+    try {
+      if (companyNotice) await update.mutateAsync({ id: companyNotice.id, ...payload });
+      else await create.mutateAsync(payload);
+      toast({ title: "Datenschutzhinweise gespeichert" });
+    } catch {
+      toast({ title: "Fehler", description: "Datenschutzhinweise konnten nicht gespeichert werden.", variant: "destructive" });
+    }
+  };
+
+  const setWebsite = (key: string, value: any) => setWebsiteForm((prev: any) => ({ ...prev, [key]: value }));
+  const setNotice = (key: string, value: any) => setNoticeForm((prev: any) => ({ ...prev, [key]: value }));
+  const toggleGroup = (key: string) => setNoticeForm((prev: any) => ({ ...prev, groups: { ...prev.groups, [key]: !prev.groups[key] } }));
+
+  return (
+    <MandantGuard>
+      <div className="space-y-6">
+        <PageHeader title="Web-Datenschutz" desc="Prüfung von Datenschutzerklärung, Impressum und Datenschutzhinweisen" />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Webseite: Datenschutzerklärung & Impressum</CardTitle>
+            <CardDescription>Prüfkriterien für die öffentliche Webseite des Mandanten</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentTool} onChange={e => setWebsite("consentTool", e.target.checked)} className="rounded" /><span>Consent-Tool vorhanden und geprüft</span></label>
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.datenschutzerklaerungGeprueft} onChange={e => setWebsite("datenschutzerklaerungGeprueft", e.target.checked)} className="rounded" /><span>Inhaltliche Prüfung der Datenschutzerklärung durchgeführt</span></label>
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.impressumGeprueft} onChange={e => setWebsite("impressumGeprueft", e.target.checked)} className="rounded" /><span>Impressum geprüft</span></label>
+            <div className="space-y-1">
+              <Label className="text-xs">Empfohlener Pfad der Datenschutz-Unterseite</Label>
+              <Input value={websiteForm.privacyPagePath || ""} onChange={e => setWebsite("privacyPagePath", e.target.value)} className="h-8 text-sm" placeholder="/ds" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Notizen</Label>
+              <Textarea value={websiteForm.notes || ""} onChange={e => setWebsite("notes", e.target.value)} className="text-sm min-h-20" />
+            </div>
+            <DialogFooter><Button size="sm" className="bg-primary" onClick={saveWebsiteCheck}>Speichern</Button></DialogFooter>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Datenschutzhinweise für Personengruppen</CardTitle>
+            <CardDescription>Prüfung für Betroffene, Interessenten, Bewerber, Lieferanten und weitere Gruppen</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="space-y-1">
+              <Label className="text-xs">Bereitstellungsform</Label>
+              <Select value={noticeForm.format} onValueChange={v => setNotice("format", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="einzeldokumente">Je Personengruppe eigenes Dokument</SelectItem>
+                  <SelectItem value="sammeldokument">Ein gemeinsames Dokument</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {[
+                ["betroffene", "Betroffene"],
+                ["interessenten", "Interessenten"],
+                ["bewerber", "Bewerber"],
+                ["lieferanten", "Lieferanten"],
+                ["besucher", "Besucher"],
+                ["kunden", "Kunden"],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30">
+                  <input type="checkbox" checked={!!noticeForm.groups?.[key]} onChange={() => toggleGroup(String(key))} className="rounded" />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!noticeForm.distributionEmail} onChange={e => setNotice("distributionEmail", e.target.checked)} className="rounded" /><span className="flex items-center gap-2"><Mail className="h-4 w-4" />In E-Mails eingebunden</span></label>
+              <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!noticeForm.distributionQr} onChange={e => setNotice("distributionQr", e.target.checked)} className="rounded" /><span>Per QR-Code erreichbar</span></label>
+              <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!noticeForm.websiteSubpage} onChange={e => setNotice("websiteSubpage", e.target.checked)} className="rounded" /><span>Auf Webseite als Unterseite `/ds` eingebunden</span></label>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Notizen</Label>
+              <Textarea value={noticeForm.notes || ""} onChange={e => setNotice("notes", e.target.value)} className="text-sm min-h-20" />
+            </div>
+            <DialogFooter><Button size="sm" className="bg-primary" onClick={saveNoticeCheck}>Speichern</Button></DialogFooter>
+          </CardContent>
+        </Card>
+      </div>
+    </MandantGuard>
   );
 }
 
@@ -2794,6 +2955,7 @@ function AppRoutes() {
           <Route path="/tom" component={TomPage} />
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />
+          <Route path="/web-datenschutz" component={WebDatenschutzPage} />
           <Route path="/extras" component={MandantenExtrasPage} />
           <Route path="/mandanten" component={MandantenPage} />
           <Route path="/gruppen" component={GruppenPage} />
