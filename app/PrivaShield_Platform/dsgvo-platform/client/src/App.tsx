@@ -43,11 +43,14 @@ function useMandant() { return useContext(MandantCtx); }
 
 // ─── Theme ─────────────────────────────────────────────────────────────────
 function useTheme() {
-  const [theme, setTheme] = useState<"dark"|"light">(() =>
-    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-  );
+  const [theme, setTheme] = useState<"dark"|"light">(() => {
+    const stored = localStorage.getItem("privashield_theme");
+    if (stored === "dark" || stored === "light") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem("privashield_theme", theme);
   }, [theme]);
   return { theme, toggle: () => setTheme(t => t === "dark" ? "light" : "dark") };
 }
@@ -2041,23 +2044,65 @@ function BenutzerPage() {
 // ─── ROOT APP ──────────────────────────────────────────────────────────────
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("privashield_token"));
+  const [restoring, setRestoring] = useState<boolean>(() => !!localStorage.getItem("privashield_token"));
 
   const login = (u: AuthUser, t: string) => {
-    setUser(u); setToken(t);
-    // Token für Druckseite speichern
+    setUser(u); setToken(t); setRestoring(false);
     localStorage.setItem("privashield_token", t);
   };
   const logout = () => {
-    setUser(null); setToken(null); queryClient.clear();
+    setUser(null); setToken(null); setRestoring(false); queryClient.clear();
     localStorage.removeItem("privashield_token");
   };
 
-  // Inject token into all API calls
   useEffect(() => {
     const origFetch = window.fetch;
     (window as any).__origFetch = origFetch;
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setRestoring(false);
+      return;
+    }
+
+    let cancelled = false;
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Session ungültig");
+        return res.json();
+      })
+      .then((safeUser) => {
+        if (cancelled) return;
+        setUser(safeUser);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem("privashield_token");
+        setToken(null);
+        setUser(null);
+        queryClient.clear();
+      })
+      .finally(() => {
+        if (!cancelled) setRestoring(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [token]);
+
+  if (restoring) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm border-border/60">
+          <CardContent className="pt-6 text-center space-y-3">
+            <Skeleton className="h-10 w-10 rounded-full mx-auto" />
+            <p className="text-sm text-muted-foreground">Sitzung wird wiederhergestellt...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!user || !token) return <LoginPage onLogin={login} />;
   return (
@@ -2678,12 +2723,19 @@ function MandantenOverviewPage() {
 
 function AppRoutes() {
   const { token } = useAuth();
-  const [activeMandantId, setActiveMandantId] = useState<number | null>(null);
+  const [activeMandantId, setActiveMandantId] = useState<number | null>(() => {
+    const stored = localStorage.getItem("privashield_active_mandant_id");
+    return stored ? Number(stored) : null;
+  });
+
+  useEffect(() => {
+    if (activeMandantId) localStorage.setItem("privashield_active_mandant_id", String(activeMandantId));
+    else localStorage.removeItem("privashield_active_mandant_id");
+  }, [activeMandantId]);
 
   // Patch apiRequest with token
   useEffect(() => {
     if (!token) return;
-    // Monkey-patch fetch for API calls
     const orig = (window as any).__origFetch || window.fetch;
     window.fetch = (input: any, init: any = {}) => {
       const url = typeof input === "string" ? input : input.url;
