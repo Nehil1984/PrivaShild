@@ -975,9 +975,9 @@ function AvvForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">{t("avvTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
               <SelectItem value="microsoft365">Microsoft 365</SelectItem>
               <SelectItem value="hosting">Hosting-Anbieter</SelectItem>
               <SelectItem value="newsletter">Newsletter-Dienstleister</SelectItem>
@@ -989,29 +989,29 @@ function AvvForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvProcessor")} *</Label><Input value={form.auftragsverarbeiter} onChange={e => set("auftragsverarbeiter", e.target.value)} className="h-8 text-sm" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvSubject")}</Label><Input value={form.gegenstand} onChange={e => set("gegenstand", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("avvContractDate")}</Label><Input type="date" value={form.vertragsdatum} onChange={e => set("vertragsdatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("avvTerm")}</Label><Input value={form.laufzeit} onChange={e => set("laufzeit", e.target.value)} className="h-8 text-sm" placeholder="z. B. unbefristet" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvTerm")}</Label><Input value={form.laufzeit} onChange={e => set("laufzeit", e.target.value)} className="h-8 text-sm" placeholder={t("avvTermPlaceholder")} /></div>
         <div className="space-y-1"><Label className="text-xs">{t("avvStatusLabel")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="gekündigt">Gekündigt</SelectItem><SelectItem value="abgelaufen">Abgelaufen</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="entwurf">{t("draft")}</SelectItem><SelectItem value="aktiv">{t("active")}</SelectItem><SelectItem value="gekündigt">{t("terminated")}</SelectItem><SelectItem value="abgelaufen">{t("expired")}</SelectItem></SelectContent>
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">{t("avvContactName")}</Label><Input value={form.avKontaktName || ""} onChange={e => set("avKontaktName", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("avvContactEmail")}</Label><Input type="email" value={form.avKontaktEmail || ""} onChange={e => set("avKontaktEmail", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("avvContactPhone")}</Label><Input value={form.avKontaktTelefon || ""} onChange={e => set("avKontaktTelefon", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">{t("avvNextReview")}</Label><Input type="date" value={form.pruefFaellig} onChange={e => set("pruefFaellig", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("avvReviewInterval")}</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
-        <div className="flex items-center gap-2 col-span-2"><input type="checkbox" id="sccs" checked={!!form.sccs} onChange={e => set("sccs", e.target.checked)} className="rounded" /><Label htmlFor="sccs" className="text-xs">EU-Standardvertragsklauseln (SCCs) vorhanden</Label></div>
+        <div className="space-y-1"><Label className="text-xs">{t("avvReviewInterval")}</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder={t("avvReviewIntervalPlaceholder")} /></div>
+        <div className="flex items-center gap-2 col-span-2"><input type="checkbox" id="sccs" checked={!!form.sccs} onChange={e => set("sccs", e.target.checked)} className="rounded" /><Label htmlFor="sccs" className="text-xs">{t("sccPresent")}</Label></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvDataTypes")}</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvToms")}</Label><Textarea value={form.technischeMassnahmen} onChange={e => set("technischeMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvApprovedSubprocessors")}</Label><Textarea value={form.genehmigteSubdienstleister || ""} onChange={e => set("genehmigteSubdienstleister", e.target.value)} className="text-sm min-h-12" placeholder="z. B. Rechenzentrum XY, Mailgateway Z" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvApprovedSubprocessors")}</Label><Textarea value={form.genehmigteSubdienstleister || ""} onChange={e => set("genehmigteSubdienstleister", e.target.value)} className="text-sm min-h-12" placeholder={t("avvSubprocessorsPlaceholder")} /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvSubprocessorNote")}</Label><Textarea value={form.subauftragnehmerHinweis} onChange={e => set("subauftragnehmerHinweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("avvNotes")}</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-16" /></div>
       </div>
       <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.auftragsverarbeiter}>Speichern</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>{t("cancel")}</Button>
+        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.auftragsverarbeiter}>{t("save")}</Button>
       </DialogFooter>
     </div>
   );
