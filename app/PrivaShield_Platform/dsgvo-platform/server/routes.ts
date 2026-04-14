@@ -11,6 +11,31 @@ import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const metaBranchen = [
+  "Dienstleistung", "Handel", "Industrie", "Gesundheit", "IT / SaaS", "Bildung", "Finanzen", "Öffentlicher Bereich", "Immobilien", "Logistik", "Marketing", "Personalwesen"
+];
+
+const metaLoeschfristen = [
+  { key: "frei", label: "Freie / manuelle Frist", frist: "", referenzen: ["Freie Eingabe / interne Vorgabe"] },
+  { key: "6_monate_bewerber", label: "6 Monate, Bewerbungsverfahren", frist: "6 Monate", referenzen: ["§ 15 Abs. 4 AGG / Verteidigung gegen AGG-Ansprüche"] },
+  { key: "2_jahre_handelsbriefe", label: "2 Jahre, steuerliche Sonderfälle", frist: "2 Jahre", referenzen: ["§ 147a AO in Sonderkonstellationen"] },
+  { key: "3_jahre_regel", label: "3 Jahre, regelmäßige Verjährung", frist: "3 Jahre", referenzen: ["§§ 195, 199 BGB"] },
+  { key: "5_jahre_gw", label: "5 Jahre, Geldwäsche- und Sanktionsunterlagen", frist: "5 Jahre", referenzen: ["§ 8 GwG"] },
+  { key: "6_jahre_hgb", label: "6 Jahre, Handels- und Geschäftsbriefe", frist: "6 Jahre", referenzen: ["§ 257 Abs. 1 Nr. 2 und 3 HGB", "§ 147 Abs. 1 Nr. 2, 3, 5 AO"] },
+  { key: "8_jahre_buchung", label: "8 Jahre, Buchungsbelege", frist: "8 Jahre", referenzen: ["§ 147 Abs. 3 AO"] },
+  { key: "10_jahre_ao_hgb", label: "10 Jahre, Buchführungs- und Steuerunterlagen", frist: "10 Jahre", referenzen: ["§ 257 Abs. 1 Nr. 1 und 4 HGB", "§ 147 Abs. 1 Nr. 1, 4, 4a AO"] },
+  { key: "30_jahre_titel", label: "30 Jahre, titulierte Forderungen / Spezialfälle", frist: "30 Jahre", referenzen: ["§ 197 BGB"] },
+];
+
+const metaVvtLoeschmapping = [
+  { pattern: "bewerber", fristKategorie: "6_monate_bewerber", loeschklasse: "LK4", gesetzlicheFrist: "§ 15 Abs. 4 AGG / Verteidigung gegen AGG-Ansprüche" },
+  { pattern: "personal", fristKategorie: "10_jahre_ao_hgb", loeschklasse: "LK4", gesetzlicheFrist: "§ 147 AO / § 257 HGB, soweit abrechnungs- und nachweispflichtig" },
+  { pattern: "crm|kunden", fristKategorie: "3_jahre_regel", loeschklasse: "LK2", gesetzlicheFrist: "§§ 195, 199 BGB" },
+  { pattern: "newsletter", fristKategorie: "3_jahre_regel", loeschklasse: "LK2", gesetzlicheFrist: "§§ 195, 199 BGB, Nachweis über Einwilligung" },
+  { pattern: "video", fristKategorie: "frei", loeschklasse: "LK5", gesetzlicheFrist: "Kurzfristige Speicherfrist nach Erforderlichkeit" },
+  { pattern: "ki", fristKategorie: "frei", loeschklasse: "LK5", gesetzlicheFrist: "Einzelfallabhängig nach Use Case und Rechtsgrundlage" },
+];
+
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
 function getJwtSecret(): string {
   if (!JWT_SECRET) {
@@ -187,6 +212,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
     const { passwordHash, ...safeUser } = user;
     res.json(safeUser);
+  });
+
+
+  // ─── META APIs ───────────────────────────────────────────────────────────
+  app.get("/api/meta/loeschfristen", authMiddleware, async (_req, res) => {
+    res.json(metaLoeschfristen);
+  });
+
+  app.get("/api/meta/branchen", authMiddleware, async (_req, res) => {
+    res.json(metaBranchen);
+  });
+
+  app.get("/api/meta/vvt-loeschmapping", authMiddleware, async (_req, res) => {
+    res.json(metaVvtLoeschmapping);
+  });
+
+  app.post("/api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const vvtId = Number(req.params.vvtId);
+    const vvt = await storage.getVvt(vvtId);
+    if (!vvt || vvt.mandantId !== mandantId) return res.status(404).json({ message: "VVT nicht gefunden" });
+    const mapping = metaVvtLoeschmapping.find((entry) => new RegExp(entry.pattern, "i").test(vvt.bezeichnung || ""));
+    const frist = metaLoeschfristen.find((f) => f.key === mapping?.fristKategorie);
+    const draft = {
+      bezeichnung: vvt.bezeichnung,
+      datenart: vvt.datenkategorien || "",
+      loeschklasse: vvt.loeschklasse || mapping?.loeschklasse || "LK2",
+      fristKategorie: mapping?.fristKategorie || "frei",
+      gesetzlicheFrist: mapping?.gesetzlicheFrist || "",
+      quelleVvtId: vvt.id,
+      quelleVvtBezeichnung: vvt.bezeichnung,
+      aufbewahrungsfrist: vvt.loeschfrist || frist?.frist || "",
+      loeschereignis: vvt.aufbewahrungsgrund || "",
+      rechtsgrundlage: vvt.rechtsgrundlage || "",
+      systeme: "",
+      verantwortlicher: vvt.verantwortlicher || "",
+      loeschverantwortlicher: vvt.verantwortlicher || "",
+      kontrolle: "",
+      nachweis: "",
+      status: "entwurf",
+    };
+    res.json(draft);
+  });
+
+  app.get("/api/mandanten/:mid/export-context", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente] = await Promise.all([
+      storage.getMandant(mandantId),
+      storage.getMandantenLogs(mandantId),
+      storage.getStatsForMandant(mandantId),
+      storage.getVvtByMandant(mandantId),
+      storage.getAvvByMandant(mandantId),
+      storage.getDsfaByMandant(mandantId),
+      storage.getDatenpannenByMandant(mandantId),
+      storage.getDsrByMandant(mandantId),
+      storage.getTomByMandant(mandantId),
+      storage.getAuditsByMandant(mandantId),
+      storage.getLoeschkonzeptByMandant(mandantId),
+      storage.getAufgabenByMandant(mandantId),
+      storage.getDokumenteByMandant(mandantId),
+    ]);
+    res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente } });
   });
 
   // ─── BENUTZER (Admin only) ────────────────────────────────────────────────
