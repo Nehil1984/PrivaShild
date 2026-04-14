@@ -36,6 +36,14 @@ const metaVvtLoeschmapping = [
   { pattern: "ki", fristKategorie: "frei", loeschklasse: "LK5", gesetzlicheFrist: "Einzelfallabhängig nach Use Case und Rechtsgrundlage" },
 ];
 
+
+const metaBeschaeftigtenDatenschutz = {
+  zielgruppen: ["Beschäftigte", "Führungskräfte", "HR", "IT", "Support", "Vertrieb"],
+  schulungsformate: ["praesenz", "online", "hybrid"],
+  standardIntervallMonate: 12,
+  module: ["datenschutzerklaerung_beschaeftigte", "verpflichtung_verschwiegenheit", "verpflichtung_telekommunikation", "schulungen"],
+};
+
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
 function getJwtSecret(): string {
   if (!JWT_SECRET) {
@@ -226,6 +234,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/meta/vvt-loeschmapping", authMiddleware, async (_req, res) => {
     res.json(metaVvtLoeschmapping);
+  });
+
+  app.get("/api/meta/beschaeftigten-datenschutz", authMiddleware, async (_req, res) => {
+    res.json(metaBeschaeftigtenDatenschutz);
   });
 
   app.post("/api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId", authMiddleware, async (req: any, res) => {

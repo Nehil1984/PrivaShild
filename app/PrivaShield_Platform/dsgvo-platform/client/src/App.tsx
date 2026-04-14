@@ -201,6 +201,7 @@ const navItems = [
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
   { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
   { path: "/ki-compliance", label: "KI-Tools & Compliance", icon: Bot },
+  { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
   { path: "/export", label: "Export / Druck", icon: Printer },
 ];
@@ -2320,6 +2321,134 @@ function KiCompliancePage() {
   );
 }
 
+
+function BeschaeftigtenDatenschutzPage() {
+  const { data: dokumente, create, update } = useModuleData("dokumente");
+  const { data: schulungsMeta = [] } = useQuery({
+    queryKey: ["/api/meta/beschaeftigten-datenschutz"],
+    queryFn: () => apiRequest("GET", "/api/meta/beschaeftigten-datenschutz").then(r => r.json()),
+  });
+  const { toast } = useToast();
+  const existingCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "beschaeftigten_datenschutz_check");
+
+  const parseJson = (raw: string | null | undefined, fallback: any) => {
+    if (!raw) return fallback;
+    try { return JSON.parse(raw); } catch { return fallback; }
+  };
+
+  const [form, setForm] = useState<any>({
+    datenschutzerklaerungVorhanden: false,
+    datenschutzerklaerungStand: "",
+    datenschutzerklaerungNaechstePruefung: "",
+    verpflichtungVerschwiegenheit: false,
+    verpflichtungVerschwiegenheitStand: "",
+    verpflichtungTelekommunikation: false,
+    verpflichtungTelekommunikationStand: "",
+    schulungDurchgefuehrt: false,
+    letzteSchulungAm: "",
+    schulungsintervallMonate: 12,
+    naechsteSchulungAm: "",
+    schulungsformat: "praesenz",
+    zielgruppen: [],
+    nachweise: "",
+    offeneMassnahmen: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    const parsed = parseJson(existingCheck?.inhalt, form);
+    setForm((prev: any) => ({ ...prev, ...parsed, zielgruppen: Array.isArray(parsed.zielgruppen) ? parsed.zielgruppen : (prev.zielgruppen || []) }));
+  }, [existingCheck?.id]);
+
+  const set = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }));
+  const toggleZielgruppe = (value: string) => setForm((prev: any) => ({ ...prev, zielgruppen: prev.zielgruppen.includes(value) ? prev.zielgruppen.filter((x: string) => x !== value) : [...prev.zielgruppen, value] }));
+
+  const status = form.datenschutzerklaerungVorhanden && form.verpflichtungVerschwiegenheit && form.verpflichtungTelekommunikation && form.schulungDurchgefuehrt
+    ? { label: "Strukturiert", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
+    : form.datenschutzerklaerungVorhanden || form.verpflichtungVerschwiegenheit || form.verpflichtungTelekommunikation || form.schulungDurchgefuehrt
+      ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" }
+      : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+
+  const save = async () => {
+    const payload = {
+      titel: "Prüfung Beschäftigtendatenschutz und Schulungsstatus",
+      kategorie: "prozessbeschreibung",
+      dokumentTyp: "beschaeftigten_datenschutz_check",
+      status: status.label === "Strukturiert" ? "aktiv" : "entwurf",
+      version: "1.0",
+      beschreibung: "Erfassung von Datenschutzerklärung für Beschäftigte, Verpflichtungen, Telekommunikationsverpflichtung und Schulungsstatus.",
+      inhalt: JSON.stringify(form),
+    };
+    try {
+      if (existingCheck) await update.mutateAsync({ id: existingCheck.id, ...payload });
+      else await create.mutateAsync(payload);
+      toast({ title: "Beschäftigtendatenschutz gespeichert" });
+    } catch {
+      toast({ title: "Fehler", description: "Beschäftigtendatenschutz konnte nicht gespeichert werden.", variant: "destructive" });
+    }
+  };
+
+  const meta = schulungsMeta || {};
+  return (
+    <MandantGuard>
+      <div className="space-y-6">
+        <PageHeader title="Beschäftigtendatenschutz" desc="Erfassung von Datenschutzerklärung, Verpflichtungen und Schulungsstatus für Beschäftigte" />
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm">Beschäftigtendatenschutz-Check</CardTitle>
+                <CardDescription>Dokumentations- und Schulungsstand für Beschäftigte</CardDescription>
+              </div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${status.cls}`}>{status.label}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.datenschutzerklaerungVorhanden} onChange={e => set("datenschutzerklaerungVorhanden", e.target.checked)} className="rounded" /><span>Datenschutzerklärung für Beschäftigte vorhanden</span></label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Stand Datenschutzerklärung</Label><Input type="date" value={form.datenschutzerklaerungStand || ""} onChange={e => set("datenschutzerklaerungStand", e.target.value)} className="h-8 text-sm" /></div>
+              <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.datenschutzerklaerungNaechstePruefung || ""} onChange={e => set("datenschutzerklaerungNaechstePruefung", e.target.value)} className="h-8 text-sm" /></div>
+            </div>
+
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.verpflichtungVerschwiegenheit} onChange={e => set("verpflichtungVerschwiegenheit", e.target.checked)} className="rounded" /><span>Verpflichtung auf Vertraulichkeit / Verschwiegenheit dokumentiert</span></label>
+            <div className="space-y-1"><Label className="text-xs">Stand Verpflichtung Verschwiegenheit</Label><Input type="date" value={form.verpflichtungVerschwiegenheitStand || ""} onChange={e => set("verpflichtungVerschwiegenheitStand", e.target.value)} className="h-8 text-sm" /></div>
+
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.verpflichtungTelekommunikation} onChange={e => set("verpflichtungTelekommunikation", e.target.checked)} className="rounded" /><span>Verpflichtung Telekommunikation / Fernmeldegeheimnis dokumentiert</span></label>
+            <div className="space-y-1"><Label className="text-xs">Stand Verpflichtung Telekommunikation</Label><Input type="date" value={form.verpflichtungTelekommunikationStand || ""} onChange={e => set("verpflichtungTelekommunikationStand", e.target.value)} className="h-8 text-sm" /></div>
+
+            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.schulungDurchgefuehrt} onChange={e => set("schulungDurchgefuehrt", e.target.checked)} className="rounded" /><span>Datenschutzschulung durchgeführt</span></label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Letzte Schulung</Label><Input type="date" value={form.letzteSchulungAm || ""} onChange={e => set("letzteSchulungAm", e.target.value)} className="h-8 text-sm" /></div>
+              <div className="space-y-1"><Label className="text-xs">Nächste Schulung</Label><Input type="date" value={form.naechsteSchulungAm || ""} onChange={e => set("naechsteSchulungAm", e.target.value)} className="h-8 text-sm" /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Wiederholung in Monaten</Label><Input type="number" value={form.schulungsintervallMonate || 12} onChange={e => set("schulungsintervallMonate", Number(e.target.value || 0))} className="h-8 text-sm" /></div>
+              <div className="space-y-1"><Label className="text-xs">Schulungsformat</Label><Select value={form.schulungsformat || "praesenz"} onValueChange={v => set("schulungsformat", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{(meta.schulungsformate || ["praesenz", "online", "hybrid"]).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Zielgruppen</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {(meta.zielgruppen || ["Beschäftigte", "Führungskräfte", "HR", "IT", "Support", "Vertrieb"]).map((zg: string) => (
+                  <label key={zg} className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30">
+                    <input type="checkbox" checked={form.zielgruppen.includes(zg)} onChange={() => toggleZielgruppe(zg)} className="rounded" />
+                    <span>{zg}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1"><Label className="text-xs">Nachweise / Dokumentationsstand</Label><Textarea value={form.nachweise || ""} onChange={e => set("nachweise", e.target.value)} className="text-sm min-h-20" /></div>
+            <div className="space-y-1"><Label className="text-xs">Offene Maßnahmen / Wiederschulungshinweise</Label><Textarea value={form.offeneMassnahmen || ""} onChange={e => set("offeneMassnahmen", e.target.value)} className="text-sm min-h-20" /></div>
+            <div className="space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} className="text-sm min-h-20" /></div>
+            <DialogFooter><Button size="sm" className="bg-primary" onClick={save}>Speichern</Button></DialogFooter>
+          </CardContent>
+        </Card>
+      </div>
+    </MandantGuard>
+  );
+}
+
 function WebDatenschutzPage() {
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { toast } = useToast();
@@ -4066,6 +4195,7 @@ function AppRoutes() {
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />
           <Route path="/web-datenschutz" component={WebDatenschutzPage} />
+          <Route path="/beschaeftigten-datenschutz" component={BeschaeftigtenDatenschutzPage} />
           <Route path="/ki-compliance" component={KiCompliancePage} />
           <Route path="/extras" component={MandantenExtrasPage} />
           <Route path="/mandanten" component={MandantenPage} />

@@ -332,3 +332,22 @@ Wenn neue Module ergänzt werden, müssen in der Regel immer diese Stellen gepr�
 - `client/src/App.tsx`
 
 Sonst brechen Typisierung, Storage-Interface oder Laufzeitpfade auseinander.
+
+
+## Beschäftigtendatenschutz
+
+Die Plattform unterstützt zusätzlich einen strukturierten Prüfbereich für Beschäftigtendatenschutz über das Dokumentmodul mit `dokumentTyp = "beschaeftigten_datenschutz_check"`.
+
+Erfasst werden insbesondere:
+- Datenschutzerklärung für Beschäftigte
+- Verpflichtung auf Vertraulichkeit / Verschwiegenheit
+- Verpflichtung Telekommunikation / Fernmeldegeheimnis
+- Datenschutzschulungen, letzte Schulung, Wiederschulungsintervall und nächste Schulung
+- Nachweise und offene Maßnahmen
+
+Zusätzliche Meta-API:
+- `GET /api/meta/beschaeftigten-datenschutz`
+  - Zielgruppen
+  - Schulungsformate
+  - Standardintervall in Monaten
+  - fachliche Teilmodule

@@ -372,3 +372,16 @@ Für Unraid-Betrieb bedeutet das insbesondere:
 - Datenpfad und Persistenz bleiben unverändert
 - bei Reverse Proxy oder externer Veröffentlichung sollte JWT sauber gesetzt und der Zugriff zusätzlich abgesichert werden
 - nach Updates empfiehlt sich ein kurzer Funktionstest von Login, Mandantenauswahl, Löschkonzept und Export/Druck
+
+
+## Beschäftigtendatenschutz
+
+Die Plattform enthält jetzt zusätzlich einen eigenen Bereich **Beschäftigtendatenschutz**. Dort können dokumentiert werden:
+
+- Datenschutzerklärung für Beschäftigte
+- Verpflichtung auf Verschwiegenheit / Vertraulichkeit
+- Verpflichtung Telekommunikation / Fernmeldegeheimnis
+- Datenschutzschulungen mit letzter Schulung, Wiederholungsintervall und nächster Wiederschulung
+- Nachweise und offene Maßnahmen
+
+Technisch wird dieser Bereich aktuell über das Dokumentmodul mit einem strukturierten `dokumentTyp` abgebildet und durch eine Meta-API für Zielgruppen und Schulungsformate ergänzt.

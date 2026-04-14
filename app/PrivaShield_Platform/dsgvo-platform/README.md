@@ -113,3 +113,16 @@ Aktuell nutzt die Plattform zusätzliche Meta- und Sammel-APIs, damit fachliche 
 - `GET /api/mandanten/:mid/export-context`
 
 Die Exportseite und Druckansicht greifen damit nicht mehr nur auf viele Einzelabfragen zu, sondern können den Exportkontext gesammelt laden.
+
+
+## Beschäftigtendatenschutz
+
+Die Plattform enthält jetzt zusätzlich einen eigenen Bereich **Beschäftigtendatenschutz**. Dort können dokumentiert werden:
+
+- Datenschutzerklärung für Beschäftigte
+- Verpflichtung auf Verschwiegenheit / Vertraulichkeit
+- Verpflichtung Telekommunikation / Fernmeldegeheimnis
+- Datenschutzschulungen mit letzter Schulung, Wiederholungsintervall und nächster Wiederschulung
+- Nachweise und offene Maßnahmen
+
+Technisch wird dieser Bereich aktuell über das Dokumentmodul mit einem strukturierten `dokumentTyp` abgebildet und durch eine Meta-API für Zielgruppen und Schulungsformate ergänzt.
