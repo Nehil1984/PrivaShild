@@ -1177,14 +1177,84 @@ function DsfaPage() {
 }
 
 // ─── DATENPANNEN PAGE ──────────────────────────────────────────────────────
+const datenpannenTemplates: Record<string, any> = {
+  none: null,
+  email: {
+    titel: "Fehlversand einer E-Mail",
+    beschreibung: "Personenbezogene Daten wurden per E-Mail an einen falschen Empfänger versendet.",
+    schwere: "mittel",
+    status: "offen",
+    ursache: "Fehladressierung / manueller Versandfehler",
+    massnahmen: "Empfänger kontaktieren, Löschung verlangen, Versandprozess prüfen",
+    kategorie: "Vertraulichkeitsverletzung",
+    datenarten: "Kontaktdaten, Kommunikationsinhalte, Anhangsdaten",
+    erstmassnahmen: "Rückruf / Löschaufforderung an falschen Empfänger",
+    folgemassnahmen: "Sensibilisierung, Vier-Augen-Prinzip, Versandprüfungen",
+    betroffenengruppen: "Kunden, Beschäftigte, Interessenten",
+    meldepflichtig: false,
+    betroffenInformiert: false,
+  },
+  phishing: {
+    titel: "Phishing / Account-Kompromittierung",
+    beschreibung: "Unberechtigter Zugriff auf ein Benutzerkonto mit möglichem Datenabfluss.",
+    schwere: "hoch",
+    status: "offen",
+    ursache: "Kompromittierte Zugangsdaten / Phishing-Angriff",
+    massnahmen: "Passwort zurücksetzen, Sitzungen beenden, MFA erzwingen, Logs auswerten",
+    kategorie: "Vertraulichkeitsverletzung",
+    datenarten: "Zugangsdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
+    erstmassnahmen: "Account sperren, Credentials zurücksetzen, Zugriff analysieren",
+    folgemassnahmen: "MFA-Rollout, Awareness-Maßnahmen, Incident-Response-Nachbereitung",
+    betroffenengruppen: "Beschäftigte, Kunden",
+    meldepflichtig: true,
+    betroffenInformiert: false,
+  },
+  lostdevice: {
+    titel: "Verlust eines mobilen Endgeräts",
+    beschreibung: "Verlust oder Diebstahl eines Geräts mit potenziellem Zugriff auf personenbezogene Daten.",
+    schwere: "hoch",
+    status: "offen",
+    ursache: "Gerät verloren oder entwendet",
+    massnahmen: "Remote-Wipe, Gerätesperre, Passwortänderung, Asset-Dokumentation aktualisieren",
+    kategorie: "Verfügbarkeits- / Vertraulichkeitsverletzung",
+    datenarten: "Kontaktdaten, E-Mails, Dokumente, Zugangsdaten",
+    erstmassnahmen: "Gerät orten / sperren / löschen",
+    folgemassnahmen: "MDM-Konzept prüfen, Geräteschutz verbessern",
+    betroffenengruppen: "Beschäftigte, Kunden, Geschäftspartner",
+    meldepflichtig: true,
+    betroffenInformiert: false,
+  },
+};
+
 function DatenpanneForm({ initial, onSave, onCancel }: any) {
-  const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", ...initial });
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], gemeldetAm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = datenpannenTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Muster-Datenpanne</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="email">Fehlversand einer E-Mail</SelectItem>
+              <SelectItem value="phishing">Phishing / Account-Kompromittierung</SelectItem>
+              <SelectItem value="lostdevice">Verlust eines mobilen Endgeräts</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Entdeckt am *</Label><Input type="date" value={form.entdecktAm} onChange={e => set("entdecktAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Gemeldet am</Label><Input type="date" value={form.gemeldetAm || ""} onChange={e => set("gemeldetAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">72h-Frist</Label><Input type="date" value={form.frist72h || ""} onChange={e => set("frist72h", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Schwere</Label>
           <Select value={form.schwere} onValueChange={v => set("schwere", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -1198,10 +1268,16 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">Betroffene Personen (ca.)</Label><Input type="number" value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", Number(e.target.value))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Kategorie</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" placeholder="z. B. Vertraulichkeitsverletzung" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffenengruppen</Label><Textarea value={form.betroffenengruppen} onChange={e => set("betroffenengruppen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Ursache</Label><Textarea value={form.ursache} onChange={e => set("ursache", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Erstmaßnahmen</Label><Textarea value={form.erstmassnahmen} onChange={e => set("erstmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Ergriffene Maßnahmen</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Folge- und Verbesserungsmaßnahmen</Label><Textarea value={form.folgemassnahmen} onChange={e => set("folgemassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="meld" checked={!!form.meldepflichtig} onChange={e => set("meldepflichtig", e.target.checked)} className="rounded" /><Label htmlFor="meld" className="text-xs">Meldepflichtig (Art. 33 DSGVO – 72h-Frist)</Label></div>
+        <div className="space-y-1"><Label className="text-xs">Behördenmeldung</Label><Input type="date" value={form.behoerdeMeldung || ""} onChange={e => set("behoerdeMeldung", e.target.value)} className="h-8 text-sm" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="betrinf" checked={!!form.betroffenInformiert} onChange={e => set("betroffenInformiert", e.target.checked)} className="rounded" /><Label htmlFor="betrinf" className="text-xs">Betroffene informiert (Art. 34)</Label></div>
       </div>
       <DialogFooter>
