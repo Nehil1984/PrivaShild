@@ -723,12 +723,6 @@ function VvtForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = vvtTemplates[value];
@@ -914,12 +908,6 @@ function AvvForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: "", pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = avvTemplates[value];
@@ -1085,12 +1073,6 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, risikoquelle: "", betroffeneGruppen: "", datenarten: "", eintrittswahrscheinlichkeit: "", schweregrad: "", restrisiko: "", restmassnahmen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = dsfaTemplates[value];
@@ -1262,12 +1244,6 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], entdecktUm: new Date().toTimeString().slice(0,5), gemeldetAm: "", gemeldetUm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = datenpannenTemplates[value];
@@ -1394,12 +1370,6 @@ const dsrArten: Record<string, string> = {
 function DsrForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ art: "auskunft", antragsteller: "", eingangsdatum: new Date().toISOString().split("T")[0], fristDatum: "", beschreibung: "", status: "offen", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1556,12 +1526,6 @@ function TomForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", pruefintervall: "", schutzziel: "", nachweis: "", wirksamkeit: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = tomTemplates[value];
@@ -1724,12 +1688,6 @@ function AuditForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", followUpDatum: "", naechstesAuditAm: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = auditTemplates[value];
@@ -1843,12 +1801,6 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   const vvtLoeschMapping = useMemo(() => (mappingMeta || defaultVvtLoeschMapping).map((entry: VvtLoeschMappingMeta) => ({ ...entry, match: new RegExp(entry.pattern, "i") })), [mappingMeta]);
   const [form, setForm] = useState({ bezeichnung: "", datenart: "", loeschklasse: "LK2", fristKategorie: "frei", gesetzlicheFrist: "", quelleVvtId: "none", quelleVvtBezeichnung: "", aufbewahrungsfrist: "", loeschereignis: "", rechtsgrundlage: "", systeme: "", verantwortlicher: "", loeschverantwortlicher: "", kontrolle: "", nachweis: "", status: "aktiv", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const classRequirements: Record<string, string[]> = {
     LK3: ["gesetzlicheFrist", "aufbewahrungsfrist", "nachweis"],
     LK4: ["loeschereignis", "loeschverantwortlicher"],
@@ -1856,6 +1808,12 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
   };
   const missingRequired = (classRequirements[form.loeschklasse] || []).filter((field) => !String((form as any)[field] || "").trim());
 
+  const applyFristKategorie = (value: string) => {
+    const found = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === value);
+    if (!found) return set("fristKategorie", value);
+    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
+  };
+  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item: any) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const plausibility = (() => {
     const mapped = gesetzlicheAufbewahrungsfristen.find((x: any) => x.key === form.fristKategorie);
     if (missingRequired.length > 0) return { level: "error", text: `Für ${form.loeschklasse} fehlen Pflichtangaben: ${missingRequired.join(", ")}.` };
@@ -2052,12 +2010,6 @@ function AuditsPage() {
 function AufgabeForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", beschreibung: "", typ: "task", prioritaet: "mittel", status: "offen", fortschritt: 0, verantwortlicher: "", startDatum: "", faelligAm: "", abgeschlossenAm: "", kategorie: "sonstige", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2185,12 +2137,6 @@ function AufgabenPage() {
 function DokumentForm({ initial, onSave, onCancel }: any) {
   const [form, setForm] = useState({ titel: "", kategorie: "richtlinie", dokumentTyp: "richtlinie", beschreibung: "", version: "1.0", status: "aktiv", gueltigBis: "", verantwortlicher: "", freigegebenVon: "", freigegebenAm: "", naechstePruefungAm: "", inhalt: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
   const handleKategorieChange = (value: string) => {
     if (value === "leitlinie") {
       setForm((p: any) => ({
@@ -2690,12 +2636,6 @@ function MandantenPage() {
   const [form, setForm] = useState<any>(emptyForm);
   const { toast } = useToast();
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const applyFristKategorie = (value: string) => {
-    const found = gesetzlicheAufbewahrungsfristen.find((item) => item.key === value);
-    if (!found) return set("fristKategorie", value);
-    setForm((p: any) => ({ ...p, fristKategorie: value, gesetzlicheFrist: found.referenzen?.[0] || found.label, aufbewahrungsfrist: found.frist || p.aufbewahrungsfrist }));
-  };
-  const selectedFrist = gesetzlicheAufbewahrungsfristen.find((item) => item.key === (form.fristKategorie || "frei")) || gesetzlicheAufbewahrungsfristen[0];
 
   const openNew = () => { setSetupStep(1); setForm(emptyForm); setModal("new"); };
   const openEdit = (m: any) => {
