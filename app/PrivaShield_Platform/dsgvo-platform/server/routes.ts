@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 import { validateBody } from "./validation";
-import { insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAvvSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
+import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertMandantenGruppeSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -449,6 +449,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(201).json(item);
   });
 
+  app.post("/api/mandanten/:mid/audits", authMiddleware, validateBody(requestAuditSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createAudit({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `audit_erstellt`,
+      modul: "audits",
+      entitaetTyp: "audit",
+      entitaetId: item.id,
+      beschreibung: `audit wurde angelegt.`,
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
   app.post("/api/mandanten/:mid/dokumente", authMiddleware, validateBody(requestDokumentSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
@@ -582,6 +601,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   crudRoutes("datenpannen", storage.getDatenpannenByMandant.bind(storage), storage.getDatenpanne.bind(storage), storage.createDatenpanne.bind(storage), storage.updateDatenpanne.bind(storage), storage.deleteDatenpanne.bind(storage), insertDatenpanneSchema.partial());
   crudRoutes("dsr", storage.getDsrByMandant.bind(storage), storage.getDsr.bind(storage), storage.createDsr.bind(storage), storage.updateDsr.bind(storage), storage.deleteDsr.bind(storage), insertDsrSchema.partial());
   crudRoutes("tom", storage.getTomByMandant.bind(storage), storage.getTom.bind(storage), storage.createTom.bind(storage), storage.updateTom.bind(storage), storage.deleteTom.bind(storage), insertTomSchema.partial());
+  crudRoutes("audits", storage.getAuditsByMandant.bind(storage), storage.getAudit.bind(storage), storage.createAudit.bind(storage), storage.updateAudit.bind(storage), storage.deleteAudit.bind(storage), insertAuditSchema.partial());
   crudRoutes("aufgaben", storage.getAufgabenByMandant.bind(storage), storage.getAufgabe.bind(storage), storage.createAufgabe.bind(storage), storage.updateAufgabe.bind(storage), storage.deleteAufgabe.bind(storage));
   crudRoutes("dokumente", storage.getDokumenteByMandant.bind(storage), storage.getDokument.bind(storage), storage.createDokument.bind(storage), storage.updateDokument.bind(storage), storage.deleteDokument.bind(storage), insertDokumentSchema.partial());
 

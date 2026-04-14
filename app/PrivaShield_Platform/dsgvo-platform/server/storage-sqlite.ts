@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import { eq, and, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
-  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, aufgaben, dokumente,
+  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, audits, aufgaben, dokumente,
   type Mandant, type InsertMandant,
   type MandantenGruppe, type InsertMandantenGruppe,
   type Vorlagenpaket, type InsertVorlagenpaket,
@@ -21,6 +21,7 @@ import {
   type Datenpanne, type InsertDatenpanne,
   type Dsr, type InsertDsr,
   type Tom, type InsertTom,
+  type Audit, type InsertAudit,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
 } from "@shared/schema";
@@ -123,6 +124,13 @@ export class DatabaseStorage implements IStorage {
   async updateTom(id: number, data: Partial<InsertTom>) { return db.update(tom).set(data).where(eq(tom.id, id)).returning().get(); }
   async deleteTom(id: number) { db.delete(tom).where(eq(tom.id, id)).run(); }
 
+  // Audit
+  async getAuditsByMandant(mandantId: number) { return db.select().from(audits).where(eq(audits.mandantId, mandantId)).orderBy(desc(audits.createdAt)).all(); }
+  async getAudit(id: number) { return db.select().from(audits).where(eq(audits.id, id)).get(); }
+  async createAudit(data: InsertAudit) { const now = new Date().toISOString(); return db.insert(audits).values({ ...data, createdAt: now, updatedAt: now }).returning().get(); }
+  async updateAudit(id: number, data: Partial<InsertAudit>) { return db.update(audits).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(audits.id, id)).returning().get(); }
+  async deleteAudit(id: number) { db.delete(audits).where(eq(audits.id, id)).run(); }
+
   // Aufgaben
   async getAufgabenByMandant(mandantId: number) { return db.select().from(aufgaben).where(eq(aufgaben.mandantId, mandantId)).orderBy(desc(aufgaben.createdAt)).all(); }
   async getAufgabe(id: number) { return db.select().from(aufgaben).where(eq(aufgaben.id, id)).get(); }
@@ -146,6 +154,7 @@ export class DatabaseStorage implements IStorage {
       datenpannen: db.select().from(datenpannen).where(eq(datenpannen.mandantId, mandantId)).all().length,
       dsr: db.select().from(dsr).where(eq(dsr.mandantId, mandantId)).all().length,
       tom: db.select().from(tom).where(eq(tom.mandantId, mandantId)).all().length,
+      audits: db.select().from(audits).where(eq(audits.mandantId, mandantId)).all().length,
       aufgaben: db.select().from(aufgaben).where(eq(aufgaben.mandantId, mandantId)).all().length,
       offeneAufgaben: db.select().from(aufgaben).where(and(eq(aufgaben.mandantId, mandantId), eq(aufgaben.status, "offen"))).all().length,
       dokumente: db.select().from(dokumente).where(eq(dokumente.mandantId, mandantId)).all().length,

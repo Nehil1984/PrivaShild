@@ -265,7 +265,18 @@ const MODULES = {
       { key: "massnahme", label: "Maßnahme" },
       { key: "status", label: "Status" },
       { key: "verantwortlicher", label: "Verantwortlicher" },
-      { key: "pruef_datum", label: "Prüfdatum" },
+      { key: "pruefDatum", label: "Prüfdatum" },
+    ],
+  },
+  audits: {
+    label: "Interne Audits & Auditprotokolle",
+    columns: [
+      { key: "titel", label: "Audit" },
+      { key: "pruefbereich", label: "Prüfbereich" },
+      { key: "auditdatum", label: "Datum" },
+      { key: "auditor", label: "Auditor" },
+      { key: "ergebnis", label: "Ergebnis" },
+      { key: "status", label: "Status" },
     ],
   },
   aufgaben: {
@@ -405,6 +416,23 @@ function buildLogsBox(logs) {
     </div>`;
 }
 
+function buildAuditSummary(audits, auditTodos) {
+  if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0)) return "";
+  const deviations = (audits || []).flatMap(a => String(a.abweichungen || "").split("\n").filter(line => line.trim()));
+  return `
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Auditprotokoll, Abweichungen und To-dos</h2>
+        <span class="badge">${fmt((audits || []).length)} Audits</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p></div>
+        <div class="info-card"><h3>Wesentliche Abweichungen</h3><p>${deviations.length ? deviations.slice(0, 8).map(d => `• ${d}`).join("<br>") : "Keine dokumentierten Abweichungen"}</p></div>
+        <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p></div>
+      </div>
+    </div>`;
+}
+
 // ─── API-Abruf ────────────────────────────────────────────────────────────
 // Token aus localStorage holen (App speichert ihn dort)
 const token = localStorage.getItem("privashield_token") ||
@@ -489,14 +517,16 @@ async function render() {
         <p><strong>Audit-Logs:</strong> ${fmt((config.logs || []).length)}</p>
         <p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p>
         <p><strong>Top-Risiken:</strong> ${fmt((config.logs || []).filter(l => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length)}</p>
-        <p><strong>Offene Maßnahmenhinweise:</strong> siehe Aufgaben & Maßnahmenplan</p>
+        <p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p>
+        <p><strong>Audit-Abweichungen:</strong> ${fmt(config.managementSummary?.auditDeviationCount)}</p>
+        <p><strong>Offene Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p>
         <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
         <p><strong>Management-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
         <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
       </div>
       <div class="info-grid">
-        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p></div>
-        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p></div>
+        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p></div>
+        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p></div>
       </div>
     `;
 
@@ -515,6 +545,7 @@ async function render() {
       `;
     });
 
+    html += buildAuditSummary(config.audits || [], config.auditTodos || []);
     html += buildLogsBox(config.logs || []);
 
     html += `

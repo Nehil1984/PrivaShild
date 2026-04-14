@@ -20,6 +20,7 @@ import type {
   Datenpanne, InsertDatenpanne,
   Dsr, InsertDsr,
   Tom, InsertTom,
+  Audit, InsertAudit,
   Aufgabe, InsertAufgabe,
   Dokument, InsertDokument,
 } from "@shared/schema";
@@ -38,6 +39,7 @@ interface DbSchema {
   datenpannen: Datenpanne[];
   dsr: Dsr[];
   tom: Tom[];
+  audits: Audit[];
   aufgaben: Aufgabe[];
   dokumente: Dokument[];
 }
@@ -76,6 +78,7 @@ const defaultData: DbSchema = {
   datenpannen: [],
   dsr: [],
   tom: [],
+  audits: [],
   aufgaben: [],
   dokumente: [],
 };
@@ -484,6 +487,13 @@ export class LowdbStorage implements IStorage {
   async updateTom(id: number, data: Partial<InsertTom>) { return this._update<Tom>("tom", id, data); }
   async deleteTom(id: number) { return this._delete("tom", id); }
 
+  // ─── Audit ────────────────────────────────────────────────────────────────
+  async getAuditsByMandant(mandantId: number) { return this._getAll<Audit>("audits", mandantId); }
+  async getAudit(id: number) { return this._getOne<Audit>("audits", id); }
+  async createAudit(data: InsertAudit) { return this._create<Audit>("audits", data); }
+  async updateAudit(id: number, data: Partial<InsertAudit>) { return this._update<Audit>("audits", id, data); }
+  async deleteAudit(id: number) { return this._delete("audits", id); }
+
   // ─── Aufgaben ─────────────────────────────────────────────────────────────
   async getAufgabenByMandant(mandantId: number) { return this._getAll<Aufgabe>("aufgaben", mandantId); }
   async getAufgabe(id: number) { return this._getOne<Aufgabe>("aufgaben", id); }
@@ -509,6 +519,7 @@ export class LowdbStorage implements IStorage {
       datenpannen: f("datenpannen"),
       dsr: f("dsr"),
       tom: f("tom"),
+      audits: f("audits"),
       aufgaben: f("aufgaben"),
       offeneAufgaben: (db.data.aufgaben as Aufgabe[]).filter((x) => x.mandantId === mandantId && x.status === "offen").length,
       dokumente: f("dokumente"),

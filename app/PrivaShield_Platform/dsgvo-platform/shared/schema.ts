@@ -262,6 +262,10 @@ export const tom = sqliteTable("tom", {
   status: text("status").default("implementiert"), // geplant | implementiert | überprüft
   verantwortlicher: text("verantwortlicher"),
   pruefDatum: text("pruef_datum"),
+  pruefintervall: text("pruefintervall"),
+  schutzziel: text("schutzziel"),
+  nachweis: text("nachweis"),
+  wirksamkeit: text("wirksamkeit"),
   notizen: text("notizen"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
@@ -272,6 +276,36 @@ export const insertTomSchema = createInsertSchema(tom).omit({ id: true, createdA
 export const requestTomSchema = insertTomSchema.omit({ mandantId: true });
 export type InsertTom = z.infer<typeof insertTomSchema>;
 export type Tom = typeof tom.$inferSelect;
+
+// ─── Audit / interne Audits ───────────────────────────────────────────────────
+export const audits = sqliteTable("audits", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mandantId: integer("mandant_id").notNull(),
+  titel: text("titel").notNull(),
+  auditart: text("auditart").default("intern"),
+  pruefbereich: text("pruefbereich"),
+  auditdatum: text("auditdatum").notNull(),
+  auditor: text("auditor"),
+  status: text("status").default("geplant"),
+  ergebnis: text("ergebnis").default("offen"),
+  scope: text("scope"),
+  methode: text("methode"),
+  feststellungen: text("feststellungen"),
+  positiveAspekte: text("positive_aspekte"),
+  abweichungen: text("abweichungen"),
+  empfehlungen: text("empfehlungen"),
+  followUpDatum: text("follow_up_datum"),
+  naechstesAuditAm: text("naechstes_audit_am"),
+  createdAt: text("created_at").default(new Date().toISOString()),
+  updatedAt: text("updated_at").default(new Date().toISOString()),
+});
+export const insertAuditSchema = createInsertSchema(audits).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+  auditdatum: z.string().trim().min(1, "Auditdatum ist erforderlich"),
+});
+export const requestAuditSchema = insertAuditSchema.omit({ mandantId: true });
+export type InsertAudit = z.infer<typeof insertAuditSchema>;
+export type Audit = typeof audits.$inferSelect;
 
 // ─── Aufgaben ─────────────────────────────────────────────────────────────────
 export const aufgaben = sqliteTable("aufgaben", {

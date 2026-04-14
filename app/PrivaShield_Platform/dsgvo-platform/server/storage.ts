@@ -19,6 +19,7 @@ import {
   type Datenpanne, type InsertDatenpanne,
   type Dsr, type InsertDsr,
   type Tom, type InsertTom,
+  type Audit, type InsertAudit,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
 } from "@shared/schema";
@@ -103,6 +104,13 @@ export interface IStorage {
   createTom(data: InsertTom): Promise<Tom>;
   updateTom(id: number, data: Partial<InsertTom>): Promise<Tom | undefined>;
   deleteTom(id: number): Promise<void>;
+
+  // Audit
+  getAuditsByMandant(mandantId: number): Promise<Audit[]>;
+  getAudit(id: number): Promise<Audit | undefined>;
+  createAudit(data: InsertAudit): Promise<Audit>;
+  updateAudit(id: number, data: Partial<InsertAudit>): Promise<Audit | undefined>;
+  deleteAudit(id: number): Promise<void>;
 
   // Aufgaben
   getAufgabenByMandant(mandantId: number): Promise<Aufgabe[]>;

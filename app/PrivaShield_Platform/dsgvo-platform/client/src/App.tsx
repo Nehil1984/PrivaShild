@@ -24,7 +24,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList
 } from "lucide-react";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
@@ -193,6 +193,7 @@ const navItems = [
   { path: "/datenpannen", label: "Datenpannen", icon: AlertCircle },
   { path: "/dsr", label: "DSR / Betroffenenrechte", icon: UserCheck },
   { path: "/tom", label: "TOM-Katalog", icon: Lock },
+  { path: "/audits", label: "Interne Audits", icon: ClipboardList },
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
   { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
@@ -439,6 +440,7 @@ function Dashboard() {
     { label: "Datenpannen", value: stats?.datenpannen ?? 0, icon: AlertCircle, path: "/datenpannen", color: "text-red-400" },
     { label: "DSR-Anfragen", value: stats?.dsr ?? 0, icon: UserCheck, path: "/dsr", color: "text-purple-400" },
     { label: "TOM-Maßnahmen", value: stats?.tom ?? 0, icon: Lock, path: "/tom", color: "text-emerald-400" },
+    { label: "Interne Audits", value: stats?.audits ?? 0, icon: ClipboardList, path: "/audits", color: "text-cyan-400" },
     { label: "Offene Aufgaben", value: stats?.offeneAufgaben ?? 0, icon: CheckSquare, path: "/aufgaben", color: "text-orange-400" },
     { label: "Dokumente", value: stats?.dokumente ?? 0, icon: FolderOpen, path: "/dokumente", color: "text-indigo-400" },
   ];
@@ -1563,7 +1565,6 @@ function TomPage() {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
-  // Group by category
   const grouped = data.reduce((acc: any, item: any) => {
     const cat = item.kategorie || "sonstige";
     if (!acc[cat]) acc[cat] = [];
@@ -1588,7 +1589,7 @@ function TomPage() {
                         <Lock className="h-4 w-4 text-emerald-400 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.massnahme}</p>
-                          {item.beschreibung && <p className="text-xs text-muted-foreground truncate">{item.beschreibung}</p>}
+                          <p className="text-xs text-muted-foreground truncate">{item.verantwortlicher || "Kein Verantwortlicher"}{item.pruefintervall ? ` · ${item.pruefintervall}` : ""}{item.wirksamkeit ? ` · Wirksamkeit: ${item.wirksamkeit}` : ""}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1610,6 +1611,178 @@ function TomPage() {
         </DialogContent>
       </Dialog>
       <ConfirmDialog open={delId !== null} title="TOM löschen?" desc="Dieser Vorgang kann nicht rückgängig gemacht werden."
+        onConfirm={() => { remove.mutate(delId!); setDelId(null); }} onCancel={() => setDelId(null)} />
+    </MandantGuard>
+  );
+}
+
+const auditTemplates: Record<string, any> = {
+  none: null,
+  intern: {
+    titel: "Internes Datenschutz-Audit",
+    auditart: "intern",
+    pruefbereich: "Datenschutzmanagementsystem",
+    status: "geplant",
+    ergebnis: "offen",
+    methode: "Interview, Dokumentenprüfung, Stichproben",
+    scope: "VVT, TOM, DSR, Datenpannen, Dokumentation",
+    feststellungen: "Prüfung der dokumentierten Prozesse und Nachweise.",
+    positiveAspekte: "Grundstruktur vorhanden",
+    abweichungen: "",
+    empfehlungen: "Abweichungen priorisieren und Maßnahmenplan pflegen",
+  },
+  tom: {
+    titel: "Audit technischer und organisatorischer Maßnahmen",
+    auditart: "kontrollaudit",
+    pruefbereich: "TOM / Art. 32 DSGVO",
+    status: "geplant",
+    ergebnis: "offen",
+    methode: "Kontrolltest, Nachweissichtung, Interview IT",
+    scope: "Zugangs-, Zugriffs-, Eingabe- und Verfügbarkeitskontrolle",
+    feststellungen: "Wirksamkeit ausgewählter Sicherheitsmaßnahmen prüfen.",
+    positiveAspekte: "",
+    abweichungen: "",
+    empfehlungen: "Fehlende Nachweise und Prüfintervalle ergänzen",
+  },
+  auftragsverarbeitung: {
+    titel: "Audit Auftragsverarbeitung / Dienstleistersteuerung",
+    auditart: "compliance",
+    pruefbereich: "AVV und Dienstleistermanagement",
+    status: "geplant",
+    ergebnis: "offen",
+    methode: "Dokumentenprüfung, Vertragsabgleich, Nachweisprüfung",
+    scope: "AVV, TOM-Nachweise, Drittlandtransfers, Prüffristen",
+    feststellungen: "Vertrags- und Nachweisstand der Dienstleister prüfen.",
+    positiveAspekte: "",
+    abweichungen: "",
+    empfehlungen: "Fehlende Nachweise nachfordern und Review-Zyklen festlegen",
+  },
+};
+
+function AuditForm({ initial, onSave, onCancel }: any) {
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", followUpDatum: "", naechstesAuditAm: "", ...initial });
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const applyTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    const template = auditTemplates[value];
+    if (!template) return;
+    setForm((p: any) => ({ ...p, ...template }));
+  };
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Audit-Vorlage</Label>
+          <Select value={selectedTemplate} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Vorlage</SelectItem>
+              <SelectItem value="intern">Internes Datenschutz-Audit</SelectItem>
+              <SelectItem value="tom">TOM-Audit</SelectItem>
+              <SelectItem value="auftragsverarbeitung">Audit Auftragsverarbeitung</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Audittitel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Auditart</Label><Input value={form.auditart} onChange={e => set("auditart", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Prüfbereich</Label><Input value={form.pruefbereich} onChange={e => set("pruefbereich", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Auditdatum *</Label><Input type="date" value={form.auditdatum} onChange={e => set("auditdatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Auditor</Label><Input value={form.auditor} onChange={e => set("auditor", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Status</Label>
+          <Select value={form.status} onValueChange={v => set("status", v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="geplant">Geplant</SelectItem><SelectItem value="laufend">Laufend</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem></SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1"><Label className="text-xs">Ergebnis</Label>
+          <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="offen">Offen</SelectItem><SelectItem value="konform">Konform</SelectItem><SelectItem value="teilweise_konform">Teilweise konform</SelectItem><SelectItem value="kritisch">Kritische Abweichungen</SelectItem></SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Auditumfang / Scope</Label><Textarea value={form.scope} onChange={e => set("scope", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Methode</Label><Textarea value={form.methode} onChange={e => set("methode", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Feststellungen</Label><Textarea value={form.feststellungen} onChange={e => set("feststellungen", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Positive Aspekte</Label><Textarea value={form.positiveAspekte} onChange={e => set("positiveAspekte", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Abweichungen / Findings</Label><Textarea value={form.abweichungen} onChange={e => set("abweichungen", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Empfehlungen / To-dos</Label><Textarea value={form.empfehlungen} onChange={e => set("empfehlungen", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="space-y-1"><Label className="text-xs">Follow-up am</Label><Input type="date" value={form.followUpDatum || ""} onChange={e => set("followUpDatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Nächstes Audit am</Label><Input type="date" value={form.naechstesAuditAm || ""} onChange={e => set("naechstesAuditAm", e.target.value)} className="h-8 text-sm" /></div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+        <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function AuditsPage() {
+  const { data, isLoading, create, update, remove } = useModuleData("audits");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const [modal, setModal] = useState<null | "new" | any>(null);
+  const [delId, setDelId] = useState<number | null>(null);
+  const { toast } = useToast();
+  const save = (form: any) => {
+    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  };
+  const offeneAuditAufgaben = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
+  const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + (String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length || 0), 0);
+  return (
+    <MandantGuard>
+      <PageHeader title="Interne Audits" desc="Planung, Durchführung und Auditprotokolle mit Abweichungen, Findings und To-dos"
+        action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Audit</Button>} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Audits gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Abweichungen gesamt</p><p className="text-2xl font-bold">{gesamtAbweichungen}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Audit-To-dos</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></CardContent></Card>
+      </div>
+      {isLoading ? <Skeleton className="h-32 w-full" /> : (
+        <div className="space-y-3">
+          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine Audits dokumentiert.</CardContent></Card>}
+          {data.map((item: any) => {
+            const abweichungen = String(item.abweichungen || "").split("\n").filter((line: string) => line.trim());
+            const todos = String(item.empfehlungen || "").split("\n").filter((line: string) => line.trim());
+            return (
+              <Card key={item.id} className="group hover:border-border/80 transition-colors">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{item.titel}</p>
+                      <p className="text-xs text-muted-foreground">{item.pruefbereich || "Allgemeiner Prüfbereich"} · {item.auditdatum}{item.auditor ? ` · Auditor: ${item.auditor}` : ""}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge value={item.ergebnis} />
+                      <StatusBadge value={item.status} />
+                      <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div className="rounded-lg border p-3"><p className="font-medium mb-1">Scope</p><p className="text-muted-foreground whitespace-pre-wrap">{item.scope || "—"}</p></div>
+                    <div className="rounded-lg border p-3"><p className="font-medium mb-1">Abweichungen</p><p className="text-muted-foreground whitespace-pre-wrap">{abweichungen.length ? abweichungen.join("\n") : "—"}</p></div>
+                    <div className="rounded-lg border p-3"><p className="font-medium mb-1">Audit-To-dos</p><p className="text-muted-foreground whitespace-pre-wrap">{todos.length ? todos.join("\n") : "—"}</p></div>
+                  </div>
+                  {(item.feststellungen || item.positiveAspekte) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="rounded-lg border p-3"><p className="font-medium mb-1">Feststellungen</p><p className="text-muted-foreground whitespace-pre-wrap">{item.feststellungen || "—"}</p></div>
+                      <div className="rounded-lg border p-3"><p className="font-medium mb-1">Positive Aspekte</p><p className="text-muted-foreground whitespace-pre-wrap">{item.positiveAspekte || "—"}</p></div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
+        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{modal === "new" ? "Neues Audit" : "Audit bearbeiten"}</DialogTitle></DialogHeader>
+          {modal && <AuditForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog open={delId !== null} title="Audit löschen?" desc="Dieser Vorgang kann nicht rückgängig gemacht werden."
         onConfirm={() => { remove.mutate(delId!); setDelId(null); }} onCancel={() => setDelId(null)} />
     </MandantGuard>
   );
@@ -3140,6 +3313,7 @@ const EXPORT_MODULES = [
   { key: "datenpannen", label: "Datenpannen (Art. 33/34)", icon: AlertCircle, color: "text-red-400" },
   { key: "dsr", label: "Betroffenenrechte / DSR (Art. 15–22)", icon: UserCheck, color: "text-purple-400" },
   { key: "tom", label: "TOM-Katalog (Art. 32)", icon: Lock, color: "text-green-400" },
+  { key: "audits", label: "Interne Audits & Auditprotokoll", icon: ClipboardList, color: "text-cyan-400" },
   { key: "aufgaben", label: "Aufgaben & Maßnahmenplan", icon: CheckSquare, color: "text-orange-400" },
   { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-slate-400" },
 ];
@@ -3164,10 +3338,25 @@ function ExportPage() {
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then((r) => r.json()),
   });
+  const { data: audits = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/audits`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/audits`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: aufgaben = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/aufgaben`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const auditTodos = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
+  const auditDeviationCount = audits.reduce((sum: number, item: any) => sum + String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length, 0);
   const managementSummary = {
     score: mandant?.verantwortlicherName ? 75 : 40,
     ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
     topRisiken: logs.filter((l: any) => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length,
+    audits: audits.length,
+    auditDeviationCount,
+    auditTodos: auditTodos.length,
   };
 
   const toggle = (key: string) => {
@@ -3186,6 +3375,8 @@ function ExportPage() {
       mandantInfo: mandant,
       gruppeInfo: gruppen.find((g: any) => g.id === mandant?.gruppeId) || null,
       logs,
+      audits,
+      auditTodos,
       managementSummary,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),
       generatedAt: new Date().toISOString(),
@@ -3646,6 +3837,7 @@ function AppRoutes() {
           <Route path="/datenpannen" component={DatenpannenPage} />
           <Route path="/dsr" component={DsrPage} />
           <Route path="/tom" component={TomPage} />
+          <Route path="/audits" component={AuditsPage} />
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />
           <Route path="/web-datenschutz" component={WebDatenschutzPage} />
