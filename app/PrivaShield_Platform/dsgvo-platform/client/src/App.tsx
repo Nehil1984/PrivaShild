@@ -1794,6 +1794,15 @@ const loeschklassen = [
   { key: "LK5", label: "LK5 Besondere Kategorien / Hochrisikodaten" },
 ];
 
+const vvtLoeschMapping = [
+  { match: /bewerber/i, fristKategorie: "6_monate_bewerber", loeschklasse: "LK4", gesetzlicheFrist: "§ 15 Abs. 4 AGG / Verteidigung gegen AGG-Ansprüche" },
+  { match: /personal/i, fristKategorie: "10_jahre_ao_hgb", loeschklasse: "LK4", gesetzlicheFrist: "§ 147 AO / § 257 HGB, soweit abrechnungs- und nachweispflichtig" },
+  { match: /crm|kunden/i, fristKategorie: "3_jahre_regel", loeschklasse: "LK2", gesetzlicheFrist: "§§ 195, 199 BGB" },
+  { match: /newsletter/i, fristKategorie: "3_jahre_regel", loeschklasse: "LK2", gesetzlicheFrist: "§§ 195, 199 BGB, Nachweis über Einwilligung" },
+  { match: /video/i, fristKategorie: "frei", loeschklasse: "LK5", gesetzlicheFrist: "Kurzfristige Speicherfrist nach Erforderlichkeit" },
+  { match: /ki/i, fristKategorie: "frei", loeschklasse: "LK5", gesetzlicheFrist: "Einzelfallabhängig nach Use Case und Rechtsgrundlage" },
+];
+
 const gesetzlicheAufbewahrungsfristen = [
   {
     key: "frei",
@@ -1875,7 +1884,8 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
     if (value === "none") return;
     const found = vvts.find((item: any) => String(item.id) === value);
     if (!found) return;
-    setForm((p: any) => ({ ...p, quelleVvtId: value, quelleVvtBezeichnung: found.bezeichnung, bezeichnung: p.bezeichnung || found.bezeichnung, datenart: found.datenkategorien || p.datenart, loeschklasse: found.loeschklasse || p.loeschklasse, aufbewahrungsfrist: found.loeschfrist || p.aufbewahrungsfrist, loeschereignis: found.aufbewahrungsgrund || p.loeschereignis, rechtsgrundlage: found.rechtsgrundlage || p.rechtsgrundlage, verantwortlicher: found.verantwortlicher || p.verantwortlicher }));
+    const mapped = vvtLoeschMapping.find((entry) => entry.match.test(found.bezeichnung || ""));
+    setForm((p: any) => ({ ...p, quelleVvtId: value, quelleVvtBezeichnung: found.bezeichnung, bezeichnung: p.bezeichnung || found.bezeichnung, datenart: found.datenkategorien || p.datenart, loeschklasse: found.loeschklasse || mapped?.loeschklasse || p.loeschklasse, fristKategorie: mapped?.fristKategorie || p.fristKategorie, gesetzlicheFrist: mapped?.gesetzlicheFrist || p.gesetzlicheFrist, aufbewahrungsfrist: found.loeschfrist || gesetzlicheAufbewahrungsfristen.find((x) => x.key === mapped?.fristKategorie)?.frist || p.aufbewahrungsfrist, loeschereignis: found.aufbewahrungsgrund || p.loeschereignis, rechtsgrundlage: found.rechtsgrundlage || p.rechtsgrundlage, verantwortlicher: found.verantwortlicher || p.verantwortlicher, loeschverantwortlicher: p.loeschverantwortlicher || found.verantwortlicher || "" }));
   };
   return (
     <div className="space-y-3">
@@ -1931,11 +1941,19 @@ function LoeschkonzeptPage() {
   const { data, isLoading, create, update, remove } = useModuleData("loeschkonzept");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [filterFrist, setFilterFrist] = useState("alle");
+  const [filterKlasse, setFilterKlasse] = useState("alle");
+  const [filterStatus, setFilterStatus] = useState("alle");
   const { toast } = useToast();
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
+  const filtered = data.filter((item: any) => (
+    (filterFrist === "alle" || item.fristKategorie === filterFrist) &&
+    (filterKlasse === "alle" || item.loeschklasse === filterKlasse) &&
+    (filterStatus === "alle" || item.status === filterStatus)
+  ));
   return (
     <MandantGuard>
       <PageHeader title="Löschkonzept" desc="Löschklassen, Fristen und Übernahme aus dem VVT zu einem operativen Lösch- und Aufbewahrungskonzept"
@@ -1946,8 +1964,10 @@ function LoeschkonzeptPage() {
             {loeschklassen.map((k) => <Card key={k.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{k.key}</p><p className="text-sm font-semibold">{k.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.loeschklasse === k.key).length}</p></CardContent></Card>)}
             {gesetzlicheAufbewahrungsfristen.filter((f) => f.key !== "frei").slice(0,3).map((f) => <Card key={f.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fristgruppe</p><p className="text-sm font-semibold">{f.frist}</p><p className="text-xs text-muted-foreground mt-1">{f.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.fristKategorie === f.key).length}</p></CardContent></Card>)}
           </div>
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch kein Löschkonzept dokumentiert.</CardContent></Card>}
-          {data.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p><p className="font-medium mt-3 mb-1">Löschverantwortlicher</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschverantwortlicher || item.verantwortlicher || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
+          <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end"><div className="space-y-1"><Label className="text-xs">Fristgruppe</Label><Select value={filterFrist} onValueChange={setFilterFrist}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem>{gesetzlicheAufbewahrungsfristen.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label className="text-xs">Löschklasse</Label><Select value={filterKlasse} onValueChange={setFilterKlasse}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem>{loeschklassen.map((k) => <SelectItem key={k.key} value={k.key}>{k.label}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label className="text-xs">Status</Label><Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="archiviert">Archiviert</SelectItem></SelectContent></Select></div></CardContent></Card>
+          <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Gefilterte Einträge</p><p className="text-2xl font-bold">{filtered.length}</p></div><div><p className="text-xs text-muted-foreground">Davon aktiv</p><p className="text-2xl font-bold">{filtered.filter((x:any) => x.status === "aktiv").length}</p></div><div><p className="text-xs text-muted-foreground">Mit gesetzlicher Frist</p><p className="text-2xl font-bold">{filtered.filter((x:any) => x.fristKategorie && x.fristKategorie !== "frei").length}</p></div></CardContent></Card>
+          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Einträge für die aktuelle Filterung.</CardContent></Card>}
+          {filtered.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p><p className="font-medium mt-3 mb-1">Löschverantwortlicher</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschverantwortlicher || item.verantwortlicher || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer Löschkonzept-Eintrag" : "Löschkonzept bearbeiten"}</DialogTitle></DialogHeader></div>{modal && <LoeschkonzeptForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
