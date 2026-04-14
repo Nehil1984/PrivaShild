@@ -21,3 +21,26 @@ The platform supports automatic retention slots:
 - 2 yearly backups
 
 Encrypted backups use AES-256-GCM. For unattended encrypted scheduler runs, provide `PRIVASHIELD_BACKUP_PASSWORD`.
+
+
+## Governance and maturity
+
+The platform now calculates maturity more holistically, based on documented governance and compliance building blocks such as:
+
+- policies and guidelines
+- process and procedure documentation
+- processing activities register
+- linkage between VVT and retention concept
+- DPIAs and visible privacy responsibility
+- internal audits
+- TOM catalog
+- processor agreements
+- open critical or necessary tasks
+- web privacy documentation
+- employee privacy documentation
+
+The score is intentionally pragmatic and should be read as a management indicator, not as a formal legal certification.
+
+## Multilingual UI
+
+The app now includes a DE/EN language switch in the top bar. Navigation and key page titles are already connected to the translation layer, while form and detail texts are being migrated step by step.

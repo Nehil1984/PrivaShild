@@ -182,3 +182,31 @@ Stand aktuell:
 - erste globale UI-Texte sind an die Übersetzungsstruktur angebunden
 - Deutsch bleibt Standardsprache
 - Englisch wird schrittweise für die gesamte Oberfläche erweitert
+
+
+## Governance und Reifegrad
+
+Die Plattform bewertet den Reifegrad inzwischen nicht mehr nur aus Stammdaten, sondern ganzheitlicher aus dokumentierten Governance- und Compliance-Bausteinen. Dazu zählen insbesondere:
+
+- Leitlinien und Richtlinien
+- Prozess- und Verfahrensdokumentation
+- Verzeichnis der Verarbeitungstätigkeiten (VVT)
+- Abgleich von VVT und Löschkonzept
+- Datenschutz-Folgenabschätzungen (DSFA) und erkennbare Datenschutzfunktion
+- interne Audits
+- TOM-Katalog
+- AVV-Dokumentation
+- offene kritische oder notwendige Aufgaben
+- Web-Datenschutz
+- Beschäftigtendatenschutz
+
+Der Score ist bewusst pragmatisch gehalten und dient als Management-Indikator, nicht als rechtlich abschließendes Testat.
+
+## Mehrsprachigkeit
+
+Die App enthält nun eine DE/EN-Sprachumschaltung in der Topbar.
+
+Aktueller Stand:
+- Navigation und zentrale Seitenüberschriften sind an den Sprachlayer angebunden
+- erste Kernseiten und Fachmodule sind in Deutsch und Englisch umschaltbar
+- Formular- und Detailtexte werden schrittweise weiter migriert

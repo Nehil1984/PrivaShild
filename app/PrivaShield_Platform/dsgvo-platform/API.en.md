@@ -16,3 +16,15 @@
 - `GET /api/mandanten/:mid/export-context`
 
 The export context now also includes explicitly export-approved internal notes.
+
+
+## Functional notes
+
+### Export and internal notes
+Export context only includes internal notes that were explicitly approved for export (`exportieren = true`).
+
+### Backup scheduler
+Backup management supports manual runs and an internal application scheduler. For unattended encrypted runs, set `PRIVASHIELD_BACKUP_PASSWORD`.
+
+### Governance / maturity
+The dashboard maturity score is derived from multiple compliance signals, including policies, VVT coverage, retention mapping, DPIA/privacy responsibility, audits, TOMs, DPAs and task situation.
