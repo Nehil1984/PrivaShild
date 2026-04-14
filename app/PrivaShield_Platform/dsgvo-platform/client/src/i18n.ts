@@ -37,6 +37,14 @@ export const messages = {
     backupDesc: "Backup-Rotation, Aufbewahrung und optionale Kennwortverschlüsselung verwalten",
     internalNotesDesc: "Mandantenbezogene interne Hinweise, Ereignisse und To-dos, optional exportierbar",
     exportDesc: "Die Ansicht öffnet sich als neue Seite und kann direkt gedruckt oder als PDF gespeichert werden.",
+    vvtTitle: "Verzeichnis der Verarbeitungstätigkeiten",
+    vvtDesc: "Art. 30 DSGVO — alle Verarbeitungstätigkeiten des Mandanten",
+    avvTitle: "Auftragsverarbeitungsverträge",
+    avvDesc: "AVV-Verwaltung gemäß Art. 28 DSGVO",
+    dsfaTitle: "Datenschutz-Folgenabschätzungen",
+    dsfaDesc: "DSFA gemäß Art. 35 DSGVO",
+    incidentsTitle: "Datenpannen-Log",
+    incidentsDesc: "Vorfallsmanagement gem. Art. 33/34 DSGVO — 72h-Meldepflicht",
   },
   en: {
     appName: "PrivaShield",
@@ -74,6 +82,14 @@ export const messages = {
     backupDesc: "Manage backup rotation, retention and optional password encryption",
     internalNotesDesc: "Tenant-specific internal notes, events and to-dos, optionally exportable",
     exportDesc: "The view opens in a new page and can be printed directly or saved as PDF.",
+    vvtTitle: "Processing Activities Register",
+    vvtDesc: "Art. 30 GDPR, all processing activities of the tenant",
+    avvTitle: "Processor Agreements",
+    avvDesc: "DPA management under Art. 28 GDPR",
+    dsfaTitle: "Data Protection Impact Assessments",
+    dsfaDesc: "DPIA under Art. 35 GDPR",
+    incidentsTitle: "Incident Log",
+    incidentsDesc: "Incident management under Art. 33/34 GDPR, 72h notification duty",
   }
 } as const;
 

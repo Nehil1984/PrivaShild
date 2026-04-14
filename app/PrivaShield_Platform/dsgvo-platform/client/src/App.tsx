@@ -836,6 +836,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
 }
 
 function VvtPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("vvt");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -848,7 +849,7 @@ function VvtPage() {
 
   return (
     <MandantGuard>
-      <PageHeader title="Verzeichnis der Verarbeitungstätigkeiten" desc="Art. 30 DSGVO — alle Verarbeitungstätigkeiten des Mandanten"
+      <PageHeader title={t("vvtTitle")} desc={t("vvtDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div> : (
         <div className="space-y-2">
@@ -1015,6 +1016,7 @@ function AvvForm({ initial, onSave, onCancel }: any) {
 }
 
 function AvvPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("avv");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -1025,7 +1027,7 @@ function AvvPage() {
   };
   return (
     <MandantGuard>
-      <PageHeader title="Auftragsverarbeitungsverträge" desc="AVV-Verwaltung gemäß Art. 28 DSGVO"
+      <PageHeader title={t("avvTitle")} desc={t("avvDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
@@ -1195,6 +1197,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
 }
 
 function DsfaPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("dsfa");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -1205,7 +1208,7 @@ function DsfaPage() {
   };
   return (
     <MandantGuard>
-      <PageHeader title="Datenschutz-Folgenabschätzungen" desc="DSFA gemäß Art. 35 DSGVO"
+      <PageHeader title={t("dsfaTitle")} desc={t("dsfaDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
@@ -1366,6 +1369,7 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
 }
 
 function DatenpannenPage() {
+  const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("datenpannen");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
@@ -1376,7 +1380,7 @@ function DatenpannenPage() {
   };
   return (
     <MandantGuard>
-      <PageHeader title="Datenpannen-Log" desc="Vorfallsmanagement gem. Art. 33/34 DSGVO — 72h-Meldepflicht"
+      <PageHeader title={t("incidentsTitle")} desc={t("incidentsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Panne</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
