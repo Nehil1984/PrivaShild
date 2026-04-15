@@ -23,6 +23,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      IMAGE_NAME: privashield
 
     steps:
       - name: Checkout
@@ -47,20 +49,32 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/privashield
+          images: |
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKERHUB_USERNAME && format('docker.io/{0}/{1}', secrets.DOCKERHUB_USERNAME, env.IMAGE_NAME) || '' }}
           tags: |
             type=raw,value=latest
             type=sha
+          flavor: |
+            latest=true
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: ./app/PrivaShield_Platform/dsgvo-platform
           file: ./app/PrivaShield_Platform/dsgvo-platform/Dockerfile
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
