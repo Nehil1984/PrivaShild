@@ -371,7 +371,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-medium text-foreground/80">PrivaShield</span>
               <span>Version 1.0.0</span>
               <span>Apache-2.0</span>
-              <span>© Daniel Schuh</span>
+              <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
             <Link href="/system"><a className="text-primary hover:underline">Lizenz und Copyright</a></Link>
           </div>
@@ -3866,7 +3866,7 @@ function SystemPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Copyright</span>
-            <span className="font-mono">© Daniel Schuh</span>
+            <span className="font-mono">Copyright [2026] [Daniel Schuh]</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Stack</span>
