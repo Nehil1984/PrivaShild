@@ -60,24 +60,6 @@ script/        Build- und Hilfsskripte
 data/          Laufzeitdaten / Datenbank / Backups
 ```
 
-## Start im Entwicklungsmodus
-
-Voraussetzungen:
-- Node.js
-- npm
-
-Installation:
-
-```bash
-npm install
-```
-
-Entwicklung starten:
-
-```bash
-npm run dev
-```
-
 ## Produktionsbetrieb
 
 Für den produktiven Betrieb werden insbesondere folgende Umgebungsvariablen benötigt:
