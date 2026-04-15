@@ -14,6 +14,13 @@ RUN npm run build
 # ─── Stage 2: Production ───────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
+LABEL org.opencontainers.image.title="PrivaShield" \
+      org.opencontainers.image.description="Open-Source-Plattform für Datenschutzmanagement und DSGVO-Compliance" \
+      org.opencontainers.image.url="https://github.com/Nehil1984/PrivaShild" \
+      org.opencontainers.image.source="https://github.com/Nehil1984/PrivaShild" \
+      org.opencontainers.image.documentation="https://github.com/Nehil1984/PrivaShild/tree/master/app/PrivaShield_Platform/dsgvo-platform" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 # su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
 RUN apk add --no-cache su-exec libc-utils
 
