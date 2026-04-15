@@ -1,45 +1,86 @@
-# dsgvo-platform
+# PrivaShield
 
-## Lizenz
+PrivaShield ist eine Datenschutzmanagement-Plattform für die strukturierte Dokumentation, Verwaltung und operative Steuerung von Datenschutz- und Compliance-Themen.
 
-Dieses Projekt steht unter der **Apache License 2.0**.
+Die Anwendung richtet sich an Unternehmen, Datenschutzbeauftragte, interne Verantwortliche und Berater, die zentrale DSGVO-relevante Prozesse in einer Webanwendung bündeln möchten.
 
-- SPDX: `Apache-2.0`
-- Volltext der Lizenz: `LICENSE.md`
-- Offizielle Quelle: <https://www.apache.org/licenses/LICENSE-2.0>
+## Funktionsumfang
 
-Die Software wird unter den Bedingungen der Apache License 2.0 bereitgestellt, einschließlich der dort geregelten Hinweise zu Nutzung, Weitergabe, Änderung, Patentlizenz und Haftungsausschluss.
+PrivaShield bündelt wesentliche Datenschutz- und Governance-Bausteine in einer Oberfläche:
 
-## Unraid Schnellstart
+- Verzeichnis der Verarbeitungstätigkeiten (VVT)
+- Auftragsverarbeitungsverträge (AVV)
+- Datenschutz-Folgenabschätzungen (DSFA)
+- Datenpannenmanagement nach Art. 33/34 DSGVO
+- Betroffenenrechte / DSR
+- TOM-Katalog
+- Löschkonzept mit Fristen, Löschklassen und VVT-Bezug
+- Aufgaben- und Maßnahmenmanagement
+- Dokumente, Leitlinien und Richtlinien
+- Beschäftigtendatenschutz
+- KI-Tools & Compliance
+- Web-Datenschutz-Prüfungen
+- Interne Audits
+- Interne Notizen mit expliziter Exportfreigabe
+- Export- und Druckansichten für Management- und Dokumentationszwecke
+- Backup-Verwaltung mit Rotation und optionaler Verschlüsselung
 
-Für Unraid liegen drei passende Artefakte im Repository:
+## Besondere Merkmale
 
-- `unraid.md`, ausführliche Schritt-für-Schritt-Anleitung
-- `unraid-template.xml`, Unraid Container Template
-- `docker-compose.unraid.yml`, Unraid-spezifische Compose-Datei
+### 1. Mandantenfähigkeit
+PrivaShield ist mandantenfähig aufgebaut. Mehrere Mandanten können getrennt verwaltet und strukturiert organisiert werden.
 
-## Minimaler Ablauf
+### 2. Governance- und Reifegradbetrachtung
+Die App zeigt nicht nur Einzeldaten, sondern verdichtet diese zu Management-Kennzahlen und einem pragmatischen Reifegradbild.
 
-1. Image bauen oder nach Unraid importieren
-2. persistentes Verzeichnis anlegen:
-   - `/mnt/user/appdata/privashield/data`
-3. Pflichtwerte setzen:
-   - `JWT_SECRET`
-   - `INITIAL_ADMIN_EMAIL`
-   - `INITIAL_ADMIN_PASSWORD`
-4. Container auf Port `5000` starten
-5. App im Browser öffnen
+### 3. Interne Notizen mit Exportsteuerung
+Mandantenbezogene interne Notizen können separat erfasst werden. Für jede Notiz kann ausdrücklich festgelegt werden, ob sie im Export erscheinen darf.
 
-## Wichtige Unraid-Werte
+### 4. Export / Druck
+Für Auswertungen und Berichte steht eine Druck- und Exportansicht zur Verfügung. Sensible Inhalte wie interne Notizen werden nur bei expliziter Freigabe berücksichtigt.
 
-| Bereich | Wert |
-|---|---|
-| Host-Pfad | `/mnt/user/appdata/privashield/data` |
-| Container-Pfad | `/data` |
-| Datenbank | `/data/privashield.db` |
-| Standard-Port | `5000` |
+### 5. Backup und Betrieb
+Die Plattform unterstützt interne Backups, Rotationslogik und optional verschlüsselte Sicherungen.
 
-## Pflicht-Umgebungsvariablen
+## Technischer Stack
+
+- **Frontend:** React, TypeScript, Vite, Tailwind
+- **Backend:** Express, TypeScript
+- **Persistenz:** SQLite oder lowdb
+- **ORM / Schema:** Drizzle ORM + Zod
+- **Authentifizierung:** JWT
+
+## Projektstruktur
+
+```text
+client/        Frontend
+server/        Backend und API
+shared/        Gemeinsame Schemas und Typen
+script/        Build- und Hilfsskripte
+data/          Laufzeitdaten / Datenbank / Backups
+```
+
+## Start im Entwicklungsmodus
+
+Voraussetzungen:
+- Node.js
+- npm
+
+Installation:
+
+```bash
+npm install
+```
+
+Entwicklung starten:
+
+```bash
+npm run dev
+```
+
+## Produktionsbetrieb
+
+Für den produktiven Betrieb werden insbesondere folgende Umgebungsvariablen benötigt:
 
 ```env
 NODE_ENV=production
@@ -51,162 +92,40 @@ INITIAL_ADMIN_PASSWORD=SehrSicheresPasswort123!
 INITIAL_ADMIN_NAME=Administrator
 ```
 
-## Hinweise
+## Unraid / Docker
 
-- Ohne `JWT_SECRET` ist kein sicherer produktiver Betrieb möglich.
-- Ohne `INITIAL_ADMIN_EMAIL` und `INITIAL_ADMIN_PASSWORD` wird kein initialer Admin angelegt.
-- Backups erfolgen über die persistente Datenbankdatei unter `/mnt/user/appdata/privashield/data/privashield.db`.
+Das Repository enthält zusätzliche Dateien für den Containerbetrieb, unter anderem:
 
-## Weiterführend
+- `Dockerfile`
+- `docker-compose.yml`
+- `docker-compose.unraid.yml`
+- `unraid.md`
+- `unraid-template.xml`
 
-- Vollständige Anleitung: `unraid.md`
-- Unraid Template: `unraid-template.xml`
-- Compose für Unraid: `docker-compose.unraid.yml`
-- Beispielvariablen: `.env.unraid.example`
-- Unraid-Icon: `assets/unraid-icon.svg`
+Damit kann PrivaShield lokal, per Docker oder in Unraid betrieben werden.
 
-## Container Publishing
+## Export und sensible Inhalte
 
-Ein GitHub-Actions-Workflow liegt bereit unter:
+Interne Notizen sind bewusst separat steuerbar.
 
-- `.github/workflows/docker-ghcr.yml`
+Wichtig:
+- Notizen können erstellt und verwaltet werden
+- für jede Notiz kann eine Exportfreigabe gesetzt werden
+- nur freigegebene Notizen dürfen im Export erscheinen
 
-Damit kann das Docker-Image nach **GHCR** veröffentlicht werden, z. B. als:
+## Lizenz
 
-- `ghcr.io/<owner>/privashield:latest`
+Dieses Projekt steht unter der **Apache License 2.0**.
 
-## Reverse Proxy Empfehlung
+- SPDX: `Apache-2.0`
+- Lizenztext: `LICENSE.md`
+- Offizielle Quelle: <https://www.apache.org/licenses/LICENSE-2.0>
 
-Für öffentlich erreichbaren Betrieb unter Unraid empfehle ich:
-- Veröffentlichung nicht direkt auf Port `5000`
-- stattdessen Reverse Proxy, z. B. **Nginx Proxy Manager**
-- HTTPS erzwingen
-- optional Zugriff per VPN oder IP-Restriktion absichern
+## Copyright
 
-## Wichtiger Hinweis für Unraid-Startprobleme
+Copyright 2026 Daniel Schuh
 
-Wenn beim Containerstart nur JS-/Bundle-Inhalt im Log erscheint statt normaler Startmeldungen:
+## Repository
 
-1. Image unbedingt **neu bauen oder neu pullen**
-2. Container vollständig **neu erstellen**, nicht nur neu starten
-3. sicherstellen, dass kein eigenes Command/Override in Unraid gesetzt ist
-4. folgende Variablen setzen:
-   - `JWT_SECRET`
-   - `INITIAL_ADMIN_EMAIL`
-   - `INITIAL_ADMIN_PASSWORD`
-5. danach Container-Log erneut prüfen
-
-Die erwarteten Startmeldungen sehen eher so aus:
-- `[entrypoint] /data bereit ...`
-- `[entrypoint] starte app mit node /app/dist/index.cjs`
-- `[DB] Backend: ...`
-
-
-## API- und Exportstand
-
-Aktuell nutzt die Plattform zusätzliche Meta- und Sammel-APIs, damit fachliche Listen und Exportdaten zentral aus dem Backend kommen:
-
-- `GET /api/meta/loeschfristen`
-- `GET /api/meta/branchen`
-- `GET /api/meta/vvt-loeschmapping`
-- `POST /api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId`
-- `GET /api/mandanten/:mid/export-context`
-
-Die Exportseite und Druckansicht greifen damit nicht mehr nur auf viele Einzelabfragen zu, sondern können den Exportkontext gesammelt laden.
-
-
-## Beschäftigtendatenschutz
-
-Die Plattform enthält jetzt zusätzlich einen eigenen Bereich **Beschäftigtendatenschutz**. Dort können dokumentiert werden:
-
-- Datenschutzerklärung für Beschäftigte
-- Verpflichtung auf Verschwiegenheit / Vertraulichkeit
-- Verpflichtung Telekommunikation / Fernmeldegeheimnis
-- Datenschutzschulungen mit letzter Schulung, Wiederholungsintervall und nächster Wiederschulung
-- Nachweise und offene Maßnahmen
-
-Technisch wird dieser Bereich aktuell über das Dokumentmodul mit einem strukturierten `dokumentTyp` abgebildet und durch eine Meta-API für Zielgruppen und Schulungsformate ergänzt.
-
-
-## Backup-Routine und Verschlüsselung
-
-Die Plattform unterstützt nun eine serverseitige Backup-Verwaltung mit folgender Aufbewahrungslogik:
-
-- 24 stündliche Backups
-- 7 tägliche Backups
-- 4 wöchentliche Backups
-- 12 monatliche Backups
-- 2 jährliche Backups
-
-### API
-- `GET /api/admin/backups/config` – aktuelle Backup-Konfiguration
-- `POST /api/admin/backups/config` – Backup-Konfiguration speichern
-- `GET /api/admin/backups` – vorhandene Backups auflisten
-- `POST /api/admin/backups/run` – Backup sofort ausführen
-
-### Verschlüsselung
-Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Dateien werden serverseitig mit AES-256-GCM erzeugt. Das Kennwort selbst wird nicht im Klartext gespeichert; in der Konfiguration liegt nur eine abgeleitete Prüfsumme sowie optional ein Kennworthinweis.
-
-### Technische Umsetzung
-- SQLite-Backend: Backup der Datenbankdatei unter `DATABASE_PATH`
-- LowDB-Backend: Backup der JSON-Datei `privashield.json`
-- Standard-Backup-Verzeichnis: `<data>/backups`
-- Die Rotation wird beim Erstellen eines Backups direkt serverseitig durchgesetzt.
-
-
-## Interne Notizen und Exportfreigabe
-
-Die Plattform unterstützt jetzt mandantenbezogene **interne Notizen** als eigenen Bereich.
-
-Funktionen:
-- Ereignisse, Risiken und anstehende Themen dokumentieren
-- Priorität und Fälligkeit setzen
-- explizit festlegen, ob eine Notiz im Export erscheinen darf
-
-Wichtig: Nur Notizen mit aktivierter Exportfreigabe werden in den Druck-/PDF-Export übernommen.
-
-## In-App-Backup-Scheduler
-
-Die Backup-Funktion läuft jetzt nicht nur manuell oder über externe Trigger, sondern kann direkt **in der App stündlich automatisiert** werden.
-
-Hinweise:
-- Bei aktivierter Verschlüsselung sollte für unbeaufsichtigte Läufe `PRIVASHIELD_BACKUP_PASSWORD` gesetzt sein.
-- Die serverseitige Rotation bleibt aktiv und erzwingt die konfigurierten Aufbewahrungs-Slots.
-
-## Mehrsprachigkeit
-
-Die App besitzt jetzt eine erste **DE/EN-Sprachumschaltung** in der Topbar neben dem Dark-Mode-Button.
-
-Stand aktuell:
-- Sprachumschalter ist aktiv
-- erste globale UI-Texte sind an die Übersetzungsstruktur angebunden
-- Deutsch bleibt Standardsprache
-- Englisch wird schrittweise für die gesamte Oberfläche erweitert
-
-
-## Governance und Reifegrad
-
-Die Plattform bewertet den Reifegrad inzwischen nicht mehr nur aus Stammdaten, sondern ganzheitlicher aus dokumentierten Governance- und Compliance-Bausteinen. Dazu zählen insbesondere:
-
-- Leitlinien und Richtlinien
-- Prozess- und Verfahrensdokumentation
-- Verzeichnis der Verarbeitungstätigkeiten (VVT)
-- Abgleich von VVT und Löschkonzept
-- Datenschutz-Folgenabschätzungen (DSFA) und erkennbare Datenschutzfunktion
-- interne Audits
-- TOM-Katalog
-- AVV-Dokumentation
-- offene kritische oder notwendige Aufgaben
-- Web-Datenschutz
-- Beschäftigtendatenschutz
-
-Der Score ist bewusst pragmatisch gehalten und dient als Management-Indikator, nicht als rechtlich abschließendes Testat.
-
-## Mehrsprachigkeit
-
-Die App enthält nun eine DE/EN-Sprachumschaltung in der Topbar.
-
-Aktueller Stand:
-- Navigation und zentrale Seitenüberschriften sind an den Sprachlayer angebunden
-- erste Kernseiten und Fachmodule sind in Deutsch und Englisch umschaltbar
-- Formular- und Detailtexte werden schrittweise weiter migriert
+GitHub:
+<https://github.com/Nehil1984/PrivaShild>
