@@ -434,6 +434,11 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: interneNotizen = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const activeMandant = mandanten.find((m: any) => m.id === activeMandantId);
   const { data: gruppen = [] } = useQuery({
     queryKey: ["/api/mandanten-gruppen"],
