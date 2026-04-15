@@ -205,6 +205,7 @@ const navItems = [
   { path: "/loeschkonzept", label: "Löschkonzept", icon: Database },
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
+  { path: "/interne-notizen", label: "internalNotes", icon: NotebookPen },
   { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
   { path: "/ki-compliance", label: "KI-Tools & Compliance", icon: Bot },
   { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
@@ -456,6 +457,7 @@ function Dashboard() {
   const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
   const kritischeAufgaben = aufgaben.filter((a: any) => a.prioritaet === "kritisch" && a.status !== "erledigt");
+  const sichtbareInterneNotizen = interneNotizen.slice(0, 5);
   const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
   const dokumenteCount = dokumente.length;
   const leitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
@@ -638,13 +640,26 @@ function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Letzte Änderungen</CardTitle>
-              <CardDescription>Trend- und Aktivitätssicht</CardDescription>
+              <CardTitle className="text-sm">Interne Notizen</CardTitle>
+              <CardDescription>Wichtige Ereignisse und anstehende Themen des aktiven Mandanten</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p className="text-muted-foreground">Zuletzt aktualisierte Themen lassen sich über das Änderungsprotokoll im Bereich Mandanten-Extras prüfen.</p>
-              <p>Kritische Aufgaben: <span className="font-medium">{kritischeAufgaben.length}</span></p>
-              <p>Offene Reviews: <span className="font-medium">{offeneReviews.length}</span></p>
+            <CardContent className="space-y-3 text-sm">
+              {sichtbareInterneNotizen.length === 0 ? (
+                <p className="text-muted-foreground">Noch keine internen Notizen vorhanden.</p>
+              ) : sichtbareInterneNotizen.map((note: any) => (
+                <div key={note.id} className="rounded-lg border p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium">{note.titel}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {note.exportieren && <span className="rounded-full border px-2 py-0.5">Export freigegeben</span>}
+                      <StatusBadge value={note.prioritaet} />
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{note.inhalt}</p>
+                  <p className="text-xs text-muted-foreground">{note.kategorie || "allgemein"}{note.faelligAm ? ` · fällig ${note.faelligAm}` : ""}</p>
+                </div>
+              ))}
+              <Link href="/interne-notizen"><a className="text-xs text-primary hover:underline">Alle internen Notizen anzeigen</a></Link>
             </CardContent>
           </Card>
 
@@ -2420,14 +2435,22 @@ function InterneNotizenPage() {
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
+  const exportFreigegeben = data.filter((item: any) => !!item.exportieren).length;
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Notiz konnte nicht gespeichert werden", variant: "destructive" }));
   };
   return <MandantGuard>
     <PageHeader title={t("internalNotes")} desc={t("internalNotesDesc")} action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />{t("newNote")}</Button>} />
+    <Card>
+      <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div><p className="text-xs text-muted-foreground">Notizen gesamt</p><p className="text-2xl font-bold">{data.length}</p></div>
+        <div><p className="text-xs text-muted-foreground">Für Export freigegeben</p><p className="text-2xl font-bold">{exportFreigegeben}</p></div>
+        <div><p className="text-xs text-muted-foreground">Anstehende Themen</p><p className="text-2xl font-bold">{data.filter((item: any) => !!item.faelligAm).length}</p></div>
+      </CardContent>
+    </Card>
     {isLoading ? <Skeleton className="h-32 w-full" /> : <div className="space-y-2">
-      {data.map((item: any) => <Card key={item.id}><CardContent className="py-3 px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{item.titel}</p><p className="text-xs text-muted-foreground">{item.kategorie || "allgemein"} · {item.prioritaet}{item.faelligAm ? ` · fällig ${item.faelligAm}` : ""}{item.exportieren ? " · exportiert" : ""}</p><p className="text-sm mt-1 whitespace-pre-wrap">{item.inhalt}</p></div><div className="flex items-center gap-2"><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div></CardContent></Card>)}
+      {data.map((item: any) => <Card key={item.id}><CardContent className="py-3 px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{item.titel}</p><p className="text-xs text-muted-foreground">{item.kategorie || "allgemein"} · {item.prioritaet}{item.faelligAm ? ` · fällig ${item.faelligAm}` : ""}{item.exportieren ? " · Export freigegeben" : " · Nicht für Export freigegeben"}</p><p className="text-sm mt-1 whitespace-pre-wrap">{item.inhalt}</p></div><div className="flex items-center gap-2"><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div></CardContent></Card>)}
       {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{t("notesEmpty")}</CardContent></Card>}
     </div>}
     <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? t("newNote") : t("internalNotes")}</DialogTitle></DialogHeader></div>{modal && <InterneNotizenForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
@@ -3924,6 +3947,7 @@ function ExportPage() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const exportierbareInterneNotizen = interneNotizen.filter((note: any) => !!note.exportieren);
   const auditTodos = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
   const auditDeviationCount = audits.reduce((sum: number, item: any) => sum + String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length, 0);
   const managementSummary = {
@@ -3954,6 +3978,7 @@ function ExportPage() {
       audits,
       auditTodos,
       managementSummary,
+      interneNotizen: exportierbareInterneNotizen,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),
       generatedAt: new Date().toISOString(),
     };
@@ -4030,6 +4055,7 @@ function ExportPage() {
                 </div>
                 <span className={`text-sm flex-1 ${active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                   {mod.label}
+                  {mod.key === "interne_notizen" && <span className="block text-xs text-muted-foreground mt-0.5">Nur Notizen mit gesetztem Freigabe-Haken werden exportiert.</span>}
                 </span>
                 {active && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
               </button>

@@ -258,6 +258,16 @@ const MODULES = {
       { key: "status", label: "Status" },
     ],
   },
+  interne_notizen: {
+    label: "Interne Notizen (nur freigegebene)",
+    columns: [
+      { key: "titel", label: "Titel" },
+      { key: "kategorie", label: "Kategorie" },
+      { key: "prioritaet", label: "Priorität" },
+      { key: "faelligAm", label: "Fällig am" },
+      { key: "inhalt", label: "Notiz" },
+    ],
+  },
   tom: {
     label: "Technische & Organisatorische Maßnahmen (TOM – Art. 32 DSGVO)",
     columns: [
@@ -585,10 +595,6 @@ async function render() {
     }
     html += buildAuditSummary(config.audits || [], config.auditTodos || []);
     html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
-    const exportierbareNotizen = (dataMap.interne_notizen || []).filter(n => n.exportieren);
-    if (exportierbareNotizen.length) {
-      html += `<div class="module-section"><div class="module-header"><h2>Interne Notizen (freigegeben)</h2><span class="badge">${exportierbareNotizen.length} Einträge</span></div><table class="data-table"><thead><tr><th>Titel</th><th>Kategorie</th><th>Priorität</th><th>Fällig</th><th>Inhalt</th></tr></thead><tbody>${exportierbareNotizen.map(n => `<tr><td>${fmt(n.titel)}</td><td>${fmt(n.kategorie)}</td><td>${fmt(n.prioritaet)}</td><td>${fmt(n.faelligAm)}</td><td>${fmt(n.inhalt)}</td></tr>`).join("")}</tbody></table></div>`;
-    }
     html += buildLogsBox(config.logs || []);
 
     html += `
