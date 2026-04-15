@@ -578,7 +578,9 @@ async function render() {
     config.modules.forEach(key => {
       const mod = MODULES[key];
       if (!mod) return;
-      const rows = dataMap[key] || [];
+      const rows = key === "interne_notizen"
+        ? (dataMap[key] || []).filter(row => !!row.exportieren)
+        : (dataMap[key] || []);
       html += `
         <div class="module-section">
           <div class="module-header">
