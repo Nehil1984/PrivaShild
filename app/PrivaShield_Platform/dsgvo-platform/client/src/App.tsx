@@ -365,10 +365,15 @@ function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>
-        <footer className="border-t border-border bg-card/40 px-4 py-3 text-xs text-muted-foreground shrink-0">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <span>© Daniel Schuh, alle Rechte vorbehalten.</span>
-            <Link href="/system"><a className="text-primary hover:underline">Lizenz und Copyright anzeigen</a></Link>
+        <footer className="border-t border-border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground shrink-0">
+          <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground/80">PrivaShield</span>
+              <span>Version 1.0.0</span>
+              <span>Apache-2.0</span>
+              <span>© Daniel Schuh</span>
+            </div>
+            <Link href="/system"><a className="text-primary hover:underline">Lizenz und Copyright</a></Link>
           </div>
         </footer>
       </div>
