@@ -270,6 +270,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(draft);
   });
 
+  app.get("/api/mandanten/:mid/loeschkonzept", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    res.json(await storage.getLoeschkonzeptByMandant(mandantId));
+  });
+
+  app.post("/api/mandanten/:mid/loeschkonzept", authMiddleware, validateBody(requestLoeschkonzeptSchema), async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const item = await storage.createLoeschkonzept({ ...req.body, mandantId });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: "loeschkonzept_erstellt",
+      modul: "loeschkonzept",
+      entitaetTyp: "loeschkonzept",
+      entitaetId: item.id,
+      beschreibung: "Löschkonzept-Eintrag wurde angelegt.",
+      detailsJson: JSON.stringify(item),
+    });
+    res.status(201).json(item);
+  });
+
+  app.put("/api/loeschkonzept/:id", authMiddleware, validateBody(requestLoeschkonzeptSchema.partial()), async (req: any, res) => {
+    const existing = await storage.getLoeschkonzept(Number(req.params.id));
+    if (!(await requireEntityAccess(req, res, existing))) return;
+    const updated = await storage.updateLoeschkonzept(Number(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ message: "Nicht gefunden" });
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId: updated.mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: "loeschkonzept_aktualisiert",
+      modul: "loeschkonzept",
+      entitaetTyp: "loeschkonzept",
+      entitaetId: updated.id,
+      beschreibung: "Löschkonzept-Eintrag wurde aktualisiert.",
+      detailsJson: JSON.stringify({ before: existing, after: updated, changes: diffObjects(existing as any, updated as any) }),
+    });
+    res.json(updated);
+  });
+
+  app.delete("/api/loeschkonzept/:id", authMiddleware, async (req: any, res) => {
+    const existing = await storage.getLoeschkonzept(Number(req.params.id));
+    if (!(await requireEntityAccess(req, res, existing))) return;
+    await storage.deleteLoeschkonzept(Number(req.params.id));
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId: existing!.mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: "loeschkonzept_geloescht",
+      modul: "loeschkonzept",
+      entitaetTyp: "loeschkonzept",
+      entitaetId: existing!.id,
+      beschreibung: "Löschkonzept-Eintrag wurde gelöscht.",
+      detailsJson: JSON.stringify(existing),
+    });
+    res.json({ ok: true });
+  });
+
   app.get("/api/mandanten/:mid/export-context", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;

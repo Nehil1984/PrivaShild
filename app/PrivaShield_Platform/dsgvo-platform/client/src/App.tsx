@@ -440,6 +440,15 @@ function Dashboard() {
   });
   const leitlinien = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "leitlinie_datenschutz" || d.kategorie === "leitlinie_informationssicherheit");
   const richtlinien = dokumente.filter((d: any) => d.kategorie === "richtlinie");
+  const datenschutzLeitlinie = dokumente.find((d: any) => d.kategorie === "leitlinie_datenschutz" || (d.kategorie === "leitlinie" && /datenschutz/i.test(String(d.titel || ""))));
+  const informationssicherheitsLeitlinie = dokumente.find((d: any) => d.kategorie === "leitlinie_informationssicherheit" || (d.kategorie === "leitlinie" && /informationssicher|is[- ]?leitlinie/i.test(String(d.titel || ""))));
+  const leitlinienStatusText = datenschutzLeitlinie && informationssicherheitsLeitlinie
+    ? "Datenschutz- und Informationssicherheitsleitlinie: aktiv"
+    : datenschutzLeitlinie
+      ? "Datenschutzleitlinie: aktiv"
+      : informationssicherheitsLeitlinie
+        ? "Informationssicherheitsleitlinie: aktiv"
+        : "Datenschutz- und Informationssicherheitsleitlinie: inaktiv";
   const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
@@ -646,7 +655,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div><p className="text-2xl font-bold">{complianceKpis.offeneAufgaben}</p><p className="text-xs text-muted-foreground">offene Aufgaben</p></div>
-              <div><p className="text-2xl font-bold">{complianceKpis.leitlinien ? "Ja" : "Nein"}</p><p className="text-xs text-muted-foreground">Leitlinie vorhanden</p></div>
+              <div><p className="text-2xl font-bold">{complianceKpis.leitlinien ? "Ja" : "Nein"}</p><p className="text-xs text-muted-foreground">{leitlinienStatusText}</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.reviews}</p><p className="text-xs text-muted-foreground">offene Reviews</p></div>
               <div><p className="text-2xl font-bold">{complianceKpis.kritische}</p><p className="text-xs text-muted-foreground">kritische Aufgaben</p></div>
             </CardContent>
