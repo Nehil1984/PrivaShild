@@ -1,16 +1,20 @@
 name: Docker Image CI
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
       - master
     paths:
-      - '/app/PrivaShield_Platform/dsgvo-platform/Dockerfile'
-      - '/app/PrivaShield_Platform/dsgvo-platform/package.json'
-      - '/app/PrivaShield_Platform/dsgvo-platform/package-lock.json'
-      - '/app/PrivaShield_Platform/dsgvo-platform/server/**'
-      - '/app/PrivaShield_Platform/dsgvo-platform/client/**'
-      - '/app/PrivaShield_Platform/dsgvo-platform/shared/**'
-      - '/.github/workflows/docker-image.yml'
+      - 'app/PrivaShield_Platform/dsgvo-platform/Dockerfile'
+      - 'app/PrivaShield_Platform/dsgvo-platform/package.json'
+      - 'app/PrivaShield_Platform/dsgvo-platform/package-lock.json'
+      - 'app/PrivaShield_Platform/dsgvo-platform/server/**'
+      - 'app/PrivaShield_Platform/dsgvo-platform/client/**'
+      - 'app/PrivaShield_Platform/dsgvo-platform/shared/**'
+      - '.github/workflows/docker-image.yml'
   workflow_dispatch:
 
 jobs:
@@ -49,7 +53,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./app/PrivaShield_Platform/dsgvo-platform
+          file: ./app/PrivaShield_Platform/dsgvo-platform/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
