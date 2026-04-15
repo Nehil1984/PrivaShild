@@ -1,3 +1,11 @@
+// Copyright 2026 Daniel Schuh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+
 import type { Request, Response, NextFunction } from "express";
 
 const loginAttempts = new Map<string, { count: number; firstAt: number; blockedUntil: number }>();

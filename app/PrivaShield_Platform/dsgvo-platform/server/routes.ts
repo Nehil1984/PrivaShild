@@ -1,3 +1,11 @@
+// Copyright 2026 Daniel Schuh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, reloadStorage } from "./storage";
