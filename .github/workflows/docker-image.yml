@@ -4,12 +4,12 @@ on:
     branches:
       - master
     paths:
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'server/**'
-      - 'client/**'
-      - 'shared/**'
+      - 'app/PrivaShield_Platform/dsgvo-platform/Dockerfile'
+      - 'app/PrivaShield_Platform/dsgvo-platform/package.json'
+      - 'app/PrivaShield_Platform/dsgvo-platform/package-lock.json'
+      - 'app/PrivaShield_Platform/dsgvo-platform/server/**'
+      - 'app/PrivaShield_Platform/dsgvo-platform/client/**'
+      - 'app/PrivaShield_Platform/dsgvo-platform/shared/**'
       - '.github/workflows/docker-image.yml'
   workflow_dispatch:
 
