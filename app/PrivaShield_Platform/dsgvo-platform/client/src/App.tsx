@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.1</span>
+              <span>Version 1.2.2</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2506,12 +2506,19 @@ function BackupsPage() {
 
   if (!form) return <div className="p-6"><Skeleton className="h-32 w-full" /></div>;
   const setRetention = (key: string, value: number) => setForm((prev: any) => ({ ...prev, retention: { ...prev.retention, [key]: value } }));
+  const slotLabel = (slot: string) => ({
+    hourly: t("backupSlotHourly"),
+    daily: t("backupSlotDaily"),
+    weekly: t("backupSlotWeekly"),
+    monthly: t("backupSlotMonthly"),
+    yearly: t("backupSlotYearly"),
+  } as Record<string, string>)[slot] || slot;
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("backups")} desc={t("backupDesc")} />
       <Card>
-        <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>{t("backupRotationHint")}</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{t("backupScheduler")}</p><p className="text-sm font-medium mt-1">{form.schedulerActive ? t("schedulerActive") : t("schedulerInactive")}</p></div>
@@ -2550,16 +2557,16 @@ function BackupsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">{t("existingBackups")}</CardTitle><CardDescription>{(backupsQuery.data || []).length} Sicherungen erkannt</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{t("existingBackups")}</CardTitle><CardDescription>{(backupsQuery.data || []).length} {t("backupsDetected")}</CardDescription></CardHeader>
         <CardContent className="space-y-2 text-sm">
           {(backupsQuery.data || []).map((item: any) => (
             <div key={item.fileName} className="rounded-lg border p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <div>
                 <div className="font-medium text-foreground">{item.fileName}</div>
-                <div className="text-xs text-muted-foreground">{item.slot} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
+                <div className="text-xs text-muted-foreground">{slotLabel(item.slot)} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
               </div>
               <div className="flex items-center gap-2">
-                <StatusBadge value={item.encrypted ? "aktiv" : "entwurf"} className="capitalize" />
+                <StatusBadge value={item.encrypted ? t("backupEncrypted") : t("backupUnencrypted")} className="capitalize" />
               </div>
             </div>
           ))}
@@ -3873,7 +3880,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.1</span>
+            <span className="font-mono">1.2.2</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>
