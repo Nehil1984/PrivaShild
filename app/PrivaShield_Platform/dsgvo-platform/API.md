@@ -385,7 +385,12 @@ Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Da
 Der Exportkontext berücksichtigt interne Notizen nur dann, wenn sie explizit zur Ausgabe freigegeben wurden (`exportieren = true`).
 
 ### Backup-Scheduler
-Die Backup-Verwaltung unterstützt nicht nur manuelle Läufe, sondern auch einen internen Scheduler in der Anwendung. Für automatische verschlüsselte Läufe sollte `PRIVASHIELD_BACKUP_PASSWORD` als Umgebungsvariable gesetzt werden.
+Die Backup-Verwaltung unterstützt nicht nur manuelle Läufe, sondern auch einen internen Scheduler in der Anwendung. Für automatische verschlüsselte Läufe muss `PRIVASHIELD_BACKUP_PASSWORD` als Umgebungsvariable gesetzt werden.
+
+Wichtig:
+- manuelle verschlüsselte Läufe können das Kennwort direkt per Anfrage übergeben
+- automatische Scheduler-Läufe haben keinen interaktiven Kennwortdialog
+- ist Verschlüsselung aktiviert, aber `PRIVASHIELD_BACKUP_PASSWORD` nicht gesetzt, schlägt der automatische Lauf bewusst fehl
 
 ### Governance / Reifegrad
 Der Dashboard-Reifegrad wird aus mehreren Compliance-Signalen abgeleitet, darunter Leitlinien, VVT, Löschkonzept-Abdeckung, DSFA-/Datenschutzfunktion, Audits, TOM, AVV und Aufgabenlage.

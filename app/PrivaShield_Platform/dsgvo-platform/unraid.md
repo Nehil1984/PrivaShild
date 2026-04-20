@@ -417,6 +417,11 @@ Backups können optional mit einem Kennwort verschlüsselt werden. Die Backup-Da
 
 PrivaShield unterstützt jetzt eine eingebaute Backup-Routine mit stündlicher Scheduler-Ausführung in der App.
 
+Wichtig:
+- für automatische verschlüsselte Backups muss `PRIVASHIELD_BACKUP_PASSWORD` in der Container-Umgebung gesetzt werden
+- ohne diese Umgebungsvariable schlägt ein automatischer verschlüsselter Lauf bewusst fehl
+- manuelle verschlüsselte Läufe können das Kennwort weiterhin über die Oberfläche erhalten
+
 Retention:
 - 24 stündlich
 - 7 täglich

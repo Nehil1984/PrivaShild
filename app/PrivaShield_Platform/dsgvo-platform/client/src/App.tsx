@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.2</span>
+              <span>Version 1.2.3</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2495,13 +2495,13 @@ function BackupsPage() {
   const saveMutation = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/backups/config", form).then(r => r.json()),
     onSuccess: () => { toast({ title: t("saveBackupConfig") }); configQuery.refetch(); },
-    onError: (e: any) => toast({ title: "Fehler", description: e?.message || "Konfiguration konnte nicht gespeichert werden", variant: "destructive" })
+    onError: (e: any) => toast({ title: "Fehler", description: e?.message || t("backupSaveError"), variant: "destructive" })
   });
 
   const runMutation = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/backups/run", { password: runPassword || undefined }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
-    onSuccess: (data) => { toast({ title: t("startBackup"), description: `${data.created?.length || 0} Backup-Slots aktualisiert` }); backupsQuery.refetch(); configQuery.refetch(); },
-    onError: (e: any) => toast({ title: "Backup fehlgeschlagen", description: e?.message || "Backup konnte nicht erstellt werden", variant: "destructive" })
+    onSuccess: (data) => { toast({ title: t("backupCreated"), description: `${data.created?.length || 0} ${t("backupSlotsUpdated")}` }); backupsQuery.refetch(); configQuery.refetch(); },
+    onError: (e: any) => toast({ title: t("backupFailed"), description: e?.message || t("backupRunFailed"), variant: "destructive" })
   });
 
   if (!form) return <div className="p-6"><Skeleton className="h-32 w-full" /></div>;
@@ -2531,7 +2531,7 @@ function BackupsPage() {
           <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>{t("encryptBackups")}</span></label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1"><Label className="text-xs">{t("backupDirectory")}</Label><Input value={form.backupDir || ""} onChange={e => setForm((p: any) => ({ ...p, backupDir: e.target.value }))} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">{t("passwordHint")}</Label><Input value={form.passwordHint || ""} onChange={e => setForm((p: any) => ({ ...p, passwordHint: e.target.value }))} placeholder="z. B. interner Safe" className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("passwordHint")}</Label><Input value={form.passwordHint || ""} onChange={e => setForm((p: any) => ({ ...p, passwordHint: e.target.value }))} placeholder={t("passwordHintExample")} className="h-8 text-sm" /></div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="space-y-1"><Label className="text-xs">{t("hourly")}</Label><Input type="number" value={form.retention?.hourly || 24} onChange={e => setRetention("hourly", Number(e.target.value || 24))} className="h-8 text-sm" /></div>
@@ -3880,7 +3880,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.2</span>
+            <span className="font-mono">1.2.3</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>
