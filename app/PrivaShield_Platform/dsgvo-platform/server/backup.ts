@@ -27,6 +27,10 @@ export type BackupConfig = {
   passwordHash?: string;
   passwordHint?: string;
   updatedAt: string;
+  lastRunAt?: string;
+  lastSuccessAt?: string;
+  lastErrorAt?: string;
+  lastErrorMessage?: string;
 };
 
 export type BackupRecord = {
@@ -87,6 +91,10 @@ export function readBackupConfig(): BackupConfig {
       passwordHash: parsed.passwordHash || undefined,
       passwordHint: parsed.passwordHint || "",
       updatedAt: parsed.updatedAt || new Date().toISOString(),
+      lastRunAt: parsed.lastRunAt || undefined,
+      lastSuccessAt: parsed.lastSuccessAt || undefined,
+      lastErrorAt: parsed.lastErrorAt || undefined,
+      lastErrorMessage: parsed.lastErrorMessage || undefined,
     };
   } catch {
     return {
@@ -95,6 +103,10 @@ export function readBackupConfig(): BackupConfig {
       retention: defaultRetention,
       encrypt: false,
       updatedAt: new Date().toISOString(),
+      lastRunAt: undefined,
+      lastSuccessAt: undefined,
+      lastErrorAt: undefined,
+      lastErrorMessage: undefined,
     };
   }
 }
@@ -114,6 +126,32 @@ export function writeBackupConfig(next: Partial<BackupConfig> & { retention?: Pa
   fs.mkdirSync(cfg.backupDir, { recursive: true });
   fs.writeFileSync(getConfigPath(), JSON.stringify(cfg, null, 2), "utf-8");
   return cfg;
+}
+
+function updateBackupStatus(patch: Partial<BackupConfig>) {
+  const current = readBackupConfig();
+  const next: BackupConfig = {
+    ...current,
+    ...patch,
+    updatedAt: patch.updatedAt || current.updatedAt,
+  };
+  fs.mkdirSync(next.backupDir, { recursive: true });
+  fs.writeFileSync(getConfigPath(), JSON.stringify(next, null, 2), "utf-8");
+  return next;
+}
+
+export function readBackupStatus() {
+  const cfg = readBackupConfig();
+  return {
+    enabled: cfg.enabled,
+    updatedAt: cfg.updatedAt,
+    nextRunAt: nextBackupRunEstimate(),
+    lastRunAt: cfg.lastRunAt || null,
+    lastSuccessAt: cfg.lastSuccessAt || null,
+    lastErrorAt: cfg.lastErrorAt || null,
+    lastErrorMessage: cfg.lastErrorMessage || "",
+    schedulerActive: !!backupTimer && cfg.enabled,
+  };
 }
 
 function getSourceFile() {
@@ -214,45 +252,62 @@ function pruneSlot(slot: BackupRecord["slot"], keep: number) {
 }
 
 export function runBackupNow(passwordOverride?: string) {
-  const cfg = readBackupConfig();
-  const source = getSourceFile();
-  if (!fs.existsSync(source)) throw new Error(`Quelldatei nicht gefunden: ${source}`);
-  fs.mkdirSync(cfg.backupDir, { recursive: true });
-  const now = new Date();
-  const buffer = fs.readFileSync(source);
-  const useEncryption = cfg.encrypt;
-  const password = passwordOverride || undefined;
-  if (useEncryption && !password) throw new Error("Verschlüsselung aktiv, aber kein Kennwort übergeben.");
-  const payload = useEncryption ? encryptBuffer(buffer, password!) : buffer;
-  const ext = useEncryption ? "enc" : "bak";
+  const runAt = new Date().toISOString();
+  try {
+    const cfg = readBackupConfig();
+    const source = getSourceFile();
+    if (!fs.existsSync(source)) throw new Error(`Quelldatei nicht gefunden: ${source}`);
+    fs.mkdirSync(cfg.backupDir, { recursive: true });
+    const now = new Date();
+    const buffer = fs.readFileSync(source);
+    const useEncryption = cfg.encrypt;
+    const password = passwordOverride || undefined;
+    if (useEncryption && !password) throw new Error("Verschlüsselung aktiv, aber kein Kennwort übergeben.");
+    const payload = useEncryption ? encryptBuffer(buffer, password!) : buffer;
+    const ext = useEncryption ? "enc" : "bak";
 
-  const slots: BackupRecord["slot"][] = ["hourly", "daily", "weekly", "monthly", "yearly"];
-  const created: BackupRecord[] = [];
-  for (const slot of slots) {
-    const label = buildLabel(slot, now);
-    const existing = listBackups().find((row) => row.slot === slot && row.label === label);
-    if (existing && slotMatches(slot, new Date(existing.createdAt), now)) continue;
-    const fileName = `backup-${slot}-${label}.${ext}`;
-    const filePath = path.join(cfg.backupDir, fileName);
-    fs.writeFileSync(filePath, payload);
-    const stat = fs.statSync(filePath);
-    created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label });
+    const slots: BackupRecord["slot"][] = ["hourly", "daily", "weekly", "monthly", "yearly"];
+    const created: BackupRecord[] = [];
+    for (const slot of slots) {
+      const label = buildLabel(slot, now);
+      const existing = listBackups().find((row) => row.slot === slot && row.label === label);
+      if (existing && slotMatches(slot, new Date(existing.createdAt), now)) continue;
+      const fileName = `backup-${slot}-${label}.${ext}`;
+      const filePath = path.join(cfg.backupDir, fileName);
+      fs.writeFileSync(filePath, payload);
+      const stat = fs.statSync(filePath);
+      created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label });
+    }
+
+    pruneSlot("hourly", cfg.retention.hourly);
+    pruneSlot("daily", cfg.retention.daily);
+    pruneSlot("weekly", cfg.retention.weekly);
+    pruneSlot("monthly", cfg.retention.monthly);
+    pruneSlot("yearly", cfg.retention.yearly);
+
+    updateBackupStatus({
+      lastRunAt: runAt,
+      lastSuccessAt: runAt,
+      lastErrorAt: undefined,
+      lastErrorMessage: undefined,
+    });
+
+    return {
+      source,
+      backend: readDbBackend(),
+      encrypted: useEncryption,
+      created,
+      retention: cfg.retention,
+      backups: listBackups(),
+    };
+  } catch (error: any) {
+    updateBackupStatus({
+      lastRunAt: runAt,
+      lastErrorAt: runAt,
+      lastErrorMessage: error?.message || "Backup fehlgeschlagen",
+    });
+    throw error;
   }
-
-  pruneSlot("hourly", cfg.retention.hourly);
-  pruneSlot("daily", cfg.retention.daily);
-  pruneSlot("weekly", cfg.retention.weekly);
-  pruneSlot("monthly", cfg.retention.monthly);
-  pruneSlot("yearly", cfg.retention.yearly);
-
-  return {
-    source,
-    backend: readDbBackend(),
-    encrypted: useEncryption,
-    created,
-    retention: cfg.retention,
-    backups: listBackups(),
-  };
 }
 
 
@@ -267,6 +322,7 @@ export function nextBackupRunEstimate() {
 let backupTimer: NodeJS.Timeout | null = null;
 export function startBackupScheduler() {
   if (backupTimer) clearTimeout(backupTimer);
+  backupTimer = null;
   const cfg = readBackupConfig();
   if (!cfg.enabled) return;
   const schedule = () => {

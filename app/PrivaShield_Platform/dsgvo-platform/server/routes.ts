@@ -13,7 +13,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
-import { listBackups, nextBackupRunEstimate, readBackupConfig, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
+import { listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
 import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
@@ -810,28 +810,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/admin/backups/config", authMiddleware, adminOnly, (_req, res) => {
     const cfg = readBackupConfig();
     res.json({
-      enabled: cfg.enabled,
       backupDir: cfg.backupDir,
       retention: cfg.retention,
       encrypt: cfg.encrypt,
       passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
-      updatedAt: cfg.updatedAt,
-      nextRunAt: nextBackupRunEstimate(),
+      ...readBackupStatus(),
     });
   });
 
   app.post("/api/admin/backups/config", authMiddleware, adminOnly, validateBody(requestBackupConfigSchema as ZodTypeAny), async (req: any, res) => {
     const cfg = writeBackupConfig(req.body || {});
+    startBackupScheduler();
     res.json({
-      enabled: cfg.enabled,
       backupDir: cfg.backupDir,
       retention: cfg.retention,
       encrypt: cfg.encrypt,
       passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
-      updatedAt: cfg.updatedAt,
-      nextRunAt: nextBackupRunEstimate(),
+      ...readBackupStatus(),
     });
   });
 

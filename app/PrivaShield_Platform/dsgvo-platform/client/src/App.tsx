@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.1.2</span>
+              <span>Version 1.2.0</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2500,7 +2500,7 @@ function BackupsPage() {
 
   const runMutation = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/backups/run", { password: runPassword || undefined }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
-    onSuccess: (data) => { toast({ title: "Backup erstellt", description: `${data.created?.length || 0} Backup-Slots aktualisiert` }); backupsQuery.refetch(); },
+    onSuccess: (data) => { toast({ title: "Backup erstellt", description: `${data.created?.length || 0} Backup-Slots aktualisiert` }); backupsQuery.refetch(); configQuery.refetch(); },
     onError: (e: any) => toast({ title: "Backup fehlgeschlagen", description: e?.message || "Backup konnte nicht erstellt werden", variant: "destructive" })
   });
 
@@ -2513,6 +2513,13 @@ function BackupsPage() {
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>Rotation: 24 stündlich, 7 täglich, 4 wöchentlich, 12 monatlich, 2 jährlich</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Scheduler</p><p className="text-sm font-medium mt-1">{form.schedulerActive ? "Aktiv" : "Inaktiv"}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Nächster Lauf</p><p className="text-sm font-medium mt-1">{form.nextRunAt ? new Date(form.nextRunAt).toLocaleString("de-DE") : "—"}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Letzter Lauf</p><p className="text-sm font-medium mt-1">{form.lastRunAt ? new Date(form.lastRunAt).toLocaleString("de-DE") : "—"}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Letzter Erfolg</p><p className="text-sm font-medium mt-1">{form.lastSuccessAt ? new Date(form.lastSuccessAt).toLocaleString("de-DE") : "—"}</p></div>
+            <div className="rounded-lg border p-3 md:col-span-2 xl:col-span-2"><p className="text-xs text-muted-foreground">Letzter Fehler</p><p className="text-sm font-medium mt-1">{form.lastErrorAt ? `${new Date(form.lastErrorAt).toLocaleString("de-DE")} · ${form.lastErrorMessage || "Unbekannter Fehler"}` : "Kein Fehler protokolliert"}</p></div>
+          </div>
           <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.enabled} onChange={e => setForm((p: any) => ({ ...p, enabled: e.target.checked }))} /><span>{t("enableAutomaticBackups")}</span></label>
           <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.encrypt} onChange={e => setForm((p: any) => ({ ...p, encrypt: e.target.checked }))} /><span>{t("encryptBackups")}</span></label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2530,7 +2537,7 @@ function BackupsPage() {
             <div className="space-y-1"><Label className="text-xs">Neues Backup-Kennwort</Label><Input type="password" value={form.password || ""} onChange={e => setForm((p: any) => ({ ...p, password: e.target.value }))} placeholder={form.passwordConfigured ? "Kennwort ändern" : "Kennwort setzen"} className="h-8 text-sm" /></div>
             <div className="flex items-end"><Button size="sm" className="bg-primary" onClick={() => saveMutation.mutate()}>Konfiguration speichern</Button></div>
           </div>
-          <div className="rounded-lg border p-3 text-xs text-muted-foreground">Automatische Ausführung ist über die API vorbereitet. Für produktive Scheduler-Auslösung kann der Endpunkt zyklisch von Cron oder Container-Scheduler aufgerufen werden. Die Aufbewahrungslogik wird serverseitig strikt angewendet.</div>
+          <div className="rounded-lg border p-3 text-xs text-muted-foreground">Die automatische Backup-Routine wird jetzt serverseitig intern geplant. Die Aufbewahrungslogik wird serverseitig strikt angewendet. Bei aktivierter Verschlüsselung benötigt der automatische Lauf ein gesetztes `PRIVASHIELD_BACKUP_PASSWORD` in der Laufumgebung.</div>
         </CardContent>
       </Card>
 
@@ -3866,7 +3873,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.1.2</span>
+            <span className="font-mono">1.2.0</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>
