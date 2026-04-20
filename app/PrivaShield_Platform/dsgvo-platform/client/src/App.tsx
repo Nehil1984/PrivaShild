@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.5</span>
+              <span>Version 1.2.6</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2544,7 +2544,7 @@ function BackupsPage() {
 
   if (!form) return <div className="p-6"><Skeleton className="h-32 w-full" /></div>;
   const setRetention = (key: string, value: number) => setForm((prev: any) => ({ ...prev, retention: { ...prev.retention, [key]: value } }));
-  const schedulerPasswordLikelyMissing = !!form.encrypt && !!form.enabled && /kein kennwort übergeben|no password/i.test(String(form.lastErrorMessage || ""));
+  const schedulerRuntimePasswordMissing = !!form.encrypt && !!form.enabled && !form.schedulerRuntimePasswordConfigured;
   const slotLabel = (slot: string) => ({
     hourly: t("backupSlotHourly"),
     daily: t("backupSlotDaily"),
@@ -2559,11 +2559,10 @@ function BackupsPage() {
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("backupConfig")}</CardTitle><CardDescription>{t("backupRotationHint")}</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
-          {form.encrypt && form.enabled && (
+          {schedulerRuntimePasswordMissing && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
               <p className="font-medium">{t("backupEnvWarningTitle")}</p>
               <p className="mt-1 text-xs text-amber-900">{t("backupEnvWarningText")}</p>
-              {schedulerPasswordLikelyMissing && <p className="mt-2 text-xs font-medium text-amber-950">{t("backupEnvWarningLastError")}</p>}
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -3960,7 +3959,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.5</span>
+            <span className="font-mono">1.2.6</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>

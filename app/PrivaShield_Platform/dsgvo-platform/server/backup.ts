@@ -151,6 +151,7 @@ export function readBackupStatus() {
     lastErrorAt: cfg.lastErrorAt || null,
     lastErrorMessage: cfg.lastErrorMessage || "",
     schedulerActive: !!backupTimer && cfg.enabled,
+    schedulerRuntimePasswordConfigured: !!process.env.PRIVASHIELD_BACKUP_PASSWORD,
   };
 }
 
