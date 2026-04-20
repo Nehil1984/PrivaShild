@@ -121,6 +121,24 @@ const MODULES: ExportModule[] = [
       { key: "gueltigBis", label: "Gültig bis" },
     ],
   },
+  {
+    key: "loeschkonzept", label: "Löschkonzept & Löschklassen", endpoint: "loeschkonzept",
+    icon: CheckCircle2, color: "text-emerald-400",
+    columns: [
+      { key: "bezeichnung", label: "Eintrag" },
+      { key: "loeschklasse", label: "Löschklasse" },
+      { key: "fristKategorie", label: "Fristgruppe" },
+      { key: "gesetzlicheFrist", label: "Gesetzliche Frist / Referenz" },
+      { key: "aufbewahrungsfrist", label: "Aufbewahrungsfrist" },
+      { key: "loeschereignis", label: "Löschereignis" },
+      { key: "rechtsgrundlage", label: "Rechtsgrundlage" },
+      { key: "loeschverantwortlicher", label: "Löschverantwortlicher" },
+      { key: "systeme", label: "Systeme / Speicherorte" },
+      { key: "kontrolle", label: "Kontrolle" },
+      { key: "nachweis", label: "Nachweis" },
+      { key: "status", label: "Status" },
+    ],
+  },
 ];
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────

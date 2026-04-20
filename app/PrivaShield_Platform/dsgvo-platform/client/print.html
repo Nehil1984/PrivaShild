@@ -303,8 +303,14 @@ const MODULES = {
       { key: "bezeichnung", label: "Eintrag" },
       { key: "loeschklasse", label: "Löschklasse" },
       { key: "fristKategorie", label: "Fristgruppe" },
-      { key: "aufbewahrungsfrist", label: "Frist" },
+      { key: "gesetzlicheFrist", label: "Gesetzliche Frist / Referenz" },
+      { key: "aufbewahrungsfrist", label: "Aufbewahrungsfrist" },
+      { key: "loeschereignis", label: "Löschereignis" },
+      { key: "rechtsgrundlage", label: "Rechtsgrundlage" },
       { key: "loeschverantwortlicher", label: "Löschverantwortlicher" },
+      { key: "systeme", label: "Systeme / Speicherorte" },
+      { key: "kontrolle", label: "Kontrolle" },
+      { key: "nachweis", label: "Nachweis" },
       { key: "status", label: "Status" },
     ],
   },
@@ -466,6 +472,8 @@ function buildLoeschkonzeptSummary(rows) {
   if (!rows || rows.length === 0) return "";
   const red = rows.filter(r => String(r.loeschklasse || "") === "LK5" && (!r.nachweis || !r.kontrolle)).length;
   const withLegal = rows.filter(r => r.fristKategorie && r.fristKategorie !== "frei").length;
+  const withTrigger = rows.filter(r => String(r.loeschereignis || "").trim()).length;
+  const withEvidence = rows.filter(r => String(r.nachweis || "").trim()).length;
   const classes = Array.from(new Set(rows.map(r => r.loeschklasse).filter(Boolean)));
   return `
     <div class="module-section">
@@ -474,9 +482,9 @@ function buildLoeschkonzeptSummary(rows) {
         <span class="badge">${fmt(rows.length)} Einträge</span>
       </div>
       <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
-        <div class="info-card"><h3>Übersicht</h3><p><strong>Einträge:</strong> ${fmt(rows.length)}</p><p><strong>Mit gesetzlicher Frist:</strong> ${fmt(withLegal)}</p><p><strong>Kritische Ampelfälle:</strong> ${fmt(red)}</p></div>
+        <div class="info-card"><h3>Übersicht</h3><p><strong>Einträge:</strong> ${fmt(rows.length)}</p><p><strong>Mit gesetzlicher Frist:</strong> ${fmt(withLegal)}</p><p><strong>Mit Löschereignis:</strong> ${fmt(withTrigger)}</p><p><strong>Mit Nachweis:</strong> ${fmt(withEvidence)}</p><p><strong>Kritische Ampelfälle:</strong> ${fmt(red)}</p></div>
         <div class="info-card"><h3>Löschklassen</h3><p>${classes.length ? classes.map(c => `• ${fmt(c)}`).join("<br>") : "Keine Klassen dokumentiert"}</p></div>
-        <div class="info-card"><h3>Prüfhinweis</h3><p>${red > 0 ? "Es bestehen Einträge mit erhöhtem Prüfbedarf, insbesondere bei LK5 ohne ausreichenden Nachweis oder Kontrolle." : "Keine offensichtlichen kritischen Ampelfälle im Druckkontext erkannt."}</p></div>
+        <div class="info-card"><h3>Prüfhinweis</h3><p>${red > 0 ? "Es bestehen Einträge mit erhöhtem Prüfbedarf, insbesondere bei LK5 ohne ausreichenden Nachweis oder Kontrolle." : "Keine offensichtlichen kritischen Ampelfälle im Druckkontext erkannt."}</p><p style="margin-top:8px;">Ein belastbarer Druckexport sollte Fristbezug, Löschereignis, Verantwortlichkeit, Kontrolle und Nachweis nachvollziehbar dokumentieren.</p></div>
       </div>
     </div>`;
 }
