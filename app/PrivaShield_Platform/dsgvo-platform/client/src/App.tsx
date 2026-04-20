@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.6</span>
+              <span>Version 1.2.7</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2585,10 +2585,7 @@ function BackupsPage() {
             <div className="space-y-1"><Label className="text-xs">{t("monthly")}</Label><Input type="number" value={form.retention?.monthly || 12} onChange={e => setRetention("monthly", Number(e.target.value || 12))} className="h-8 text-sm" /></div>
             <div className="space-y-1"><Label className="text-xs">{t("yearly")}</Label><Input type="number" value={form.retention?.yearly || 2} onChange={e => setRetention("yearly", Number(e.target.value || 2))} className="h-8 text-sm" /></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1"><Label className="text-xs">{t("newBackupPassword")}</Label><Input type="password" value={form.password || ""} onChange={e => setForm((p: any) => ({ ...p, password: e.target.value }))} placeholder={form.passwordConfigured ? t("changePassword") : t("setPassword")} className="h-8 text-sm" /></div>
-            <div className="flex items-end"><Button size="sm" className="bg-primary" onClick={() => saveMutation.mutate()}>{t("saveBackupConfig")}</Button></div>
-          </div>
+          <div className="flex items-end"><Button size="sm" className="bg-primary" onClick={() => saveMutation.mutate()}>{t("saveBackupConfig")}</Button></div>
           <div className="rounded-lg border p-3 text-xs text-muted-foreground">{t("backupSchedulerHint")}</div>
         </CardContent>
       </Card>
@@ -3959,7 +3956,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.6</span>
+            <span className="font-mono">1.2.7</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>

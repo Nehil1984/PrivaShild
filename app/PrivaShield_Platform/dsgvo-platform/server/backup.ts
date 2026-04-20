@@ -24,7 +24,6 @@ export type BackupConfig = {
   backupDir: string;
   retention: BackupRetentionConfig;
   encrypt: boolean;
-  passwordHash?: string;
   passwordHint?: string;
   updatedAt: string;
   lastRunAt?: string;
@@ -88,7 +87,6 @@ export function readBackupConfig(): BackupConfig {
       backupDir: parsed.backupDir || getBackupDir(),
       retention: { ...defaultRetention, ...(parsed.retention || {}) },
       encrypt: !!parsed.encrypt,
-      passwordHash: parsed.passwordHash || undefined,
       passwordHint: parsed.passwordHint || "",
       updatedAt: parsed.updatedAt || new Date().toISOString(),
       lastRunAt: parsed.lastRunAt || undefined,
@@ -111,18 +109,15 @@ export function readBackupConfig(): BackupConfig {
   }
 }
 
-export function writeBackupConfig(next: Partial<BackupConfig> & { retention?: Partial<BackupRetentionConfig>; password?: string }) {
+export function writeBackupConfig(next: Partial<BackupConfig> & { retention?: Partial<BackupRetentionConfig> }) {
   const current = readBackupConfig();
-  const passwordHash = next.password ? crypto.scryptSync(next.password, "privashield-backup", 32).toString("hex") : current.passwordHash;
   const cfg: BackupConfig = {
     ...current,
     ...next,
     retention: { ...current.retention, ...(next.retention || {}) },
-    passwordHash,
     backupDir: next.backupDir || current.backupDir || getBackupDir(),
     updatedAt: new Date().toISOString(),
   };
-  delete (cfg as any).password;
   fs.mkdirSync(cfg.backupDir, { recursive: true });
   fs.writeFileSync(getConfigPath(), JSON.stringify(cfg, null, 2), "utf-8");
   return cfg;
@@ -389,7 +384,7 @@ export function startBackupScheduler() {
     backupTimer = setTimeout(() => {
       try {
         const current = readBackupConfig();
-        if (current.enabled && (!current.encrypt || current.passwordHash)) {
+        if (current.enabled) {
           runBackupNow(process.env.PRIVASHIELD_BACKUP_PASSWORD);
         }
       } catch (error) {

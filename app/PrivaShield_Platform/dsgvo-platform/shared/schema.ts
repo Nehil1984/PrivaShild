@@ -405,7 +405,6 @@ export const requestBackupConfigSchema = z.object({
     yearly: z.number().int().min(1).max(20).optional(),
   }).optional(),
   encrypt: z.boolean().optional(),
-  password: z.string().min(8).optional(),
   passwordHint: z.string().trim().max(200).optional(),
 });
 export type RequestBackupConfig = z.infer<typeof requestBackupConfigSchema>;

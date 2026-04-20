@@ -813,7 +813,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       backupDir: cfg.backupDir,
       retention: cfg.retention,
       encrypt: cfg.encrypt,
-      passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
       ...readBackupStatus(),
     });
@@ -826,7 +825,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       backupDir: cfg.backupDir,
       retention: cfg.retention,
       encrypt: cfg.encrypt,
-      passwordConfigured: !!cfg.passwordHash,
       passwordHint: cfg.passwordHint || "",
       ...readBackupStatus(),
     });
