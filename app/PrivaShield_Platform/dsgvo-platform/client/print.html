@@ -129,6 +129,41 @@ You may obtain a copy of the License at
     width: 100%;
     overflow: visible;
   }
+  .record-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+  .record-table tr:nth-child(even) td { background: #f8fafc; }
+  .record-label {
+    width: 28%;
+    padding: 8px 10px;
+    vertical-align: top;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .record-value {
+    width: 72%;
+    padding: 8px 10px;
+    vertical-align: top;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 10.5px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  .record-table tr:last-child .record-label,
+  .record-table tr:last-child .record-value { border-bottom: none; }
   .data-table {
     width: 100%; border-collapse: collapse;
     table-layout: fixed;
@@ -385,18 +420,35 @@ function buildTable(mod, rows) {
   if (!rows || rows.length === 0) {
     return `<div class="empty-note">Keine Einträge vorhanden</div>`;
   }
-  const thead = cols.map(c => `<th>${c.label}</th>`).join("");
-  const tbody = rows.map(row => {
-    const cells = cols.map(c => `<td>${statusField(c.key, row[c.key])}</td>`).join("");
-    return `<tr>${cells}</tr>`;
-  }).join("");
-  return `
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr>${thead}</tr></thead>
-        <tbody>${tbody}</tbody>
+
+  const denseModules = new Set(["aufgaben"]);
+  if (denseModules.has(mod.key)) {
+    const thead = cols.map(c => `<th>${c.label}</th>`).join("");
+    const tbody = rows.map(row => {
+      const cells = cols.map(c => `<td>${statusField(c.key, row[c.key])}</td>`).join("");
+      return `<tr>${cells}</tr>`;
+    }).join("");
+    return `
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>${thead}</tr></thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>`;
+  }
+
+  return rows.map((row, index) => `
+    <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
+      <table class="record-table">
+        <tbody>
+          ${cols.map(c => `
+            <tr>
+              <td class="record-label">${c.label}</td>
+              <td class="record-value">${statusField(c.key, row[c.key])}</td>
+            </tr>`).join("")}
+        </tbody>
       </table>
-    </div>`;
+    </div>`).join("");
 }
 
 function buildMandantBox(m) {
