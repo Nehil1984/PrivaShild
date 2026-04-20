@@ -6,16 +6,16 @@
 //
 //  http://www.apache.org/licenses/LICENSE-2.0
 
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import type { Server } from "http";
 import { storage, reloadStorage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
-import { listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
+import { listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
-import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
+import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -842,6 +842,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error?.message || "Backup fehlgeschlagen" });
+    }
+  });
+
+  app.post("/api/admin/backups/restore", authMiddleware, adminOnly, validateBody(requestBackupRestoreSchema as ZodTypeAny), async (req: any, res) => {
+    try {
+      const result = restoreBackup(req.body?.fileName, req.body?.password);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Backup konnte nicht wiederhergestellt werden" });
+    }
+  });
+
+  app.post("/api/admin/backups/restore-upload", authMiddleware, adminOnly, express.raw({ type: "application/octet-stream", limit: "250mb" }), async (req: any, res) => {
+    try {
+      const fileName = String(req.query.fileName || "").trim();
+      const password = typeof req.query.password === "string" ? req.query.password : undefined;
+      if (!fileName) return res.status(400).json({ message: "Dateiname fehlt" });
+      if (!req.body || !Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ message: "Keine Backup-Datei hochgeladen" });
+      const result = restoreUploadedBackup(fileName, req.body, password);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Hochgeladenes Backup konnte nicht wiederhergestellt werden" });
     }
   });
 

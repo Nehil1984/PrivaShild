@@ -22,10 +22,27 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const isBlob = typeof Blob !== "undefined" && data instanceof Blob;
+  const isArrayBuffer = data instanceof ArrayBuffer;
+  const isUint8Array = data instanceof Uint8Array;
+  const body = data == null
+    ? undefined
+    : isFormData || isBlob || isArrayBuffer || isUint8Array
+      ? (data as BodyInit)
+      : JSON.stringify(data);
+  const headers: Record<string, string> = data == null || isFormData
+    ? {}
+    : isBlob
+      ? { "Content-Type": (data as Blob).type || "application/octet-stream" }
+      : isArrayBuffer || isUint8Array
+        ? { "Content-Type": "application/octet-stream" }
+        : { "Content-Type": "application/json" };
+
   const res = await fetch(`${API_BASE}${url}`, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers,
+    body,
   });
 
   await throwIfResNotOk(res);

@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.4</span>
+              <span>Version 1.2.5</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2489,6 +2489,9 @@ function BackupsPage() {
   const backupsQuery = useQuery({ queryKey: ["/api/admin/backups"], queryFn: () => apiRequest("GET", "/api/admin/backups").then(r => r.json()) });
   const [form, setForm] = useState<any>(null);
   const [runPassword, setRunPassword] = useState("");
+  const [restorePassword, setRestorePassword] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPassword, setUploadPassword] = useState("");
 
   useEffect(() => { if (configQuery.data) setForm(configQuery.data); }, [configQuery.data]);
 
@@ -2502,6 +2505,41 @@ function BackupsPage() {
     mutationFn: async () => apiRequest("POST", "/api/admin/backups/run", { password: runPassword || undefined }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
     onSuccess: (data) => { toast({ title: t("backupCreated"), description: `${data.created?.length || 0} ${t("backupSlotsUpdated")}` }); backupsQuery.refetch(); configQuery.refetch(); },
     onError: (e: any) => toast({ title: t("backupFailed"), description: e?.message || t("backupRunFailed"), variant: "destructive" })
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (payload: { fileName: string; encrypted: boolean }) => apiRequest("POST", "/api/admin/backups/restore", {
+      fileName: payload.fileName,
+      password: payload.encrypted ? (restorePassword || undefined) : undefined,
+    }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
+    onSuccess: () => {
+      toast({ title: t("restoreBackupSuccess") });
+      setRestorePassword("");
+      configQuery.refetch();
+      backupsQuery.refetch();
+    },
+    onError: (e: any) => toast({ title: t("restoreBackupFailed"), description: e?.message || t("restoreBackupRunFailed"), variant: "destructive" })
+  });
+
+  const uploadRestoreMutation = useMutation({
+    mutationFn: async () => {
+      if (!uploadFile) throw new Error(t("uploadBackupHint"));
+      const query = new URLSearchParams({ fileName: uploadFile.name });
+      if (uploadPassword) query.set("password", uploadPassword);
+      return apiRequest("POST", `/api/admin/backups/restore-upload?${query.toString()}`, await uploadFile.arrayBuffer()).then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.message);
+        return data;
+      });
+    },
+    onSuccess: () => {
+      toast({ title: t("uploadBackupSuccess") });
+      setUploadFile(null);
+      setUploadPassword("");
+      configQuery.refetch();
+      backupsQuery.refetch();
+    },
+    onError: (e: any) => toast({ title: t("uploadBackupFailed"), description: e?.message || t("uploadBackupRunFailed"), variant: "destructive" })
   });
 
   if (!form) return <div className="p-6"><Skeleton className="h-32 w-full" /></div>;
@@ -2566,15 +2604,49 @@ function BackupsPage() {
 
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("existingBackups")}</CardTitle><CardDescription>{(backupsQuery.data || []).length} {t("backupsDetected")}</CardDescription></CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {(backupsQuery.data || []).map((item: any) => (
-            <div key={item.fileName} className="rounded-lg border p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div>
-                <div className="font-medium text-foreground">{item.fileName}</div>
-                <div className="text-xs text-muted-foreground">{slotLabel(item.slot)} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
+        <CardContent className="space-y-4 text-sm">
+          <div className="rounded-lg border p-3 text-xs text-amber-950 bg-amber-50 border-amber-300">{t("restoreBackupConfirm")}</div>
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="font-medium text-foreground">{t("uploadBackup")}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label className="text-xs">{t("uploadBackupFile")}</Label>
+                <Input type="file" accept=".bak,.enc" onChange={e => setUploadFile(e.target.files?.[0] || null)} className="h-8 text-sm" />
+                <p className="text-xs text-muted-foreground">{t("uploadBackupHint")}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <StatusBadge value={item.encrypted ? t("backupEncrypted") : t("backupUnencrypted")} className="capitalize" />
+              <div className="space-y-1">
+                <Label className="text-xs">{t("restoreBackupPassword")}</Label>
+                <Input type="password" value={uploadPassword} onChange={e => setUploadPassword(e.target.value)} placeholder={t("restoreBackupPasswordHint")} className="h-8 text-sm" />
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => uploadRestoreMutation.mutate()} disabled={uploadRestoreMutation.isPending || !uploadFile}>{t("restoreBackupNow")}</Button>
+          </div>
+          {(backupsQuery.data || []).map((item: any) => (
+            <div key={item.fileName} className="rounded-lg border p-3 flex flex-col gap-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <div className="font-medium text-foreground">{item.fileName}</div>
+                  <div className="text-xs text-muted-foreground">{slotLabel(item.slot)} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge value={item.encrypted ? t("backupEncrypted") : t("backupUnencrypted")} className="capitalize" />
+                </div>
+              </div>
+              <div className="flex flex-col md:flex-row md:items-end gap-2">
+                {item.encrypted && (
+                  <div className="space-y-1 md:min-w-72">
+                    <Label className="text-xs">{t("restoreBackupPassword")}</Label>
+                    <Input type="password" value={restorePassword} onChange={e => setRestorePassword(e.target.value)} placeholder={t("restoreBackupPasswordHint")} className="h-8 text-sm" />
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => restoreMutation.mutate({ fileName: item.fileName, encrypted: !!item.encrypted })}
+                  disabled={restoreMutation.isPending || (item.encrypted && !restorePassword)}
+                >
+                  {t("restoreBackupNow")}
+                </Button>
               </div>
             </div>
           ))}
@@ -3888,7 +3960,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.4</span>
+            <span className="font-mono">1.2.5</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>

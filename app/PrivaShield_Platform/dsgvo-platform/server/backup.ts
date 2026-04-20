@@ -210,6 +210,19 @@ function encryptBuffer(buffer: Buffer, password: string) {
   return Buffer.concat([Buffer.from("PSB1"), salt, iv, tag, encrypted]);
 }
 
+function decryptBuffer(buffer: Buffer, password: string) {
+  const magic = buffer.subarray(0, 4).toString("utf8");
+  if (magic !== "PSB1") throw new Error("Ungültiges verschlüsseltes Backup-Format");
+  const salt = buffer.subarray(4, 20);
+  const iv = buffer.subarray(20, 32);
+  const tag = buffer.subarray(32, 48);
+  const encrypted = buffer.subarray(48);
+  const key = crypto.scryptSync(password, salt, 32);
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+}
+
 function parseFile(filePath: string): BackupRecord | null {
   const name = path.basename(filePath);
   const match = /^backup-(hourly|daily|weekly|monthly|yearly)-([^.]+)\.(bak|enc)$/.exec(name);
@@ -310,6 +323,47 @@ export function runBackupNow(passwordOverride?: string) {
   }
 }
 
+function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+  const targetFile = getSourceFile();
+  fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+
+  let output = raw;
+  if (encrypted) {
+    const password = passwordOverride || process.env.PRIVASHIELD_BACKUP_PASSWORD;
+    if (!password) throw new Error("Für verschlüsselte Wiederherstellung wurde kein Kennwort übergeben");
+    try {
+      output = decryptBuffer(raw, password);
+    } catch {
+      throw new Error("Backup-Kennwort ist ungültig oder Backup-Datei beschädigt");
+    }
+  }
+
+  fs.writeFileSync(targetFile, output);
+  updateBackupStatus({
+    lastErrorAt: undefined,
+    lastErrorMessage: undefined,
+  });
+
+  return {
+    ok: true,
+    restoredFrom: fileName,
+    restoredAt: new Date().toISOString(),
+    targetFile,
+  };
+}
+
+export function restoreBackup(fileName: string, passwordOverride?: string) {
+  const backup = listBackups().find((row) => row.fileName === fileName);
+  if (!backup) throw new Error("Backup nicht gefunden");
+  if (!fs.existsSync(backup.filePath)) throw new Error("Backup-Datei nicht gefunden");
+  return restoreBackupBuffer(backup.fileName, fs.readFileSync(backup.filePath), backup.encrypted, passwordOverride);
+}
+
+export function restoreUploadedBackup(fileName: string, raw: Buffer, passwordOverride?: string) {
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext !== ".bak" && ext !== ".enc") throw new Error("Nur Backup-Dateien mit .bak oder .enc sind erlaubt");
+  return restoreBackupBuffer(fileName, raw, ext === ".enc", passwordOverride);
+}
 
 export function nextBackupRunEstimate() {
   const now = new Date();

@@ -410,6 +410,12 @@ export const requestBackupConfigSchema = z.object({
 });
 export type RequestBackupConfig = z.infer<typeof requestBackupConfigSchema>;
 
+export const requestBackupRestoreSchema = z.object({
+  fileName: z.string().trim().min(1),
+  password: z.string().min(8).optional(),
+});
+export type RequestBackupRestore = z.infer<typeof requestBackupRestoreSchema>;
+
 // ─── Aufgaben ─────────────────────────────────────────────────────────────────
 export const aufgaben = sqliteTable("aufgaben", {
   id: integer("id").primaryKey({ autoIncrement: true }),
