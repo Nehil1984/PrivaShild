@@ -137,6 +137,21 @@ You may obtain a copy of the License at
     border-radius: 0 0 8px 8px;
     overflow: hidden;
   }
+  .record-entry {
+    position: relative;
+    padding-bottom: 18px;
+    margin-bottom: 18px;
+  }
+  .record-entry:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
   .record-table tr:nth-child(even) td { background: #f8fafc; }
   .record-label {
     width: 28%;
@@ -438,16 +453,18 @@ function buildTable(mod, rows) {
   }
 
   return rows.map((row, index) => `
-    <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
-      <table class="record-table">
-        <tbody>
-          ${cols.map(c => `
-            <tr>
-              <td class="record-label">${c.label}</td>
-              <td class="record-value">${statusField(c.key, row[c.key])}</td>
-            </tr>`).join("")}
-        </tbody>
-      </table>
+    <div class="record-entry">
+      <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
+        <table class="record-table">
+          <tbody>
+            ${cols.map(c => `
+              <tr>
+                <td class="record-label">${c.label}</td>
+                <td class="record-value">${statusField(c.key, row[c.key])}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
     </div>`).join("");
 }
 
