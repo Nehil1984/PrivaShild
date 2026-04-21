@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useComplianceMeta } from "@/hooks/useComplianceMeta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { useState, createContext, useContext, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -38,8 +39,6 @@ import {
   Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen
 } from "lucide-react";
 
-declare const __APP_VERSION__: string;
-const APP_VERSION = __APP_VERSION__;
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
 type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string };
