@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.8</span>
+              <span>Version 1.2.9</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -4447,7 +4447,8 @@ function MandantenOverviewPage() {
     const hasIT = !!mandant?.itVerantwortlicherName;
     const hasWebsite = !!mandant?.webseite;
     const needsISB = !!mandant?.hatIsb;
-    const hasISB = !needsISB || !!mandant?.isbName;
+    const hasISBContact = !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon;
+    const hasISB = !needsISB || hasISBContact;
     const score = [hasDS, hasGroup, hasPrivacy, hasIT, hasWebsite, hasISB, offene <= 3].filter(Boolean).length;
     if (score >= 6) return { label: "Grün", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", text: "Mandant gut strukturiert und aktuell stabil." };
     if (score >= 4) return { label: "Gelb", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", text: "Mandant teilweise gepflegt, Nacharbeit empfohlen." };
@@ -4459,7 +4460,7 @@ function MandantenOverviewPage() {
     { label: "Datenschutzfunktion vorhanden", ok: !!mandant?.dsb || !!mandant?.datenschutzmanagerName },
     { label: "IT-Verantwortlicher vorhanden", ok: !!mandant?.itVerantwortlicherName },
     { label: "Webseite gepflegt", ok: !!mandant?.webseite },
-    { label: mandant?.hatIsb ? "ISB gepflegt" : "ISB nicht erforderlich", ok: !mandant?.hatIsb || !!mandant?.isbName },
+    { label: mandant?.hatIsb ? "ISB-Kontaktdaten gepflegt" : "ISB nicht erforderlich", ok: !mandant?.hatIsb || !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon },
     { label: "Wenig offene Aufgaben", ok: (stats?.offeneAufgaben ?? 0) <= 3 },
   ];
 
@@ -4481,7 +4482,7 @@ function MandantenOverviewPage() {
               ["Verantwortlicher", !!mandant?.verantwortlicherName],
               ["Datenschutzmanager oder DSB", !!mandant?.datenschutzmanagerName || !!mandant?.dsb],
               ["IT-Verantwortlicher", !!mandant?.itVerantwortlicherName],
-              [mandant?.hatIsb ? "ISB" : "ISB nicht erforderlich", !mandant?.hatIsb || !!mandant?.isbName],
+              [mandant?.hatIsb ? "ISB-Kontaktdaten" : "ISB nicht erforderlich", !mandant?.hatIsb || !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon],
             ].map(([label, ok]) => <p key={String(label)} className={ok ? "text-emerald-400" : "text-yellow-400"}>{ok ? "✓" : "•"} {label}</p>)}
           </CardContent>
         </Card>
@@ -4511,8 +4512,8 @@ function MandantenOverviewPage() {
                 <p>IT-Verantwortlicher: {mandant?.itVerantwortlicherName || "—"}</p>
                 <p>Kontakt: {mandant?.itVerantwortlicherEmail || "—"}{mandant?.itVerantwortlicherTelefon ? ` · ${mandant.itVerantwortlicherTelefon}` : ""}</p>
                 <p>ISB benannt: {mandant?.hatIsb ? "Ja" : "Nein"}</p>
-                <p>ISB: {mandant?.hatIsb ? (mandant?.isbName || "nicht gepflegt") : "nicht erforderlich"}</p>
-                <p>Kontakt: {mandant?.hatIsb ? (mandant?.isbEmail || "—") : "nicht erforderlich"}{mandant?.hatIsb && mandant?.isbTelefon ? ` · ${mandant.isbTelefon}` : ""}</p>
+                <p>ISB: {mandant?.hatIsb ? (mandant?.isbName || "—") : "nicht erforderlich"}</p>
+                <p>Kontakt: {mandant?.hatIsb ? ((mandant?.isbEmail || mandant?.isbTelefon) ? `${mandant?.isbEmail || "—"}${mandant?.isbTelefon ? ` · ${mandant.isbTelefon}` : ""}` : "nicht gepflegt") : "nicht erforderlich"}</p>
                 <p>Webseitenbetreuer: {mandant?.webseitenbetreuerName || "—"}</p>
                 <p>Kontakt: {mandant?.webseitenbetreuerEmail || "—"}{mandant?.webseitenbetreuerTelefon ? ` · ${mandant.webseitenbetreuerTelefon}` : ""}</p>
               </div>
