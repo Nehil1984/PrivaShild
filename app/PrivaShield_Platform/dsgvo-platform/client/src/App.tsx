@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.9</span>
+              <span>Version 1.2.10</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -4447,7 +4447,7 @@ function MandantenOverviewPage() {
     const hasIT = !!mandant?.itVerantwortlicherName;
     const hasWebsite = !!mandant?.webseite;
     const needsISB = !!mandant?.hatIsb;
-    const hasISBContact = !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon;
+    const hasISBContact = !!mandant?.isbName && (!!mandant?.isbEmail || !!mandant?.isbTelefon);
     const hasISB = !needsISB || hasISBContact;
     const score = [hasDS, hasGroup, hasPrivacy, hasIT, hasWebsite, hasISB, offene <= 3].filter(Boolean).length;
     if (score >= 6) return { label: "Grün", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", text: "Mandant gut strukturiert und aktuell stabil." };
@@ -4460,7 +4460,7 @@ function MandantenOverviewPage() {
     { label: "Datenschutzfunktion vorhanden", ok: !!mandant?.dsb || !!mandant?.datenschutzmanagerName },
     { label: "IT-Verantwortlicher vorhanden", ok: !!mandant?.itVerantwortlicherName },
     { label: "Webseite gepflegt", ok: !!mandant?.webseite },
-    { label: mandant?.hatIsb ? "ISB-Kontaktdaten gepflegt" : "ISB nicht erforderlich", ok: !mandant?.hatIsb || !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon },
+    { label: mandant?.hatIsb ? "ISB vollständig gepflegt" : "ISB nicht erforderlich", ok: !mandant?.hatIsb || (!!mandant?.isbName && (!!mandant?.isbEmail || !!mandant?.isbTelefon)) },
     { label: "Wenig offene Aufgaben", ok: (stats?.offeneAufgaben ?? 0) <= 3 },
   ];
 
@@ -4482,7 +4482,7 @@ function MandantenOverviewPage() {
               ["Verantwortlicher", !!mandant?.verantwortlicherName],
               ["Datenschutzmanager oder DSB", !!mandant?.datenschutzmanagerName || !!mandant?.dsb],
               ["IT-Verantwortlicher", !!mandant?.itVerantwortlicherName],
-              [mandant?.hatIsb ? "ISB-Kontaktdaten" : "ISB nicht erforderlich", !mandant?.hatIsb || !!mandant?.isbName || !!mandant?.isbEmail || !!mandant?.isbTelefon],
+              [mandant?.hatIsb ? "ISB vollständig" : "ISB nicht erforderlich", !mandant?.hatIsb || (!!mandant?.isbName && (!!mandant?.isbEmail || !!mandant?.isbTelefon))],
             ].map(([label, ok]) => <p key={String(label)} className={ok ? "text-emerald-400" : "text-yellow-400"}>{ok ? "✓" : "•"} {label}</p>)}
           </CardContent>
         </Card>
