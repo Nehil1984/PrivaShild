@@ -38,6 +38,7 @@ export const mandanten = sqliteTable("mandanten", {
   itVerantwortlicherName: text("it_verantwortlicher_name"),
   itVerantwortlicherEmail: text("it_verantwortlicher_email"),
   itVerantwortlicherTelefon: text("it_verantwortlicher_telefon"),
+  hatIsb: integer("hat_isb", { mode: "boolean" }).default(false),
   isbName: text("isb_name"),
   isbEmail: text("isb_email"),
   isbTelefon: text("isb_telefon"),

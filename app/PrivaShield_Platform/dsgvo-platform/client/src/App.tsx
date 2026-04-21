@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.7</span>
+              <span>Version 1.2.8</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -3049,7 +3049,7 @@ function MandantenPage() {
     verantwortlicherName: "", verantwortlicherEmail: "", verantwortlicherTelefon: "",
     datenschutzmanagerName: "", datenschutzmanagerEmail: "", datenschutzmanagerTelefon: "",
     itVerantwortlicherName: "", itVerantwortlicherEmail: "", itVerantwortlicherTelefon: "",
-    isbName: "", isbEmail: "", isbTelefon: "",
+    hatIsb: false, isbName: "", isbEmail: "", isbTelefon: "",
     webseitenbetreuerName: "", webseitenbetreuerEmail: "", webseitenbetreuerTelefon: "",
   };
   const [form, setForm] = useState<any>(emptyForm);
@@ -3075,6 +3075,7 @@ function MandantenPage() {
       verantwortlicherName: "Verantwortlicher",
       datenschutzmanagerName: "Datenschutzmanager",
       itVerantwortlicherName: "IT-Verantwortlicher",
+      hatIsb: true,
       isbName: "ISB",
       webseitenbetreuerName: "Webseitenbetreuer",
     });
@@ -3137,7 +3138,7 @@ function MandantenPage() {
                   {m.dsb && <p className="text-xs text-muted-foreground">DSB: {m.dsb}{m.dsbEmail ? ` · ${m.dsbEmail}` : ""}</p>}
                   {m.verantwortlicherName && <p className="text-xs text-muted-foreground">Verantwortlicher: {m.verantwortlicherName}</p>}
                   {m.itVerantwortlicherName && <p className="text-xs text-muted-foreground">IT: {m.itVerantwortlicherName}</p>}
-                  {m.isbName && <p className="text-xs text-muted-foreground">ISB: {m.isbName}</p>}
+                  {m.hatIsb && <p className="text-xs text-muted-foreground">ISB: {m.isbName || "nicht gepflegt"}</p>}
                   {m.webseitenbetreuerName && <p className="text-xs text-muted-foreground">Webseite: {m.webseitenbetreuerName}</p>}
                 </div>
               </CardContent>
@@ -3239,10 +3240,29 @@ function MandantenPage() {
                 <div className="space-y-1"><Label className="text-xs">E-Mail</Label><Input type="email" value={form.itVerantwortlicherEmail} onChange={e => set("itVerantwortlicherEmail", e.target.value)} className="h-8 text-sm" /></div>
                 <div className="space-y-1"><Label className="text-xs">Telefon</Label><Input value={form.itVerantwortlicherTelefon} onChange={e => set("itVerantwortlicherTelefon", e.target.value)} className="h-8 text-sm" /></div>
 
-                <div className="col-span-3 text-xs font-semibold text-muted-foreground pt-2">Informationssicherheitsbeauftragter</div>
-                <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={form.isbName} onChange={e => set("isbName", e.target.value)} className="h-8 text-sm" /></div>
-                <div className="space-y-1"><Label className="text-xs">E-Mail</Label><Input type="email" value={form.isbEmail} onChange={e => set("isbEmail", e.target.value)} className="h-8 text-sm" /></div>
-                <div className="space-y-1"><Label className="text-xs">Telefon</Label><Input value={form.isbTelefon} onChange={e => set("isbTelefon", e.target.value)} className="h-8 text-sm" /></div>
+                <div className="col-span-3 space-y-2 pt-2">
+                  <div className="text-xs font-semibold text-muted-foreground">Informationssicherheitsbeauftragter</div>
+                  <label className="flex items-center gap-2 text-xs rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-secondary/40">
+                    <input
+                      type="checkbox"
+                      checked={!!form.hatIsb}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        set("hatIsb", checked);
+                        if (!checked) {
+                          set("isbName", "");
+                          set("isbEmail", "");
+                          set("isbTelefon", "");
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span>ISB ist für diesen Mandanten benannt</span>
+                  </label>
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={form.isbName} onChange={e => set("isbName", e.target.value)} className="h-8 text-sm" disabled={!form.hatIsb} /></div>
+                <div className="space-y-1"><Label className="text-xs">E-Mail</Label><Input type="email" value={form.isbEmail} onChange={e => set("isbEmail", e.target.value)} className="h-8 text-sm" disabled={!form.hatIsb} /></div>
+                <div className="space-y-1"><Label className="text-xs">Telefon</Label><Input value={form.isbTelefon} onChange={e => set("isbTelefon", e.target.value)} className="h-8 text-sm" disabled={!form.hatIsb} /></div>
 
                 <div className="col-span-3 text-xs font-semibold text-muted-foreground pt-2">Webseitenbetreuer</div>
                 <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={form.webseitenbetreuerName} onChange={e => set("webseitenbetreuerName", e.target.value)} className="h-8 text-sm" /></div>
@@ -4426,7 +4446,8 @@ function MandantenOverviewPage() {
     const hasPrivacy = !!mandant?.dsb || !!mandant?.datenschutzmanagerName;
     const hasIT = !!mandant?.itVerantwortlicherName;
     const hasWebsite = !!mandant?.webseite;
-    const hasISB = !!mandant?.isbName;
+    const needsISB = !!mandant?.hatIsb;
+    const hasISB = !needsISB || !!mandant?.isbName;
     const score = [hasDS, hasGroup, hasPrivacy, hasIT, hasWebsite, hasISB, offene <= 3].filter(Boolean).length;
     if (score >= 6) return { label: "Grün", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", text: "Mandant gut strukturiert und aktuell stabil." };
     if (score >= 4) return { label: "Gelb", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", text: "Mandant teilweise gepflegt, Nacharbeit empfohlen." };
@@ -4438,7 +4459,7 @@ function MandantenOverviewPage() {
     { label: "Datenschutzfunktion vorhanden", ok: !!mandant?.dsb || !!mandant?.datenschutzmanagerName },
     { label: "IT-Verantwortlicher vorhanden", ok: !!mandant?.itVerantwortlicherName },
     { label: "Webseite gepflegt", ok: !!mandant?.webseite },
-    { label: "ISB vorhanden", ok: !!mandant?.isbName },
+    { label: mandant?.hatIsb ? "ISB gepflegt" : "ISB nicht erforderlich", ok: !mandant?.hatIsb || !!mandant?.isbName },
     { label: "Wenig offene Aufgaben", ok: (stats?.offeneAufgaben ?? 0) <= 3 },
   ];
 
@@ -4460,7 +4481,7 @@ function MandantenOverviewPage() {
               ["Verantwortlicher", !!mandant?.verantwortlicherName],
               ["Datenschutzmanager oder DSB", !!mandant?.datenschutzmanagerName || !!mandant?.dsb],
               ["IT-Verantwortlicher", !!mandant?.itVerantwortlicherName],
-              ["ISB", !!mandant?.isbName],
+              [mandant?.hatIsb ? "ISB" : "ISB nicht erforderlich", !mandant?.hatIsb || !!mandant?.isbName],
             ].map(([label, ok]) => <p key={String(label)} className={ok ? "text-emerald-400" : "text-yellow-400"}>{ok ? "✓" : "•"} {label}</p>)}
           </CardContent>
         </Card>
@@ -4489,8 +4510,9 @@ function MandantenOverviewPage() {
                 <p>Kontakt: {mandant?.datenschutzmanagerEmail || "—"}{mandant?.datenschutzmanagerTelefon ? ` · ${mandant.datenschutzmanagerTelefon}` : ""}</p>
                 <p>IT-Verantwortlicher: {mandant?.itVerantwortlicherName || "—"}</p>
                 <p>Kontakt: {mandant?.itVerantwortlicherEmail || "—"}{mandant?.itVerantwortlicherTelefon ? ` · ${mandant.itVerantwortlicherTelefon}` : ""}</p>
-                <p>ISB: {mandant?.isbName || "—"}</p>
-                <p>Kontakt: {mandant?.isbEmail || "—"}{mandant?.isbTelefon ? ` · ${mandant.isbTelefon}` : ""}</p>
+                <p>ISB benannt: {mandant?.hatIsb ? "Ja" : "Nein"}</p>
+                <p>ISB: {mandant?.hatIsb ? (mandant?.isbName || "nicht gepflegt") : "nicht erforderlich"}</p>
+                <p>Kontakt: {mandant?.hatIsb ? (mandant?.isbEmail || "—") : "nicht erforderlich"}{mandant?.hatIsb && mandant?.isbTelefon ? ` · ${mandant.isbTelefon}` : ""}</p>
                 <p>Webseitenbetreuer: {mandant?.webseitenbetreuerName || "—"}</p>
                 <p>Kontakt: {mandant?.webseitenbetreuerEmail || "—"}{mandant?.webseitenbetreuerTelefon ? ` · ${mandant.webseitenbetreuerTelefon}` : ""}</p>
               </div>
