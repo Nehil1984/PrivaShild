@@ -40,7 +40,7 @@ Mandantenbezogene interne Notizen können separat erfasst werden. Für jede Noti
 Für Auswertungen und Berichte steht eine Druck- und Exportansicht zur Verfügung. Sensible Inhalte wie interne Notizen werden nur bei expliziter Freigabe berücksichtigt.
 
 ### 5. Backup und Betrieb
-Die Plattform unterstützt interne Backups, Rotationslogik und optional verschlüsselte Sicherungen.
+Die Plattform unterstützt interne Backups, Rotationslogik und optional verschlüsselte Sicherungen. Automatische verschlüsselte Scheduler-Backups benötigen zusätzlich die Umgebungsvariable `PRIVASHIELD_BACKUP_PASSWORD`.
 
 ## Technischer Stack
 
@@ -60,6 +60,24 @@ script/        Build- und Hilfsskripte
 data/          Laufzeitdaten / Datenbank / Backups
 ```
 
+## Start im Entwicklungsmodus
+
+Voraussetzungen:
+- Node.js
+- npm
+
+Installation:
+
+```bash
+npm install
+```
+
+Entwicklung starten:
+
+```bash
+npm run dev
+```
+
 ## Produktionsbetrieb
 
 Für den produktiven Betrieb werden insbesondere folgende Umgebungsvariablen benötigt:
@@ -72,7 +90,14 @@ JWT_SECRET=bitte-einen-langen-zufaelligen-wert-setzen
 INITIAL_ADMIN_EMAIL=admin@example.local
 INITIAL_ADMIN_PASSWORD=SehrSicheresPasswort123!
 INITIAL_ADMIN_NAME=Administrator
+# erforderlich für automatische verschlüsselte Backup-Läufe
+PRIVASHIELD_BACKUP_PASSWORD=bitte-ein-separates-starkes-backup-kennwort-setzen
 ```
+
+Hinweis:
+- Für manuelle verschlüsselte Backups kann das Kennwort über die Oberfläche übergeben werden.
+- Für automatische verschlüsselte Scheduler-Läufe muss `PRIVASHIELD_BACKUP_PASSWORD` in der Laufzeitumgebung gesetzt sein.
+- Ist die Verschlüsselung aktiviert, aber keine Umgebungsvariable gesetzt, schlägt der automatische Lauf bewusst fehl, statt unverschlüsselte Backups zu erzeugen.
 
 ## Unraid / Docker
 
