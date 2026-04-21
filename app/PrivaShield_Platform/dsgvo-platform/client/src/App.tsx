@@ -38,6 +38,9 @@ import {
   Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen
 } from "lucide-react";
 
+declare const __APP_VERSION__: string;
+const APP_VERSION = __APP_VERSION__;
+
 // ─── Auth Context ──────────────────────────────────────────────────────────
 type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string };
 const AuthCtx = createContext<{ user: AuthUser | null; token: string | null; login: (u: AuthUser, t: string) => void; logout: () => void }>({
@@ -377,7 +380,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.14</span>
+              <span>Version {APP_VERSION}</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -4025,7 +4028,7 @@ function SystemPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-mono">1.2.7</span>
+            <span className="font-mono">{APP_VERSION}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Lizenz</span>
