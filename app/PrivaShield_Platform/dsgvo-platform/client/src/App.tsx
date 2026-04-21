@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.10</span>
+              <span>Version 1.2.11</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2794,7 +2794,9 @@ function WebDatenschutzPage() {
   };
 
   const [websiteForm, setWebsiteForm] = useState<any>({
+    consentToolRequired: false,
     consentTool: false,
+    consentToolNotRequiredReason: "",
     datenschutzerklaerungGeprueft: false,
     impressumGeprueft: false,
     privacyPagePath: "/ds",
@@ -2831,7 +2833,7 @@ function WebDatenschutzPage() {
       titel: "Prüfung Webseite: Datenschutzerklärung und Impressum",
       kategorie: "prozessbeschreibung",
       dokumentTyp: "web_datenschutz_check",
-      status: websiteForm.consentTool && websiteForm.datenschutzerklaerungGeprueft && websiteForm.impressumGeprueft ? "aktiv" : "entwurf",
+      status: (!websiteForm.consentToolRequired || websiteForm.consentTool) && websiteForm.datenschutzerklaerungGeprueft && websiteForm.impressumGeprueft ? "aktiv" : "entwurf",
       version: "1.0",
       beschreibung: "Prüfstatus für Webseiten-Datenschutz, Consent-Tool, Datenschutzerklärung und Impressum.",
       inhalt: JSON.stringify(websiteForm),
@@ -2868,7 +2870,8 @@ function WebDatenschutzPage() {
   const setNotice = (key: string, value: any) => setNoticeForm((prev: any) => ({ ...prev, [key]: value }));
   const toggleGroup = (key: string) => setNoticeForm((prev: any) => ({ ...prev, groups: { ...prev.groups, [key]: !prev.groups[key] } }));
 
-  const websiteChecks = [websiteForm.consentTool, websiteForm.datenschutzerklaerungGeprueft, websiteForm.impressumGeprueft];
+  const consentRequirementDocumented = websiteForm.consentToolRequired || (!websiteForm.consentToolRequired && !!String(websiteForm.consentToolNotRequiredReason || "").trim());
+  const websiteChecks = [consentRequirementDocumented, !websiteForm.consentToolRequired || websiteForm.consentTool, websiteForm.datenschutzerklaerungGeprueft, websiteForm.impressumGeprueft];
   const websiteDone = websiteChecks.filter(Boolean).length;
   const websiteStatus = websiteDone === websiteChecks.length ? { label: "Vollständig", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" } : websiteDone > 0 ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" } : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
   const selectedGroupCount = Object.values(noticeForm.groups || {}).filter(Boolean).length;
@@ -2891,7 +2894,20 @@ function WebDatenschutzPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentTool} onChange={e => setWebsite("consentTool", e.target.checked)} className="rounded" /><span>Consent-Tool vorhanden und geprüft</span></label>
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-xs font-medium text-foreground">Consent-Tool nur prüfen, wenn es rechtlich erforderlich ist</p>
+              <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentToolRequired} onChange={e => {
+                const checked = e.target.checked;
+                setWebsite("consentToolRequired", checked);
+                if (!checked) setWebsite("consentTool", false);
+              }} className="rounded" /><span>Consent-Tool ist erforderlich, weil zustimmungspflichtige Dienste/Cookies eingesetzt werden</span></label>
+              <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentTool} onChange={e => setWebsite("consentTool", e.target.checked)} className="rounded" disabled={!websiteForm.consentToolRequired} /><span>Consent-Tool vorhanden und geprüft</span></label>
+              <div className="space-y-1">
+                <Label className="text-xs">Begründung, wenn kein Consent-Tool erforderlich ist</Label>
+                <Textarea value={websiteForm.consentToolNotRequiredReason || ""} onChange={e => setWebsite("consentToolNotRequiredReason", e.target.value)} className="text-sm min-h-20" placeholder="z. B. nur technisch unbedingt erforderliche Cookies, keine Analyse-, Marketing- oder Drittanbieter-Tools mit Einwilligungspflicht nach § 25 Abs. 2 TDDDG" disabled={!!websiteForm.consentToolRequired} />
+                <p className="text-[11px] text-muted-foreground">Ein Consent-Tool ist regelmäßig nur erforderlich, wenn nicht technisch unbedingt erforderliche Cookies, Tracking, Marketing-Tags, externe Medien oder ähnliche zustimmungspflichtige Zugriffe nach § 25 TDDDG eingesetzt werden. Bei ausschließlich technisch erforderlichen Funktionen kann es entbehrlich sein, die Begründung sollte dann aber dokumentiert werden.</p>
+              </div>
+            </div>
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.datenschutzerklaerungGeprueft} onChange={e => setWebsite("datenschutzerklaerungGeprueft", e.target.checked)} className="rounded" /><span>Inhaltliche Prüfung der Datenschutzerklärung durchgeführt</span></label>
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.impressumGeprueft} onChange={e => setWebsite("impressumGeprueft", e.target.checked)} className="rounded" /><span>Impressum geprüft</span></label>
             <div className="space-y-1">
