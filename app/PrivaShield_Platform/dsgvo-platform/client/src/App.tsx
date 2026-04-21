@@ -377,7 +377,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-foreground/80">PrivaShield</span>
-              <span>Version 1.2.12</span>
+              <span>Version 1.2.13</span>
               <span>Apache-2.0</span>
               <span>Copyright [2026] [Daniel Schuh]</span>
             </div>
@@ -2796,7 +2796,7 @@ function WebDatenschutzPage() {
   const [websiteForm, setWebsiteForm] = useState<any>({
     consentToolRequired: false,
     consentTool: false,
-    consentToolNotRequiredReasonPreset: "",
+    consentToolNotRequiredReasons: [],
     consentToolNotRequiredReason: "",
     datenschutzerklaerungGeprueft: false,
     impressumGeprueft: false,
@@ -2871,10 +2871,10 @@ function WebDatenschutzPage() {
   const setNotice = (key: string, value: any) => setNoticeForm((prev: any) => ({ ...prev, [key]: value }));
   const toggleGroup = (key: string) => setNoticeForm((prev: any) => ({ ...prev, groups: { ...prev.groups, [key]: !prev.groups[key] } }));
 
-  const selectedConsentReason = websiteForm.consentToolNotRequiredReasonPreset === "manual"
-    ? websiteForm.consentToolNotRequiredReason
-    : websiteForm.consentToolNotRequiredReasonPreset;
-  const consentRequirementDocumented = websiteForm.consentToolRequired || (!websiteForm.consentToolRequired && !!String(selectedConsentReason || "").trim());
+  const selectedConsentReasons = Array.isArray(websiteForm.consentToolNotRequiredReasons) ? websiteForm.consentToolNotRequiredReasons : [];
+  const hasManualConsentReason = selectedConsentReasons.includes("manual") && !!String(websiteForm.consentToolNotRequiredReason || "").trim();
+  const hasPresetConsentReason = selectedConsentReasons.some((reason: string) => reason !== "manual");
+  const consentRequirementDocumented = websiteForm.consentToolRequired || (!websiteForm.consentToolRequired && (hasPresetConsentReason || hasManualConsentReason));
   const websiteChecks = [consentRequirementDocumented, !websiteForm.consentToolRequired || websiteForm.consentTool, websiteForm.datenschutzerklaerungGeprueft, websiteForm.impressumGeprueft];
   const websiteDone = websiteChecks.filter(Boolean).length;
   const websiteStatus = websiteDone === websiteChecks.length ? { label: "Vollständig", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" } : websiteDone > 0 ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" } : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
@@ -2908,21 +2908,34 @@ function WebDatenschutzPage() {
               <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!websiteForm.consentTool} onChange={e => setWebsite("consentTool", e.target.checked)} className="rounded" disabled={!websiteForm.consentToolRequired} /><span>Consent-Tool vorhanden und geprüft</span></label>
               <div className="space-y-1">
                 <Label className="text-xs">Begründung, wenn kein Consent-Tool erforderlich ist</Label>
-                <Select value={websiteForm.consentToolNotRequiredReasonPreset || "none"} onValueChange={v => {
-                  const value = v === "none" ? "" : v;
-                  setWebsite("consentToolNotRequiredReasonPreset", value);
-                  if (value !== "manual") setWebsite("consentToolNotRequiredReason", "");
-                }} disabled={!!websiteForm.consentToolRequired}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Begründung auswählen" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Bitte auswählen</SelectItem>
-                    <SelectItem value="Es werden ausschließlich technisch unbedingt erforderliche Cookies oder vergleichbare Speicherungen genutzt.">Nur technisch unbedingt erforderliche Cookies/Speicherungen</SelectItem>
-                    <SelectItem value="Es werden keine Analyse-, Marketing- oder Retargeting-Tools eingesetzt.">Keine Analyse-, Marketing- oder Retargeting-Tools</SelectItem>
-                    <SelectItem value="Es sind keine externen Medien, Karten, eingebetteten Inhalte oder Drittanbieter-Skripte mit Einwilligungspflicht eingebunden.">Keine externen Medien oder einwilligungspflichtigen Drittanbieter-Inhalte</SelectItem>
-                    <SelectItem value="manual">Manuelle Begründung eingeben</SelectItem>
-                  </SelectContent>
-                </Select>
-                {websiteForm.consentToolNotRequiredReasonPreset === "manual" && (
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    ["Es werden ausschließlich technisch unbedingt erforderliche Cookies oder vergleichbare Speicherungen genutzt.", "Nur technisch unbedingt erforderliche Cookies/Speicherungen"],
+                    ["Es werden keine Analyse-, Marketing- oder Retargeting-Tools eingesetzt.", "Keine Analyse-, Marketing- oder Retargeting-Tools"],
+                    ["Es sind keine externen Medien, Karten, eingebetteten Inhalte oder Drittanbieter-Skripte mit Einwilligungspflicht eingebunden.", "Keine externen Medien oder einwilligungspflichtigen Drittanbieter-Inhalte"],
+                    ["manual", "Manuelle Begründung eingeben"],
+                  ].map(([value, label]) => {
+                    const selected = selectedConsentReasons.includes(String(value));
+                    return (
+                      <label key={String(value)} className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={!!websiteForm.consentToolRequired}
+                          onChange={() => {
+                            const current = Array.isArray(websiteForm.consentToolNotRequiredReasons) ? websiteForm.consentToolNotRequiredReasons : [];
+                            const next = selected ? current.filter((item: string) => item !== value) : [...current, value];
+                            setWebsite("consentToolNotRequiredReasons", next);
+                            if (value === "manual" && selected) setWebsite("consentToolNotRequiredReason", "");
+                          }}
+                          className="rounded"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {selectedConsentReasons.includes("manual") && (
                   <Textarea value={websiteForm.consentToolNotRequiredReason || ""} onChange={e => setWebsite("consentToolNotRequiredReason", e.target.value)} className="text-sm min-h-20" placeholder="Manuelle Begründung eintragen" disabled={!!websiteForm.consentToolRequired} />
                 )}
                 <p className="text-[11px] text-muted-foreground">Ein Consent-Tool ist regelmäßig nur erforderlich, wenn nicht technisch unbedingt erforderliche Cookies, Tracking, Marketing-Tags, externe Medien oder ähnliche zustimmungspflichtige Zugriffe nach § 25 TDDDG eingesetzt werden. Bei ausschließlich technisch erforderlichen Funktionen kann es entbehrlich sein, die Begründung sollte dann aber dokumentiert werden.</p>
