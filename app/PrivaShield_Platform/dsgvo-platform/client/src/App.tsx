@@ -278,9 +278,9 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
       {/* Mandanten-Auswahl */}
       <div className="px-3 py-3 border-b border-sidebar-border">
         <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-1">{t("tenant")}</p>
-        <Select value={selectValue} onValueChange={v => setActiveMandantId(Number(v))} disabled={mandantenLoading || sichtbareMandanten.length === 0}>
+        <Select value={selectValue} onValueChange={v => setActiveMandantId(Number(v))} disabled={mandantenLoading || sichtbareMandanten.length <= 1}>
           <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground" data-testid="select-mandant">
-            <SelectValue placeholder={mandantenLoading ? "Mandanten werden geladen..." : t("selectTenant")} />
+            <SelectValue placeholder={mandantenLoading ? "Mandanten werden geladen..." : sichtbareMandanten.length === 0 ? "Kein Mandant verfügbar" : sichtbareMandanten.length === 1 ? sichtbareMandanten[0].name : t("selectTenant")} />
           </SelectTrigger>
           <SelectContent>
             {sichtbareMandanten.map((m: any) => (
@@ -421,12 +421,24 @@ function PageHeader({ title, desc, action }: { title: string; desc?: string; act
 
 // ─── MANDANT GUARD ─────────────────────────────────────────────────────────
 function MandantGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const { activeMandantId } = useMandant();
   const { t } = useI18n();
   const { data: mandanten = [], isLoading: mandantenLoading } = useQuery({
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
   });
+
+  const sichtbareMandanten = user?.role === "admin"
+    ? mandanten
+    : mandanten.filter((m: any) => {
+        try {
+          const allowedIds = JSON.parse(user?.mandantIds || "[]");
+          return allowedIds.includes(m.id);
+        } catch {
+          return false;
+        }
+      });
 
   if (mandantenLoading) return (
     <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
@@ -435,7 +447,17 @@ function MandantGuard({ children }: { children: React.ReactNode }) {
     </div>
   );
 
-  if (mandanten.length > 0 && !activeMandantId) return (
+  if (mandanten.length > 0 && sichtbareMandanten.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+      <AlertCircle className="h-10 w-10 text-amber-500/70" />
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">Kein Mandant zugewiesen</p>
+        <p className="text-sm text-muted-foreground">Deinem Benutzer ist aktuell kein freigegebener Mandant zugeordnet.</p>
+      </div>
+    </div>
+  );
+
+  if (sichtbareMandanten.length > 0 && !activeMandantId) return (
     <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
       <Building2 className="h-10 w-10 text-muted-foreground/40" />
       <p className="text-sm text-muted-foreground">{t("chooseTenantLeft")}</p>
@@ -4638,7 +4660,7 @@ function AppRoutes() {
   });
 
   useEffect(() => {
-    if (!token || mandanten.length === 0) return;
+    if (!token || mandantenLoading) return;
 
     const allowedMandanten = user?.role === "admin"
       ? mandanten
@@ -4656,11 +4678,18 @@ function AppRoutes() {
       return;
     }
 
+    if (allowedMandanten.length === 1) {
+      if (activeMandantId !== allowedMandanten[0].id) {
+        setActiveMandantId(allowedMandanten[0].id);
+      }
+      return;
+    }
+
     const hasValidSelection = activeMandantId !== null && allowedMandanten.some((m: any) => m.id === activeMandantId);
     if (!hasValidSelection) {
       setActiveMandantId(allowedMandanten[0].id);
     }
-  }, [token, user, mandanten, activeMandantId]);
+  }, [token, user, mandanten, mandantenLoading, activeMandantId]);
 
   useEffect(() => {
     if (activeMandantId) localStorage.setItem("privashield_active_mandant_id", String(activeMandantId));
