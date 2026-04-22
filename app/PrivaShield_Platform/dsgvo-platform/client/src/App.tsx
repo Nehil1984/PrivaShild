@@ -423,12 +423,25 @@ function PageHeader({ title, desc, action }: { title: string; desc?: string; act
 function MandantGuard({ children }: { children: React.ReactNode }) {
   const { activeMandantId } = useMandant();
   const { t } = useI18n();
-  if (!activeMandantId) return (
+  const { data: mandanten = [], isLoading: mandantenLoading } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
+  });
+
+  if (mandantenLoading) return (
+    <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+      <Skeleton className="h-10 w-10 rounded-full" />
+      <p className="text-sm text-muted-foreground">Mandanten werden geladen...</p>
+    </div>
+  );
+
+  if (mandanten.length > 0 && !activeMandantId) return (
     <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
       <Building2 className="h-10 w-10 text-muted-foreground/40" />
       <p className="text-sm text-muted-foreground">{t("chooseTenantLeft")}</p>
     </div>
   );
+
   return <>{children}</>;
 }
 
@@ -3896,6 +3909,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         if (cancelled) return;
         localStorage.removeItem("privashield_token");
+        localStorage.removeItem("privashield_active_mandant_id");
         setToken(null);
         setUser(null);
         queryClient.clear();
@@ -4617,7 +4631,7 @@ function AppRoutes() {
     return stored ? Number(stored) : null;
   });
 
-  const { data: mandanten = [] } = useQuery({
+  const { data: mandanten = [], isLoading: mandantenLoading } = useQuery({
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
     enabled: !!token,
@@ -4674,6 +4688,16 @@ function AppRoutes() {
   return (
     <LangCtx.Provider value={{ lang, setLang, t }}>
     <MandantCtx.Provider value={{ activeMandantId, setActiveMandantId }}>
+      {mandantenLoading ? (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm border-border/60">
+            <CardContent className="pt-6 text-center space-y-3">
+              <Skeleton className="h-10 w-10 rounded-full mx-auto" />
+              <p className="text-sm text-muted-foreground">Mandantenkontext wird vorbereitet...</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
       <Layout>
         <Switch>
           <Route path="/" component={Dashboard} />
@@ -4702,6 +4726,7 @@ function AppRoutes() {
           <Route path="/interne-notizen" component={InterneNotizenPage} />
         </Switch>
       </Layout>
+      )}
     </MandantCtx.Provider>
     </LangCtx.Provider>
   );
