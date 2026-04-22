@@ -3873,7 +3873,7 @@ function BenutzerPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">E-Mail *</Label><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} className="h-8 text-sm" /></div>
-              <div className="col-span-2 space-y-1"><Label className="text-xs">{modal === "new" ? "Passwort *" : "Passwort (leer = unverändert)"}</Label><Input type="password" value={form.password} onChange={e => set("password", e.target.value)} className="h-8 text-sm" placeholder="Min. 8 Zeichen" /></div>
+              <div className="col-span-2 space-y-1"><Label className="text-xs">{modal === "new" ? "Passwort *" : "Passwort (leer = unverändert)"}</Label><Input type="password" value={form.password} onChange={e => set("password", e.target.value)} className="h-8 text-sm" placeholder="Mind. 12 Zeichen, inkl. Groß-/Kleinbuchstabe, Zahl und Sonderzeichen" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Rolle</Label>
                 <Select value={form.role} onValueChange={v => set("role", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
