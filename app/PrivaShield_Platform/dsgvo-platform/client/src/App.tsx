@@ -3854,6 +3854,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null); setToken(null); setRestoring(false); queryClient.clear();
     localStorage.removeItem("privashield_token");
+    localStorage.removeItem("privashield_active_mandant_id");
   };
 
   useEffect(() => {
