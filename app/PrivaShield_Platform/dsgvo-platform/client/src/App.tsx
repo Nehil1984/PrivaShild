@@ -730,24 +730,28 @@ function Dashboard() {
                     <div key={`art36-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">Art.-36-Prüfbedarf: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Restrisiko und Konsultationsentscheidung zeitnah prüfen.</p>
+                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaMitHohemRestrisikoItems.slice(0, 3).map((item: any) => (
                     <div key={`risk-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">Hohes Restrisiko: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: zusätzliche Maßnahmen und Freigabeentscheidung priorisieren.</p>
+                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaReviewFaelligItems.slice(0, 3).map((item: any) => (
                     <div key={`review-${item.id}`} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
                       <p className="font-medium text-amber-700 dark:text-amber-400">Review fällig: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Nächste Prüfung war am {new Date(item.naechstePruefungAm).toLocaleDateString("de-DE")} vorgesehen.</p>
+                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaOhneVvtItems.slice(0, 3).map((item: any) => (
                     <div key={`novvt-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne VVT-Bezug: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: DSFA mit passendem Verarbeitungsvorgang verknüpfen.</p>
+                      <div className="mt-2 flex gap-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link><Link href="/vvt"><a className="text-xs text-primary hover:underline">Zur VVT-Seite</a></Link></div>
                     </div>
                   ))}
                 </>
@@ -1023,6 +1027,7 @@ function VvtPage() {
   const { data: loeschkonzept = [] } = useModuleData("loeschkonzept");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [quickFilter, setQuickFilter] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch">("all");
   const { toast } = useToast();
 
   const save = (form: any) => {
@@ -1033,6 +1038,12 @@ function VvtPage() {
   const vvtMitFehlenderDsfa = data.filter((item: any) => item.dsfa && !dsfa.some((entry: any) => entry.vvtId === item.id));
   const vvtMitDrittlandtransfer = data.filter((item: any) => !!item.drittlandtransfer);
   const vvtOhneLoeschbezug = data.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase()));
+  const filteredData = data.filter((item: any) => {
+    if (quickFilter === "missing-dsfa") return vvtMitFehlenderDsfa.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "drittland") return vvtMitDrittlandtransfer.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "missing-loesch") return vvtOhneLoeschbezug.some((entry: any) => entry.id === item.id);
+    return true;
+  });
 
   return (
     <MandantGuard>
@@ -1072,18 +1083,21 @@ function VvtPage() {
                     <div key={`missing-dsfa-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">DSFA fehlt: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: DSFA anlegen oder vorhandene DSFA mit diesem VVT verknüpfen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-dsfa")}>Nur diese Fälle</Button><Link href="/dsfa"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {vvtMitDrittlandtransfer.slice(0, 3).map((item: any) => (
                     <div key={`transfer-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Drittlandtransfer: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Transfergrundlage, Anbieterprüfung und TOM-/AVV-Lage gezielt prüfen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("drittland")}>Nur diese Fälle</Button></div>
                     </div>
                   ))}
                   {vvtOhneLoeschbezug.slice(0, 3).map((item: any) => (
                     <div key={`retention-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne Löschkonzept-Bezug: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Eintrag mit passender Löschklasse bzw. Löschregel verknüpfen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-loesch")}>Nur diese Fälle</Button></div>
                     </div>
                   ))}
                 </>
@@ -1092,8 +1106,15 @@ function VvtPage() {
           </Card>
 
           <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant={quickFilter === "all" ? "default" : "outline"} onClick={() => setQuickFilter("all")}>Alle</Button>
+              <Button type="button" size="sm" variant={quickFilter === "missing-dsfa" ? "default" : "outline"} onClick={() => setQuickFilter("missing-dsfa")}>DSFA fehlt</Button>
+              <Button type="button" size="sm" variant={quickFilter === "drittland" ? "default" : "outline"} onClick={() => setQuickFilter("drittland")}>Drittlandtransfer</Button>
+              <Button type="button" size="sm" variant={quickFilter === "missing-loesch" ? "default" : "outline"} onClick={() => setQuickFilter("missing-loesch")}>Ohne Löschkonzept</Button>
+            </div>
+            {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Einträge für den aktuellen Filter.</CardContent></Card>}
             {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
-            {data.map((item: any) => {
+            {filteredData.map((item: any) => {
               const linkedDsfa = dsfa.filter((entry: any) => entry.vvtId === item.id);
               const hasRequiredButMissingDsfa = item.dsfa && linkedDsfa.length === 0;
               return (
