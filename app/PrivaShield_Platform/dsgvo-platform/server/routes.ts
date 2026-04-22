@@ -173,6 +173,14 @@ function sanitizeUser(user: any) {
   return safeUser;
 }
 
+function pickAllowedUserUpdateFields(body: Record<string, unknown>) {
+  const allowed: Record<string, unknown> = {};
+  for (const key of ["name", "email", "password", "role", "mandantIds", "aktiv"]) {
+    if (key in body) allowed[key] = body[key];
+  }
+  return allowed;
+}
+
 // Seed initial admin if no users exist
 async function seedAdmin() {
   const all = await storage.getAllUsers();
@@ -429,15 +437,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
   app.put("/api/users/:id", authMiddleware, adminOnly, async (req, res) => {
+    const body = pickAllowedUserUpdateFields(req.body || {});
+
     if (req.body?.unlockUser === true) {
-      req.body.adminLocked = false;
-      req.body.adminLockedAt = null;
-      req.body.failedLoginAttempts = 0;
-      req.body.temporaryLockUntil = null;
-      req.body.lastFailedLoginAt = null;
-      delete req.body.unlockUser;
+      Object.assign(body, {
+        adminLocked: false,
+        adminLockedAt: null,
+        failedLoginAttempts: 0,
+        temporaryLockUntil: null,
+        lastFailedLoginAt: null,
+      });
     }
-    const user = await storage.updateUser(Number(req.params.id), req.body);
+
+    const user = await storage.updateUser(Number(req.params.id), body as any);
     if (!user) return res.status(404).json({ message: "Nicht gefunden" });
     res.json(sanitizeUser(user));
   });
