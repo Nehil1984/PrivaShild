@@ -946,7 +946,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(existing);
   });
 
-  app.patch(`/api/dsfa/:id`, authMiddleware, validateBody(insertDsfaSchema.partial()), async (req: any, res) => {
+  const handleDsfaUpdate = async (req: any, res: any) => {
     const existing = await storage.getDsfa(Number(req.params.id));
     if (!existing) return res.status(404).json({ message: "Nicht gefunden" });
     if (!(await requireEntityAccess(req, res, existing))) return;
@@ -970,7 +970,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       detailsJson: JSON.stringify({ before: existing, after: updated }),
     });
     res.json(updated);
-  });
+  };
+
+  app.put(`/api/dsfa/:id`, authMiddleware, validateBody(insertDsfaSchema.partial()), handleDsfaUpdate);
+  app.patch(`/api/dsfa/:id`, authMiddleware, validateBody(insertDsfaSchema.partial()), handleDsfaUpdate);
 
   app.delete(`/api/dsfa/:id`, authMiddleware, async (req: any, res) => {
     const existing = await storage.getDsfa(Number(req.params.id));

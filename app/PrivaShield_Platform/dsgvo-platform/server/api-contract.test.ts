@@ -35,6 +35,11 @@ describe("API contract for mandant-bound modules", () => {
     expect(routesSource).toContain('/api/mandanten/:mid/export-context');
   });
 
+  it("supports both PUT and PATCH for DSFA updates", () => {
+    expect(routesSource).toContain('app.put(`/api/dsfa/:id`');
+    expect(routesSource).toContain('app.patch(`/api/dsfa/:id`');
+  });
+
   it("keeps user, mandanten and template management endpoints available", () => {
     expect(routesSource).toContain('/api/users');
     expect(routesSource).toContain('/api/mandanten');
