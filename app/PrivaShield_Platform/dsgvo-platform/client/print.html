@@ -454,6 +454,9 @@ function statusField(key, val) {
 }
 
 function buildTable(mod, rows) {
+  if (mod.key === "vvt") {
+    return buildVvtTable(mod, rows);
+  }
   if (mod.key === "dsfa") {
     return buildDsfaTable(mod, rows);
   }
@@ -494,6 +497,58 @@ function buildTable(mod, rows) {
     </div>`).join("");
 }
 
+function buildVvtTable(mod, rows) {
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-note">Keine Einträge vorhanden</div>`;
+  }
+
+  return rows.map((row, index) => {
+    const contextRows = [
+      ["Bezeichnung", row.bezeichnung],
+      ["Zweck", row.zweck],
+      ["Rechtsgrundlage", row.rechtsgrundlage],
+      ["Status", row.status],
+      ["DSFA erforderlich", row.dsfa],
+      ["Drittlandtransfer", row.drittlandtransfer],
+      ["Löschfrist", row.loeschfrist],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    const detailsRows = [
+      ["Datenkategorien", row.datenkategorien],
+      ["Betroffene Personen", row.betroffenePersonen],
+      ["Empfänger", row.empfaenger],
+      ["Verantwortlicher", row.verantwortlicher],
+      ["TOM-Hinweis", row.tomHinweis],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    return `
+      <div class="record-entry">
+        <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
+          <div style="padding:12px 16px; border:1px solid #e2e8f0; border-bottom:none; border-radius:8px 8px 0 0; background:#f8fafc;">
+            <strong>${fmt(row.bezeichnung)}</strong>
+            <div style="font-size:12px; color:#64748b; margin-top:4px;">Verarbeitungstätigkeit mit auditfreundlich gegliedertem Kontext- und Detailblock</div>
+          </div>
+          <table class="record-table">
+            <tbody>
+              <tr><td class="record-label" style="font-weight:700;">Kontext & Steuerung</td><td class="record-value"></td></tr>
+              ${contextRows}
+              <tr><td class="record-label" style="font-weight:700;">Datenbild & Beteiligte</td><td class="record-value"></td></tr>
+              ${detailsRows}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join("");
+}
+
 function parseJsonArray(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -515,7 +570,7 @@ function buildDsfaTable(mod, rows) {
 
   return rows.map((row, index) => {
     const risks = parseJsonArray(row.risiken);
-    const baseRows = [
+    const contextRows = [
       ["Titel", row.titel],
       ["VVT-Bezug", row.vvtId ? `VVT-ID ${row.vvtId}` : "—"],
       ["Zweck", row.zweck],
@@ -529,6 +584,13 @@ function buildDsfaTable(mod, rows) {
       ["Systeme / Technologien", row.technologienSysteme],
       ["Profiling", row.profiling],
       ["Automatisierte Entscheidung", row.automatisierteEntscheidung],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    const governanceRows = [
       ["Notwendigkeit & Verhältnismäßigkeit", row.notwendigkeit],
       ["Rechtsgrundlage", row.rechtsgrundlage],
       ["Zweckbindung", row.zweckbindungBewertung],
@@ -584,7 +646,10 @@ function buildDsfaTable(mod, rows) {
         <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
           <table class="record-table">
             <tbody>
-              ${baseRows}
+              <tr><td class="record-label" style="font-weight:700;">Verarbeitungskontext</td><td class="record-value"></td></tr>
+              ${contextRows}
+              <tr><td class="record-label" style="font-weight:700;">Bewertung, Maßnahmen & Governance</td><td class="record-value"></td></tr>
+              ${governanceRows}
               ${riskSection}
             </tbody>
           </table>

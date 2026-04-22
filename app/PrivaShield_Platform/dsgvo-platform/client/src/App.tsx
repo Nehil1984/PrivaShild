@@ -1032,14 +1032,25 @@ function VvtPage() {
 
   const route = new URL(location, "https://privashield.local");
   const rawQuickFilter = route.searchParams.get("filter");
+  const rawSort = route.searchParams.get("sort");
   const quickFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" =
     rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch"
       ? rawQuickFilter
       : "all";
+  const vvtSort: "name-asc" | "name-desc" | "status" | "drittland" =
+    rawSort === "name-desc" || rawSort === "status" || rawSort === "drittland"
+      ? rawSort
+      : "name-asc";
   const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
     const next = new URL(location, "https://privashield.local");
     if (value === "all") next.searchParams.delete("filter");
     else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+  const setVvtSort = (value: "name-asc" | "name-desc" | "status" | "drittland") => {
+    const next = new URL(location, "https://privashield.local");
+    if (value === "name-asc") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", value);
     setLocation(`${next.pathname}${next.search}`);
   };
 
@@ -1056,6 +1067,11 @@ function VvtPage() {
     if (quickFilter === "drittland") return vvtMitDrittlandtransfer.some((entry: any) => entry.id === item.id);
     if (quickFilter === "missing-loesch") return vvtOhneLoeschbezug.some((entry: any) => entry.id === item.id);
     return true;
+  }).slice().sort((a: any, b: any) => {
+    if (vvtSort === "name-desc") return String(b.bezeichnung || "").localeCompare(String(a.bezeichnung || ""), "de");
+    if (vvtSort === "status") return String(a.status || "").localeCompare(String(b.status || ""), "de") || String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
+    if (vvtSort === "drittland") return Number(!!b.drittlandtransfer) - Number(!!a.drittlandtransfer) || String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
+    return String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
   });
 
   return (
@@ -1124,6 +1140,13 @@ function VvtPage() {
               <Button type="button" size="sm" variant={quickFilter === "missing-dsfa" ? "default" : "outline"} onClick={() => setQuickFilter("missing-dsfa")}>DSFA fehlt</Button>
               <Button type="button" size="sm" variant={quickFilter === "drittland" ? "default" : "outline"} onClick={() => setQuickFilter("drittland")}>Drittlandtransfer</Button>
               <Button type="button" size="sm" variant={quickFilter === "missing-loesch" ? "default" : "outline"} onClick={() => setQuickFilter("missing-loesch")}>Ohne Löschkonzept</Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Sortierung:</span>
+              <Button type="button" size="sm" variant={vvtSort === "name-asc" ? "default" : "outline"} onClick={() => setVvtSort("name-asc")}>Name A–Z</Button>
+              <Button type="button" size="sm" variant={vvtSort === "name-desc" ? "default" : "outline"} onClick={() => setVvtSort("name-desc")}>Name Z–A</Button>
+              <Button type="button" size="sm" variant={vvtSort === "status" ? "default" : "outline"} onClick={() => setVvtSort("status")}>Status</Button>
+              <Button type="button" size="sm" variant={vvtSort === "drittland" ? "default" : "outline"} onClick={() => setVvtSort("drittland")}>Drittland zuerst</Button>
             </div>
             {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Einträge für den aktuellen Filter.</CardContent></Card>}
             {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
@@ -1714,14 +1737,25 @@ function DsfaPage() {
   };
   const route = new URL(location, "https://privashield.local");
   const rawDsfaFilter = route.searchParams.get("filter");
+  const rawDsfaSort = route.searchParams.get("sort");
   const dsfaFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk" =
     rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk"
       ? rawDsfaFilter
       : "all";
+  const dsfaSort: "title-asc" | "title-desc" | "review" | "risk" =
+    rawDsfaSort === "title-desc" || rawDsfaSort === "review" || rawDsfaSort === "risk"
+      ? rawDsfaSort
+      : "title-asc";
   const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
     const next = new URL(location, "https://privashield.local");
     if (value === "all") next.searchParams.delete("filter");
     else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+  const setDsfaSort = (value: "title-asc" | "title-desc" | "review" | "risk") => {
+    const next = new URL(location, "https://privashield.local");
+    if (value === "title-asc") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", value);
     setLocation(`${next.pathname}${next.search}`);
   };
   const filteredDsfa = data.filter((item: any) => {
@@ -1731,6 +1765,17 @@ function DsfaPage() {
     if (dsfaFilter === "review") return !!(item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now());
     if (dsfaFilter === "high-risk") return risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
     return true;
+  }).slice().sort((a: any, b: any) => {
+    const aRisks = getRisks(a);
+    const bRisks = getRisks(b);
+    const aHigh = aRisks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    const bHigh = bRisks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    const aReview = a.naechstePruefungAm ? new Date(a.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
+    const bReview = b.naechstePruefungAm ? new Date(b.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
+    if (dsfaSort === "title-desc") return String(b.titel || "").localeCompare(String(a.titel || ""), "de");
+    if (dsfaSort === "review") return aReview - bReview || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    if (dsfaSort === "risk") return Number(bHigh) - Number(aHigh) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   return (
     <MandantGuard>
@@ -1744,6 +1789,13 @@ function DsfaPage() {
             <Button type="button" size="sm" variant={dsfaFilter === "art36" ? "default" : "outline"} onClick={() => setDsfaFilter("art36")}>Art. 36</Button>
             <Button type="button" size="sm" variant={dsfaFilter === "review" ? "default" : "outline"} onClick={() => setDsfaFilter("review")}>Review fällig</Button>
             <Button type="button" size="sm" variant={dsfaFilter === "high-risk" ? "default" : "outline"} onClick={() => setDsfaFilter("high-risk")}>Hohes Restrisiko</Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sortierung:</span>
+            <Button type="button" size="sm" variant={dsfaSort === "title-asc" ? "default" : "outline"} onClick={() => setDsfaSort("title-asc")}>Titel A–Z</Button>
+            <Button type="button" size="sm" variant={dsfaSort === "title-desc" ? "default" : "outline"} onClick={() => setDsfaSort("title-desc")}>Titel Z–A</Button>
+            <Button type="button" size="sm" variant={dsfaSort === "review" ? "default" : "outline"} onClick={() => setDsfaSort("review")}>Review zuerst</Button>
+            <Button type="button" size="sm" variant={dsfaSort === "risk" ? "default" : "outline"} onClick={() => setDsfaSort("risk")}>Hohes Risiko zuerst</Button>
           </div>
           {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter.</CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
