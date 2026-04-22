@@ -922,6 +922,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   crudRoutes("vvt", storage.getVvtByMandant.bind(storage), storage.getVvt.bind(storage), storage.createVvt.bind(storage), storage.updateVvt.bind(storage), storage.deleteVvt.bind(storage), insertVvtSchema.partial());
   crudRoutes("avv", storage.getAvvByMandant.bind(storage), storage.getAvv.bind(storage), storage.createAvv.bind(storage), storage.updateAvv.bind(storage), storage.deleteAvv.bind(storage), insertAvvSchema.partial());
+  app.get(`/api/mandanten/:mid/dsfa`, authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    const rows = await storage.getDsfaByMandant(mandantId);
+    res.json(rows.sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""))));
+  });
   app.get(`/api/dsfa`, authMiddleware, async (req: any, res) => {
     const allMandants = await storage.getMandanten();
     const allowedMandants = await getAllowedMandantIds(req);
