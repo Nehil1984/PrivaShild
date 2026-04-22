@@ -4595,11 +4595,42 @@ function MandantenOverviewPage() {
 }
 
 function AppRoutes() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [activeMandantId, setActiveMandantId] = useState<number | null>(() => {
     const stored = localStorage.getItem("privashield_active_mandant_id");
     return stored ? Number(stored) : null;
   });
+
+  const { data: mandanten = [] } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
+    enabled: !!token,
+  });
+
+  useEffect(() => {
+    if (!token || mandanten.length === 0) return;
+
+    const allowedMandanten = user?.role === "admin"
+      ? mandanten
+      : mandanten.filter((m: any) => {
+          try {
+            const allowedIds = JSON.parse(user?.mandantIds || "[]");
+            return allowedIds.includes(m.id);
+          } catch {
+            return false;
+          }
+        });
+
+    if (allowedMandanten.length === 0) {
+      if (activeMandantId !== null) setActiveMandantId(null);
+      return;
+    }
+
+    const hasValidSelection = activeMandantId !== null && allowedMandanten.some((m: any) => m.id === activeMandantId);
+    if (!hasValidSelection) {
+      setActiveMandantId(allowedMandanten[0].id);
+    }
+  }, [token, user, mandanten, activeMandantId]);
 
   useEffect(() => {
     if (activeMandantId) localStorage.setItem("privashield_active_mandant_id", String(activeMandantId));
