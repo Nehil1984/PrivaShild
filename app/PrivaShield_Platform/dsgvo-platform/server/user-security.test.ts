@@ -8,6 +8,26 @@
 
 import { describe, expect, it } from "vitest";
 
+function normalizeDsfaRisiken(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((risk) => ({
+    titel: String((risk as any)?.titel || ""),
+    beschreibung: String((risk as any)?.beschreibung || ""),
+    betroffeneRechte: String((risk as any)?.betroffeneRechte || ""),
+    betroffeneGruppen: String((risk as any)?.betroffeneGruppen || ""),
+    datenarten: String((risk as any)?.datenarten || ""),
+    ursache: String((risk as any)?.ursache || ""),
+    bestehendeKontrollen: String((risk as any)?.bestehendeKontrollen || ""),
+    eintrittswahrscheinlichkeit: String((risk as any)?.eintrittswahrscheinlichkeit || ""),
+    schweregrad: String((risk as any)?.schweregrad || ""),
+    inhärentesRisiko: String((risk as any)?.inhärentesRisiko || ""),
+    restrisiko: String((risk as any)?.restrisiko || ""),
+    weitereMassnahmen: String((risk as any)?.weitereMassnahmen || ""),
+    verantwortlicher: String((risk as any)?.verantwortlicher || ""),
+    status: String((risk as any)?.status || "offen"),
+  }));
+}
+
 function pickAllowedUserUpdateFields(body: Record<string, unknown>) {
   const allowed: Record<string, unknown> = {};
   for (const key of ["name", "email", "password", "role", "mandantIds", "aktiv"]) {
@@ -29,6 +49,72 @@ function applyUnlock(body: Record<string, unknown>) {
   }
   return sanitized;
 }
+
+describe("dsfa risk normalization", () => {
+  it("normalizes structured dsfa risk entries defensively", () => {
+    const normalized = normalizeDsfaRisiken([
+      {
+        titel: "Unbefugter Zugriff",
+        beschreibung: "Mitarbeiter sehen mehr Daten als erforderlich",
+        betroffeneRechte: "Vertraulichkeit",
+        betroffeneGruppen: "Beschäftigte",
+        datenarten: "HR-Daten",
+        ursache: "Zu breite Rollen",
+        bestehendeKontrollen: "Rollenmodell",
+        eintrittswahrscheinlichkeit: "mittel",
+        schweregrad: "hoch",
+        inhärentesRisiko: "hoch",
+        restrisiko: "mittel",
+        weitereMassnahmen: "Rezertifizierung der Rollen",
+        verantwortlicher: "IT",
+      },
+      {
+        titel: 123,
+        status: "in_umsetzung",
+      },
+    ]);
+
+    expect(normalized).toEqual([
+      {
+        titel: "Unbefugter Zugriff",
+        beschreibung: "Mitarbeiter sehen mehr Daten als erforderlich",
+        betroffeneRechte: "Vertraulichkeit",
+        betroffeneGruppen: "Beschäftigte",
+        datenarten: "HR-Daten",
+        ursache: "Zu breite Rollen",
+        bestehendeKontrollen: "Rollenmodell",
+        eintrittswahrscheinlichkeit: "mittel",
+        schweregrad: "hoch",
+        inhärentesRisiko: "hoch",
+        restrisiko: "mittel",
+        weitereMassnahmen: "Rezertifizierung der Rollen",
+        verantwortlicher: "IT",
+        status: "offen",
+      },
+      {
+        titel: "123",
+        beschreibung: "",
+        betroffeneRechte: "",
+        betroffeneGruppen: "",
+        datenarten: "",
+        ursache: "",
+        bestehendeKontrollen: "",
+        eintrittswahrscheinlichkeit: "",
+        schweregrad: "",
+        inhärentesRisiko: "",
+        restrisiko: "",
+        weitereMassnahmen: "",
+        verantwortlicher: "",
+        status: "in_umsetzung",
+      },
+    ]);
+  });
+
+  it("falls back to an empty list for invalid dsfa risks", () => {
+    expect(normalizeDsfaRisiken(null)).toEqual([]);
+    expect(normalizeDsfaRisiken({ titel: "x" })).toEqual([]);
+  });
+});
 
 describe("user security update guards", () => {
   it("keeps only explicitly allowed user update fields", () => {

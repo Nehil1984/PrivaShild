@@ -1231,6 +1231,7 @@ const dsfaTemplates: Record<string, any> = {
 function DsfaForm({ initial, onSave, onCancel }: any) {
   const { t } = useI18n();
   const { data: dokumente = [] } = useModuleData("dokumente");
+  const { data: vvts = [] } = useModuleData("vvt");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
   const kiTools = (() => {
     try {
@@ -1240,17 +1241,132 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
       return [];
     }
   })();
+  const defaultRisk = {
+    titel: "",
+    beschreibung: "",
+    betroffeneRechte: "",
+    betroffeneGruppen: "",
+    datenarten: "",
+    ursache: "",
+    bestehendeKontrollen: "",
+    eintrittswahrscheinlichkeit: "",
+    schweregrad: "",
+    inhärentesRisiko: "",
+    restrisiko: "",
+    weitereMassnahmen: "",
+    verantwortlicher: "",
+    status: "offen",
+  };
+  const normalizeRisiken = (value: any) => {
+    if (Array.isArray(value)) return value.length ? value : [defaultRisk];
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) && parsed.length ? parsed.map((risk: any) => ({ ...defaultRisk, ...risk })) : [defaultRisk];
+      } catch {
+        return [defaultRisk];
+      }
+    }
+    return [defaultRisk];
+  };
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ titel: "", beschreibung: "", notwendigkeit: "", massnahmen: "", ergebnis: "", status: "entwurf", reviewer: "", konsultation: false, risikoquelle: "", betroffeneGruppen: "", datenarten: "", eintrittswahrscheinlichkeit: "", schweregrad: "", restrisiko: "", restmassnahmen: "", ...initial });
+  const [form, setForm] = useState(() => {
+    const initialData = initial || {};
+    return {
+      titel: "",
+      vvtId: undefined,
+      beschreibung: "",
+      zweck: "",
+      prozessablauf: "",
+      verarbeitungskontext: "",
+      datenquellen: "",
+      empfaenger: "",
+      drittlandtransfer: false,
+      auftragsverarbeiter: "",
+      technologienSysteme: "",
+      profiling: false,
+      automatisierteEntscheidung: false,
+      notwendigkeit: "",
+      rechtsgrundlage: "",
+      zweckbindungBewertung: "",
+      datenminimierungBewertung: "",
+      speicherbegrenzungBewertung: "",
+      transparenzBewertung: "",
+      betroffenenrechteBewertung: "",
+      zugriffskonzeptBewertung: "",
+      privacyByDesignBewertung: "",
+      massnahmen: "",
+      restrisikoBegruendung: "",
+      art36Erforderlich: false,
+      art36Begruendung: "",
+      ergebnis: "",
+      konsultation: false,
+      status: "entwurf",
+      reviewer: "",
+      verantwortlicherBereich: "",
+      dsbBeteiligt: false,
+      dsbStellungnahme: "",
+      freigabeentscheidung: "",
+      freigabeBegruendung: "",
+      freigabeDatum: "",
+      naechstePruefungAm: "",
+      ...initialData,
+      risiken: normalizeRisiken(initialData.risiken),
+    };
+  });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const setRisk = (index: number, key: string, value: any) => setForm((p: any) => ({ ...p, risiken: p.risiken.map((risk: any, i: number) => i === index ? { ...risk, [key]: value } : risk) }));
+  const addRisk = () => setForm((p: any) => ({ ...p, risiken: [...p.risiken, { ...defaultRisk }] }));
+  const removeRisk = (index: number) => setForm((p: any) => ({ ...p, risiken: p.risiken.length === 1 ? [{ ...defaultRisk }] : p.risiken.filter((_: any, i: number) => i !== index) }));
+  const applyVvtPrefill = (vvtIdRaw: string) => {
+    const vvtId = Number(vvtIdRaw);
+    set("vvtId", Number.isFinite(vvtId) ? vvtId : undefined);
+    const selectedVvt = vvts.find((item: any) => item.id === vvtId);
+    if (!selectedVvt) return;
+    setForm((p: any) => ({
+      ...p,
+      vvtId,
+      titel: p.titel || selectedVvt.bezeichnung || "",
+      zweck: p.zweck || selectedVvt.zweck || "",
+      rechtsgrundlage: p.rechtsgrundlage || selectedVvt.rechtsgrundlage || "",
+      empfaenger: p.empfaenger || selectedVvt.empfaenger || "",
+      drittlandtransfer: p.drittlandtransfer || !!selectedVvt.drittlandtransfer,
+      technologienSysteme: p.technologienSysteme || selectedVvt.tomHinweis || "",
+      verantwortlicherBereich: p.verantwortlicherBereich || selectedVvt.verantwortlicher || "",
+      speicherbegrenzungBewertung: p.speicherbegrenzungBewertung || selectedVvt.loeschfrist || "",
+      risiken: p.risiken.map((risk: any, index: number) => index === 0 ? {
+        ...risk,
+        betroffeneGruppen: risk.betroffeneGruppen || selectedVvt.betroffenePersonen || "",
+        datenarten: risk.datenarten || selectedVvt.datenkategorien || "",
+      } : risk),
+    }));
+  };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = dsfaTemplates[value];
     if (!template) return;
-    setForm((p: any) => ({ ...p, ...template }));
+    setForm((p: any) => ({
+      ...p,
+      ...template,
+      zweck: p.zweck || template.beschreibung || "",
+      prozessablauf: p.prozessablauf || template.beschreibung || "",
+      risiken: [{
+        ...defaultRisk,
+        titel: template.risikoquelle || template.titel || "Risiko",
+        beschreibung: template.beschreibung || "",
+        betroffeneGruppen: template.betroffeneGruppen || "",
+        datenarten: template.datenarten || "",
+        ursache: template.risikoquelle || "",
+        eintrittswahrscheinlichkeit: template.eintrittswahrscheinlichkeit || "",
+        schweregrad: template.schweregrad || "",
+        inhärentesRisiko: template.schweregrad || "",
+        restrisiko: template.restrisiko || "",
+        weitereMassnahmen: template.restmassnahmen || "",
+      }],
+    }));
   };
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">{t("dsfaTemplateLabel")}</Label>
@@ -1264,7 +1380,32 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaTitleLabel")} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Grunddaten</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaTitleLabel")} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1">
+              <Label className="text-xs">VVT-Verknüpfung</Label>
+              <Select value={form.vvtId ? String(form.vvtId) : "none"} onValueChange={v => applyVvtPrefill(v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="VVT auswählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein VVT</SelectItem>
+                  {vvts.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>{item.bezeichnung}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label className="text-xs">{t("dsfaReviewerLabel")}</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Verantwortlicher Bereich</Label><Input value={form.verantwortlicherBereich} onChange={e => set("verantwortlicherBereich", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("dsfaStatusLabel")}</Label>
+              <Select value={form.status} onValueChange={v => set("status", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem><SelectItem value="überprüfung">In Überprüfung</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
         {kiTools.length > 0 && (
           <div className="col-span-2 space-y-1">
             <Label className="text-xs">{t("dsfaToolLabel")}</Label>
@@ -1277,35 +1418,105 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
             </Select>
           </div>
         )}
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDescriptionLabel")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaNecessityLabel")}</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaMeasuresLabel")}</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaRiskSourceLabel")}</Label><Input value={form.risikoquelle} onChange={e => set("risikoquelle", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaAffectedGroupsLabel")}</Label><Textarea value={form.betroffeneGruppen} onChange={e => set("betroffeneGruppen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDataTypesLabel")}</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaProbabilityLabel")}</Label><Input value={form.eintrittswahrscheinlichkeit} onChange={e => set("eintrittswahrscheinlichkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaSeverityLabel")}</Label><Input value={form.schweregrad} onChange={e => set("schweregrad", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaResidualRiskLabel")}</Label><Input value={form.restrisiko} onChange={e => set("restrisiko", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaFollowUpLabel")}</Label><Textarea value={form.restmassnahmen} onChange={e => set("restmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaResultLabel")}</Label>
-          <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
-            <SelectContent><SelectItem value="akzeptabel">Akzeptabel</SelectItem><SelectItem value="nicht_akzeptabel">Nicht akzeptabel</SelectItem><SelectItem value="bedingt">Bedingt akzeptabel</SelectItem></SelectContent>
-          </Select>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beschreibung der Verarbeitung</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Zweck</Label><Textarea value={form.zweck} onChange={e => set("zweck", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDescriptionLabel")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Prozessablauf</Label><Textarea value={form.prozessablauf} onChange={e => set("prozessablauf", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Verarbeitungskontext</Label><Textarea value={form.verarbeitungskontext} onChange={e => set("verarbeitungskontext", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Datenquellen</Label><Textarea value={form.datenquellen} onChange={e => set("datenquellen", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Empfänger</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Auftragsverarbeiter</Label><Textarea value={form.auftragsverarbeiter} onChange={e => set("auftragsverarbeiter", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Systeme / Technologien</Label><Textarea value={form.technologienSysteme} onChange={e => set("technologienSysteme", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="flex items-center gap-2"><input type="checkbox" id="dsfa-drittland" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dsfa-drittland" className="text-xs">Drittlandtransfer</Label></div>
+            <div className="flex items-center gap-2"><input type="checkbox" id="dsfa-profiling" checked={!!form.profiling} onChange={e => set("profiling", e.target.checked)} className="rounded" /><Label htmlFor="dsfa-profiling" className="text-xs">Profiling</Label></div>
+            <div className="flex items-center gap-2"><input type="checkbox" id="dsfa-auto" checked={!!form.automatisierteEntscheidung} onChange={e => set("automatisierteEntscheidung", e.target.checked)} className="rounded" /><Label htmlFor="dsfa-auto" className="text-xs">Automatisierte Entscheidung</Label></div>
+          </div>
         </div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaStatusLabel")}</Label>
-          <Select value={form.status} onValueChange={v => set("status", v)}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem><SelectItem value="überprüfung">In Überprüfung</SelectItem></SelectContent>
-          </Select>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notwendigkeit & Verhältnismäßigkeit</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaNecessityLabel")}</Label><Textarea value={form.notwendigkeit} onChange={e => set("notwendigkeit", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="space-y-1"><Label className="text-xs">Rechtsgrundlage</Label><Input value={form.rechtsgrundlage} onChange={e => set("rechtsgrundlage", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Zweckbindung</Label><Input value={form.zweckbindungBewertung} onChange={e => set("zweckbindungBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Datenminimierung</Label><Input value={form.datenminimierungBewertung} onChange={e => set("datenminimierungBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Speicherbegrenzung</Label><Input value={form.speicherbegrenzungBewertung} onChange={e => set("speicherbegrenzungBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Transparenz</Label><Input value={form.transparenzBewertung} onChange={e => set("transparenzBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Betroffenenrechte</Label><Input value={form.betroffenenrechteBewertung} onChange={e => set("betroffenenrechteBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Zugriffskonzept</Label><Input value={form.zugriffskonzeptBewertung} onChange={e => set("zugriffskonzeptBewertung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Privacy by Design / Default</Label><Input value={form.privacyByDesignBewertung} onChange={e => set("privacyByDesignBewertung", e.target.value)} className="h-8 text-sm" /></div>
+          </div>
         </div>
-        <div className="space-y-1"><Label className="text-xs">{t("dsfaReviewerLabel")}</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="flex items-center gap-2"><input type="checkbox" id="kons" checked={!!form.konsultation} onChange={e => set("konsultation", e.target.checked)} className="rounded" /><Label htmlFor="kons" className="text-xs">Behördenkonsultation (Art. 36)</Label></div>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Risikoanalyse</p>
+            <Button type="button" size="sm" variant="outline" onClick={addRisk}>Risiko hinzufügen</Button>
+          </div>
+          <div className="space-y-3">
+            {form.risiken.map((risk: any, index: number) => (
+              <div key={index} className="rounded-lg border border-border/60 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">Risiko {index + 1}</p>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => removeRisk(index)}>Entfernen</Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs">Titel</Label><Input value={risk.titel} onChange={e => setRisk(index, "titel", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Status</Label><Input value={risk.status} onChange={e => setRisk(index, "status", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={risk.beschreibung} onChange={e => setRisk(index, "beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffene Rechte / Freiheiten</Label><Textarea value={risk.betroffeneRechte} onChange={e => setRisk(index, "betroffeneRechte", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaAffectedGroupsLabel")}</Label><Textarea value={risk.betroffeneGruppen} onChange={e => setRisk(index, "betroffeneGruppen", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaDataTypesLabel")}</Label><Textarea value={risk.datenarten} onChange={e => setRisk(index, "datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaRiskSourceLabel")}</Label><Input value={risk.ursache} onChange={e => setRisk(index, "ursache", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">Bestehende Kontrollen</Label><Textarea value={risk.bestehendeKontrollen} onChange={e => setRisk(index, "bestehendeKontrollen", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="space-y-1"><Label className="text-xs">{t("dsfaProbabilityLabel")}</Label><Input value={risk.eintrittswahrscheinlichkeit} onChange={e => setRisk(index, "eintrittswahrscheinlichkeit", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="space-y-1"><Label className="text-xs">{t("dsfaSeverityLabel")}</Label><Input value={risk.schweregrad} onChange={e => setRisk(index, "schweregrad", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Inhärentes Risiko</Label><Input value={risk.inhärentesRisiko} onChange={e => setRisk(index, "inhärentesRisiko", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="space-y-1"><Label className="text-xs">{t("dsfaResidualRiskLabel")}</Label><Input value={risk.restrisiko} onChange={e => setRisk(index, "restrisiko", e.target.value)} className="h-8 text-sm" /></div>
+                  <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaFollowUpLabel")}</Label><Textarea value={risk.weitereMassnahmen} onChange={e => setRisk(index, "weitereMassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={risk.verantwortlicher} onChange={e => setRisk(index, "verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Maßnahmen, Ergebnis und Eskalation</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaMeasuresLabel")}</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Restrisiko-Begründung</Label><Textarea value={form.restrisikoBegruendung} onChange={e => set("restrisikoBegruendung", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("dsfaResultLabel")}</Label>
+              <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
+                <SelectContent><SelectItem value="akzeptabel">Akzeptabel</SelectItem><SelectItem value="nicht_akzeptabel">Nicht akzeptabel</SelectItem><SelectItem value="bedingt">Bedingt akzeptabel</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2"><input type="checkbox" id="art36" checked={!!form.art36Erforderlich} onChange={e => set("art36Erforderlich", e.target.checked)} className="rounded" /><Label htmlFor="art36" className="text-xs">Art. 36 erforderlich</Label></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Art.-36-Begründung</Label><Textarea value={form.art36Begruendung} onChange={e => set("art36Begruendung", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="flex items-center gap-2"><input type="checkbox" id="kons" checked={!!form.konsultation} onChange={e => set("konsultation", e.target.checked)} className="rounded" /><Label htmlFor="kons" className="text-xs">Behördenkonsultation (Art. 36)</Label></div>
+          </div>
+        </div>
+
+        <div className="col-span-2 rounded-lg border p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">DSB, Freigabe und Review</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center gap-2"><input type="checkbox" id="dsb" checked={!!form.dsbBeteiligt} onChange={e => set("dsbBeteiligt", e.target.checked)} className="rounded" /><Label htmlFor="dsb" className="text-xs">DSB beteiligt</Label></div>
+            <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.naechstePruefungAm || ""} onChange={e => set("naechstePruefungAm", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">DSB-Stellungnahme</Label><Textarea value={form.dsbStellungnahme} onChange={e => set("dsbStellungnahme", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="space-y-1"><Label className="text-xs">Freigabeentscheidung</Label><Input value={form.freigabeentscheidung} onChange={e => set("freigabeentscheidung", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">Freigabedatum</Label><Input type="date" value={form.freigabeDatum || ""} onChange={e => set("freigabeDatum", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Freigabebegründung</Label><Textarea value={form.freigabeBegruendung} onChange={e => set("freigabeBegruendung", e.target.value)} className="text-sm min-h-12" /></div>
+          </div>
+        </div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave({ ...form, risiken: JSON.stringify(form.risiken) })} disabled={!form.titel}>Speichern</Button>
         </DialogFooter>
       </div>
     </div>
@@ -1315,12 +1526,21 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
 function DsfaPage() {
   const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("dsfa");
+  const { data: vvts = [] } = useModuleData("vvt");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  };
+  const getRisks = (item: any) => {
+    try {
+      const parsed = typeof item.risiken === "string" ? JSON.parse(item.risiken || "[]") : item.risiken;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   };
   return (
     <MandantGuard>
@@ -1329,29 +1549,42 @@ function DsfaPage() {
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
-          {data.map((item: any) => (
-            <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.titel}</p>
-                    <p className="text-xs text-muted-foreground">{item.reviewer || "—"}{item.konsultation ? " · Behördenkonsultation" : ""}</p>
+          {data.map((item: any) => {
+            const risks = getRisks(item);
+            const hasHighResidualRisk = risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+            const linkedVvt = vvts.find((v: any) => v.id === item.vvtId);
+            const reviewDue = item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now();
+            return (
+              <Card key={item.id} className="group hover:border-border/80 transition-colors">
+                <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{item.titel}</p>
+                      <p className="text-xs text-muted-foreground">{item.reviewer || "—"}{item.konsultation ? " · Behördenkonsultation" : ""}{linkedVvt ? ` · ${linkedVvt.bezeichnung}` : " · Ohne VVT"}</p>
+                      <p className="text-xs text-muted-foreground">{risks.length} Risiko(e){item.naechstePruefungAm ? ` · Nächste Prüfung: ${new Date(item.naechstePruefungAm).toLocaleDateString("de-DE")}` : ""}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                  {item.ergebnis && <StatusBadge value={item.ergebnis} />}
-                  <StatusBadge value={item.status} />
-                  <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {!item.vvtId && <Badge variant="outline" className="text-xs">Ohne VVT</Badge>}
+                      {item.art36Erforderlich && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Art. 36 prüfen</Badge>}
+                      {reviewDue && <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-600">Review fällig</Badge>}
+                      {hasHighResidualRisk && <Badge variant="destructive" className="text-xs">Hohes Restrisiko</Badge>}
+                      {item.ergebnis && <StatusBadge value={item.ergebnis} />}
+                      <StatusBadge value={item.status} />
+                    </div>
+                    <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader></div>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neue DSFA" : "DSFA bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <DsfaForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
         </DialogContent>
       </Dialog>
