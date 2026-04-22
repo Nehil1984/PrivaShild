@@ -730,28 +730,28 @@ function Dashboard() {
                     <div key={`art36-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">Art.-36-Prüfbedarf: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Restrisiko und Konsultationsentscheidung zeitnah prüfen.</p>
-                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
+                      <div className="mt-2"><Link href="/dsfa?filter=art36"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaMitHohemRestrisikoItems.slice(0, 3).map((item: any) => (
                     <div key={`risk-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">Hohes Restrisiko: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: zusätzliche Maßnahmen und Freigabeentscheidung priorisieren.</p>
-                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
+                      <div className="mt-2"><Link href="/dsfa?filter=high-risk"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaReviewFaelligItems.slice(0, 3).map((item: any) => (
                     <div key={`review-${item.id}`} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
                       <p className="font-medium text-amber-700 dark:text-amber-400">Review fällig: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Nächste Prüfung war am {new Date(item.naechstePruefungAm).toLocaleDateString("de-DE")} vorgesehen.</p>
-                      <div className="mt-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
+                      <div className="mt-2"><Link href="/dsfa?filter=review"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {dsfaOhneVvtItems.slice(0, 3).map((item: any) => (
                     <div key={`novvt-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne VVT-Bezug: {item.titel}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: DSFA mit passendem Verarbeitungsvorgang verknüpfen.</p>
-                      <div className="mt-2 flex gap-2"><Link href="/dsfa"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link><Link href="/vvt"><a className="text-xs text-primary hover:underline">Zur VVT-Seite</a></Link></div>
+                      <div className="mt-2 flex gap-2"><Link href="/dsfa?filter=missing-vvt"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link><Link href="/vvt?filter=missing-dsfa"><a className="text-xs text-primary hover:underline">Zur VVT-Seite</a></Link></div>
                     </div>
                   ))}
                 </>
@@ -1022,13 +1022,23 @@ function VvtForm({ initial, onSave, onCancel }: any) {
 
 function VvtPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("vvt");
   const { data: dsfa = [] } = useModuleData("dsfa");
   const { data: loeschkonzept = [] } = useModuleData("loeschkonzept");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
-  const [quickFilter, setQuickFilter] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch">("all");
   const { toast } = useToast();
+
+  const searchParams = new URLSearchParams(location.split("?")[1] || "");
+  const quickFilter = (searchParams.get("filter") as "all" | "missing-dsfa" | "drittland" | "missing-loesch" | null) || "all";
+  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
+    const next = new URLSearchParams(location.split("?")[1] || "");
+    if (value === "all") next.delete("filter");
+    else next.set("filter", value);
+    const query = next.toString();
+    setLocation(query ? `/vvt?${query}` : "/vvt");
+  };
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
@@ -1681,6 +1691,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
 
 function DsfaPage() {
   const { t } = useI18n();
+  const [location] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("dsfa");
   const { data: vvts = [] } = useModuleData("vvt");
   const [modal, setModal] = useState<null | "new" | any>(null);
@@ -1698,14 +1709,24 @@ function DsfaPage() {
       return [];
     }
   };
+  const dsfaFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "all";
+  const filteredDsfa = data.filter((item: any) => {
+    const risks = getRisks(item);
+    if (dsfaFilter === "missing-vvt") return !item.vvtId;
+    if (dsfaFilter === "art36") return !!item.art36Erforderlich;
+    if (dsfaFilter === "review") return !!(item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now());
+    if (dsfaFilter === "high-risk") return risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    return true;
+  });
   return (
     <MandantGuard>
       <PageHeader title={t("dsfaTitle")} desc={t("dsfaDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
+          {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter.</CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
-          {data.map((item: any) => {
+          {filteredDsfa.map((item: any) => {
             const risks = getRisks(item);
             const hasHighResidualRisk = risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
             const linkedVvt = vvts.find((v: any) => v.id === item.vvtId);
