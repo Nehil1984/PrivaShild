@@ -133,18 +133,28 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [lockHint, setLockHint] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setLockHint("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) {
+        if (res.status === 423) {
+          const retryAfter = res.headers.get("Retry-After");
+          if (retryAfter) {
+            const minutes = Math.max(1, Math.ceil(Number(retryAfter) / 60));
+            setLockHint(`Erneut versuchen in ca. ${minutes} Minute${minutes === 1 ? "" : "n"}.`);
+          }
+        }
+        throw new Error(data.message);
+      }
       onLogin(data.user, data.token);
     } catch (e: any) {
       setError(e.message);
@@ -182,8 +192,11 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
                   placeholder="••••••••" className="h-9" data-testid="input-password" />
               </div>
               {error && (
-                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
-                  <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+                    <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                  </div>
+                  {lockHint && <div className="text-xs text-amber-600 bg-amber-500/10 px-3 py-2 rounded-lg">{lockHint}</div>}
                 </div>
               )}
               <Button type="submit" className="w-full h-9 bg-primary hover:bg-primary/90" disabled={loading} data-testid="button-login">
