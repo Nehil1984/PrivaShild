@@ -154,6 +154,25 @@ async function requireEntityAccess(req: any, res: Response, item: any | undefine
   return requireMandantAccess(req, res, item.mandantId);
 }
 
+const TEMP_LOGIN_LOCK_AFTER = 5;
+const TEMP_LOGIN_LOCK_MS = 15 * 60 * 1000;
+const ADMIN_LOCK_AFTER = 15;
+
+function getLoginLockState(user: any) {
+  const now = Date.now();
+  const tempUntil = user?.temporaryLockUntil ? new Date(user.temporaryLockUntil).getTime() : 0;
+  return {
+    isTempLocked: tempUntil > now,
+    retryAfterSeconds: tempUntil > now ? Math.ceil((tempUntil - now) / 1000) : 0,
+    isAdminLocked: !!user?.adminLocked,
+  };
+}
+
+function sanitizeUser(user: any) {
+  const { passwordHash, ...safeUser } = user;
+  return safeUser;
+}
+
 // Seed initial admin if no users exist
 async function seedAdmin() {
   const all = await storage.getAllUsers();
@@ -191,9 +210,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       registerLoginFailure(req);
       return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
     }
+
+    const lockState = getLoginLockState(user);
+    if (lockState.isAdminLocked) {
+      return res.status(423).json({ message: "Benutzer ist administrativ gesperrt. Bitte Administrator kontaktieren." });
+    }
+    if (lockState.isTempLocked) {
+      res.setHeader("Retry-After", String(lockState.retryAfterSeconds));
+      return res.status(423).json({ message: "Benutzer ist nach mehreren Fehlversuchen vorübergehend gesperrt. Bitte später erneut versuchen." });
+    }
+
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       registerLoginFailure(req);
+      const failedAttempts = Number(user.failedLoginAttempts || 0) + 1;
+      const updates: any = { failedLoginAttempts: failedAttempts, lastFailedLoginAt: new Date().toISOString() };
+      let message = "E-Mail oder Passwort falsch";
+
+      if (failedAttempts >= ADMIN_LOCK_AFTER) {
+        updates.adminLocked = true;
+        updates.adminLockedAt = new Date().toISOString();
+        updates.temporaryLockUntil = null;
+        message = "Benutzer ist gesperrt und muss durch einen Administrator freigeschaltet werden.";
+      } else if (failedAttempts >= TEMP_LOGIN_LOCK_AFTER) {
+        updates.temporaryLockUntil = new Date(Date.now() + TEMP_LOGIN_LOCK_MS).toISOString();
+        message = "Zu viele Fehlversuche. Benutzer wurde vorübergehend gesperrt.";
+      }
+
+      await storage.updateUser(user.id, updates);
       await auditLog({
         mandantId: null,
         userId: user.id,
@@ -203,13 +247,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         entitaetTyp: "user",
         entitaetId: user.id,
         beschreibung: "Fehlgeschlagener Login-Versuch",
-        details: { email },
+        details: { email, failedAttempts },
       });
-      return res.status(401).json({ message: "E-Mail oder Passwort falsch" });
+      return res.status(failedAttempts >= TEMP_LOGIN_LOCK_AFTER ? 423 : 401).json({ message });
     }
     clearLoginFailures(req);
+    if (user.failedLoginAttempts || user.temporaryLockUntil || user.lastFailedLoginAt) {
+      await storage.updateUser(user.id, {
+        failedLoginAttempts: 0,
+        temporaryLockUntil: null,
+        lastFailedLoginAt: null,
+      } as any);
+    }
     const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "8h" });
-    const { passwordHash, ...safeUser } = user;
+    const refreshedUser = await storage.getUserById(user.id);
+    const safeUser = sanitizeUser(refreshedUser || user);
     await auditLog({
       mandantId: null,
       userId: user.id,
@@ -227,8 +279,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/auth/me", authMiddleware, async (req: any, res) => {
     const user = await storage.getUserById(req.userId);
     if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
-    const { passwordHash, ...safeUser } = user;
-    res.json(safeUser);
+    res.json(sanitizeUser(user));
   });
 
 
@@ -367,22 +418,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── BENUTZER (Admin only) ────────────────────────────────────────────────
   app.get("/api/users", authMiddleware, adminOnly, async (_req, res) => {
     const all = await storage.getAllUsers();
-    res.json(all.map(({ passwordHash, ...u }) => u));
+    res.json(all.map((u) => sanitizeUser(u)));
   });
   app.post("/api/users", authMiddleware, adminOnly, validateBody(insertUserSchema), async (req, res) => {
     try {
       const user = await storage.createUser(req.body);
-      const { passwordHash, ...safe } = user;
-      res.status(201).json(safe);
+      res.status(201).json(sanitizeUser(user));
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
   });
   app.put("/api/users/:id", authMiddleware, adminOnly, async (req, res) => {
+    if (req.body?.unlockUser === true) {
+      req.body.adminLocked = false;
+      req.body.adminLockedAt = null;
+      req.body.failedLoginAttempts = 0;
+      req.body.temporaryLockUntil = null;
+      req.body.lastFailedLoginAt = null;
+      delete req.body.unlockUser;
+    }
     const user = await storage.updateUser(Number(req.params.id), req.body);
     if (!user) return res.status(404).json({ message: "Nicht gefunden" });
-    const { passwordHash, ...safe } = user;
-    res.json(safe);
+    res.json(sanitizeUser(user));
   });
   app.delete("/api/users/:id", authMiddleware, adminOnly, async (req, res) => {
     await storage.deleteUser(Number(req.params.id));

@@ -54,4 +54,13 @@ describe("integration-like access flows", () => {
     expect(canAccessEntity("admin", "[]", undefined)).toBe(false);
     expect(canAccessEntity("user", "[1]", undefined)).toBe(false);
   });
+
+  it("does not leak mandants outside user assignments", () => {
+    const all = [
+      { id: 11, name: "Mandant X" },
+      { id: 12, name: "Mandant Y" },
+    ];
+    const visible = filterMandantenForUser("user", "[12]", all);
+    expect(visible).toEqual([{ id: 12, name: "Mandant Y" }]);
+  });
 });

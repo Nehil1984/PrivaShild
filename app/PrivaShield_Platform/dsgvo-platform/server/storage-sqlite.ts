@@ -47,7 +47,15 @@ export class DatabaseStorage implements IStorage {
   async createUser(data: InsertUser) {
     const { password, ...rest } = data as any;
     const passwordHash = await bcrypt.hash(password, 12);
-    return db.insert(users).values({ ...rest, passwordHash }).returning().get();
+    return db.insert(users).values({
+      ...rest,
+      passwordHash,
+      failedLoginAttempts: 0,
+      temporaryLockUntil: null,
+      adminLocked: false,
+      adminLockedAt: null,
+      lastFailedLoginAt: null,
+    }).returning().get();
   }
   async getAllUsers() {
     return db.select().from(users).all();

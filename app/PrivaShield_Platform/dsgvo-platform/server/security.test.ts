@@ -58,4 +58,14 @@ describe("security login rate limit", () => {
     loginRateLimit(req, finalRes, () => finalNext++);
     expect(finalNext).toBe(1);
   });
+
+  it("clears the IP limiter state after reset", () => {
+    const req = mockReq("10.0.0.2");
+    for (let i = 0; i < 5; i++) registerLoginFailure(req);
+    clearLoginFailures(req);
+    const res = mockRes();
+    let nextCalled = 0;
+    loginRateLimit(req, res, () => nextCalled++);
+    expect(nextCalled).toBe(1);
+  });
 });

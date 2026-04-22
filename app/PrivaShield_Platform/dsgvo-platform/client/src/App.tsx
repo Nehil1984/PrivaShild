@@ -41,7 +41,7 @@ import {
 
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
-type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string };
+type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string; failedLoginAttempts?: number; temporaryLockUntil?: string | null; adminLocked?: boolean; adminLockedAt?: string | null; lastFailedLoginAt?: string | null };
 const AuthCtx = createContext<{ user: AuthUser | null; token: string | null; login: (u: AuthUser, t: string) => void; logout: () => void }>({
   user: null, token: null, login: () => {}, logout: () => {}
 });
@@ -3797,11 +3797,11 @@ function BenutzerPage() {
   });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "user", mandantIds: "[]" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null as string | null, adminLocked: false, adminLockedAt: null as string | null, lastFailedLoginAt: null as string | null });
   const { toast } = useToast();
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
-  const openNew = () => { setForm({ name: "", email: "", password: "", role: "user", mandantIds: "[]" }); setModal("new"); };
+  const openNew = () => { setForm({ name: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null, adminLocked: false, adminLockedAt: null, lastFailedLoginAt: null }); setModal("new"); };
   const openEdit = (u: any) => { setForm({ ...u, password: "" }); setModal(u); };
 
   const save = async () => {
@@ -3840,7 +3840,11 @@ function BenutzerPage() {
                   </div>
                 </div>
                 <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                  <Badge variant="outline" className="text-xs">{u.role}</Badge>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <Badge variant="outline" className="text-xs">{u.role}</Badge>
+                    {u.adminLocked && <Badge variant="destructive" className="text-xs">Admin-Sperre</Badge>}
+                    {!u.adminLocked && u.temporaryLockUntil && new Date(u.temporaryLockUntil).getTime() > Date.now() && <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-600">Zeit-Sperre</Badge>}
+                  </div>
                   <button onClick={() => openEdit(u)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setDelId(u.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
@@ -3873,6 +3877,27 @@ function BenutzerPage() {
                       </label>
                     ))}
                     {mandanten.length === 0 && <p className="text-xs text-muted-foreground">Keine Mandanten vorhanden</p>}
+                  </div>
+                </div>
+              )}
+              {modal !== "new" && (
+                <div className="col-span-2 rounded-lg border p-3 space-y-2 text-xs">
+                  <p><span className="font-medium">Fehlversuche:</span> {form.failedLoginAttempts || 0}</p>
+                  <p><span className="font-medium">Temporäre Sperre bis:</span> {form.temporaryLockUntil ? new Date(form.temporaryLockUntil).toLocaleString("de-DE") : "—"}</p>
+                  <p><span className="font-medium">Admin-Sperre:</span> {form.adminLocked ? `Ja${form.adminLockedAt ? ` (seit ${new Date(form.adminLockedAt).toLocaleString("de-DE")})` : ""}` : "Nein"}</p>
+                  <div>
+                    <Button type="button" variant="outline" size="sm" onClick={async () => {
+                      try {
+                        await apiRequest("PUT", `/api/users/${modal.id}`, { unlockUser: true });
+                        qc.invalidateQueries({ queryKey: ["/api/users"] });
+                        setModal(null);
+                        toast({ title: "Benutzer entsperrt" });
+                      } catch (e: any) {
+                        toast({ title: "Fehler", description: e.message, variant: "destructive" });
+                      }
+                    }} disabled={!form.adminLocked && !(form.temporaryLockUntil && new Date(form.temporaryLockUntil).getTime() > Date.now())}>
+                      Benutzer entsperren
+                    </Button>
                   </div>
                 </div>
               )}

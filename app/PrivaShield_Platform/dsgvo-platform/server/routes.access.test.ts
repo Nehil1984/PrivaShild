@@ -29,6 +29,10 @@ describe("access control policy", () => {
     expect(canAccessMandant("user", [], 1)).toBe(false);
   });
 
+  it("rejects unassigned mandant access consistently", () => {
+    expect(canAccessMandant("dsb", [7, 8], 9)).toBe(false);
+  });
+
   it("enforces strong passwords in user schema", () => {
     expect(() => insertUserSchema.parse({
       email: "weak@example.local",

@@ -131,6 +131,11 @@ export const users = sqliteTable("users", {
   role: text("role").notNull().default("user"), // admin | dsb | user
   mandantIds: text("mandant_ids").default("[]"), // JSON array of mandant IDs
   aktiv: integer("aktiv", { mode: "boolean" }).default(true),
+  failedLoginAttempts: integer("failed_login_attempts").default(0),
+  temporaryLockUntil: text("temporary_lock_until"),
+  adminLocked: integer("admin_locked", { mode: "boolean" }).default(false),
+  adminLockedAt: text("admin_locked_at"),
+  lastFailedLoginAt: text("last_failed_login_at"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, passwordHash: true, createdAt: true }).extend({

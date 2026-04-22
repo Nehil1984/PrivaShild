@@ -183,6 +183,11 @@ export class LowdbStorage implements IStorage {
       passwordHash,
       mandantIds: rest.mandantIds ?? "[]",
       aktiv: true,
+      failedLoginAttempts: 0,
+      temporaryLockUntil: null as any,
+      adminLocked: false,
+      adminLockedAt: null as any,
+      lastFailedLoginAt: null as any,
       createdAt: new Date().toISOString(),
     };
     db.data.users.push(user);
