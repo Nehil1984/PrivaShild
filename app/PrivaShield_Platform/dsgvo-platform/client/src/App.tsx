@@ -1020,6 +1020,7 @@ function VvtPage() {
   const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("vvt");
   const { data: dsfa = [] } = useModuleData("dsfa");
+  const { data: loeschkonzept = [] } = useModuleData("loeschkonzept");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
@@ -1029,40 +1030,65 @@ function VvtPage() {
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
 
+  const vvtMitFehlenderDsfa = data.filter((item: any) => item.dsfa && !dsfa.some((entry: any) => entry.vvtId === item.id));
+  const vvtMitDrittlandtransfer = data.filter((item: any) => !!item.drittlandtransfer);
+  const vvtOhneLoeschbezug = data.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase()));
+
   return (
     <MandantGuard>
       <PageHeader title={t("vvtTitle")} desc={t("vvtDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div> : (
-        <div className="space-y-2">
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
-          {data.map((item: any) => {
-            const linkedDsfa = dsfa.filter((entry: any) => entry.vvtId === item.id);
-            const hasRequiredButMissingDsfa = item.dsfa && linkedDsfa.length === 0;
-            return (
-            <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="h-4 w-4 text-teal-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.bezeichnung}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.rechtsgrundlage || "Keine Rechtsgrundlage"}{item.dsfa ? " · DSFA erforderlich" : ""}</p>
-                    <p className="text-xs text-muted-foreground truncate">{linkedDsfa.length > 0 ? `Verknüpfte DSFA: ${linkedDsfa.map((entry: any) => entry.titel).join(", ")}` : item.dsfa ? "Noch keine verknüpfte DSFA" : "Keine DSFA-Verknüpfung erforderlich"}</p>
-                  </div>
-                </div>
-                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {item.drittlandtransfer && <Badge variant="outline" className="text-xs">Drittland</Badge>}
-                    {item.dsfa && linkedDsfa.length > 0 && <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600">DSFA verknüpft</Badge>}
-                    {hasRequiredButMissingDsfa && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">DSFA fehlt</Badge>}
-                    <StatusBadge value={item.status} />
-                  </div>
-                  <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </CardContent>
-            </Card>
-          )})}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">VVT-Quick-Check</CardTitle>
+              <CardDescription>Schneller Blick auf typische Lücken in Verarbeitungstätigkeiten</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine auffälligen VVT-Lücken.</p>
+              ) : (
+                <>
+                  {vvtMitFehlenderDsfa.length > 0 && <p className="text-red-400">DSFA erforderlich, aber nicht verknüpft: {vvtMitFehlenderDsfa.length}</p>}
+                  {vvtMitDrittlandtransfer.length > 0 && <p className="text-yellow-400">VVT mit Drittlandtransfer: {vvtMitDrittlandtransfer.length}</p>}
+                  {vvtOhneLoeschbezug.length > 0 && <p className="text-yellow-400">VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschbezug.length}</p>}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-2">
+            {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
+            {data.map((item: any) => {
+              const linkedDsfa = dsfa.filter((entry: any) => entry.vvtId === item.id);
+              const hasRequiredButMissingDsfa = item.dsfa && linkedDsfa.length === 0;
+              return (
+                <Card key={item.id} className="group hover:border-border/80 transition-colors">
+                  <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="h-4 w-4 text-teal-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.bezeichnung}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.rechtsgrundlage || "Keine Rechtsgrundlage"}{item.dsfa ? " · DSFA erforderlich" : ""}</p>
+                        <p className="text-xs text-muted-foreground truncate">{linkedDsfa.length > 0 ? `Verknüpfte DSFA: ${linkedDsfa.map((entry: any) => entry.titel).join(", ")}` : item.dsfa ? "Noch keine verknüpfte DSFA" : "Keine DSFA-Verknüpfung erforderlich"}</p>
+                      </div>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {item.drittlandtransfer && <Badge variant="outline" className="text-xs">Drittland</Badge>}
+                        {item.dsfa && linkedDsfa.length > 0 && <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600">DSFA verknüpft</Badge>}
+                        {hasRequiredButMissingDsfa && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">DSFA fehlt</Badge>}
+                        <StatusBadge value={item.status} />
+                      </div>
+                      <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
