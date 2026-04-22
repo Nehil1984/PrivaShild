@@ -1691,7 +1691,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
 
 function DsfaPage() {
   const { t } = useI18n();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("dsfa");
   const { data: vvts = [] } = useModuleData("vvt");
   const [modal, setModal] = useState<null | "new" | any>(null);
@@ -1710,6 +1710,13 @@ function DsfaPage() {
     }
   };
   const dsfaFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "all";
+  const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
+    const next = new URLSearchParams(location.split("?")[1] || "");
+    if (value === "all") next.delete("filter");
+    else next.set("filter", value);
+    const query = next.toString();
+    setLocation(query ? `/dsfa?${query}` : "/dsfa");
+  };
   const filteredDsfa = data.filter((item: any) => {
     const risks = getRisks(item);
     if (dsfaFilter === "missing-vvt") return !item.vvtId;
@@ -1724,6 +1731,13 @@ function DsfaPage() {
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant={dsfaFilter === "all" ? "default" : "outline"} onClick={() => setDsfaFilter("all")}>Alle</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "missing-vvt" ? "default" : "outline"} onClick={() => setDsfaFilter("missing-vvt")}>Ohne VVT</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "art36" ? "default" : "outline"} onClick={() => setDsfaFilter("art36")}>Art. 36</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "review" ? "default" : "outline"} onClick={() => setDsfaFilter("review")}>Review fällig</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "high-risk" ? "default" : "outline"} onClick={() => setDsfaFilter("high-risk")}>Hohes Restrisiko</Button>
+          </div>
           {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter.</CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
           {filteredDsfa.map((item: any) => {
