@@ -3835,14 +3835,40 @@ function BenutzerPage() {
     setForm(p => ({ ...p, mandantIds: JSON.stringify(next) }));
   };
   const selectedIds: number[] = JSON.parse(form.mandantIds || "[]");
+  const usersWithAdminLock = users.filter((u: any) => u.adminLocked).length;
+  const usersWithTempLock = users.filter((u: any) => !u.adminLocked && u.temporaryLockUntil && new Date(u.temporaryLockUntil).getTime() > Date.now()).length;
+  const usersWithoutMandants = users.filter((u: any) => u.role !== "admin" && JSON.parse(u.mandantIds || "[]").length === 0).length;
+  const usersWithBroadAccess = users.filter((u: any) => u.role !== "admin" && JSON.parse(u.mandantIds || "[]").length >= 3).length;
 
   return (
     <div>
       <PageHeader title={t("usersTitle")} desc={t("usersDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={openNew}><Plus className="h-3.5 w-3.5" />Neuer Benutzer</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
-        <div className="space-y-2">
-          {users.map((u: any) => (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Admin-Sperren</p><p className="text-2xl font-bold">{usersWithAdminLock}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zeit-Sperren</p><p className="text-2xl font-bold">{usersWithTempLock}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Benutzer ohne Mandant</p><p className="text-2xl font-bold">{usersWithoutMandants}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Breite Zugriffe (≥3)</p><p className="text-2xl font-bold">{usersWithBroadAccess}</p></CardContent></Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Sicherheitsübersicht</CardTitle>
+              <CardDescription>Überblick über Sperren, Zugriffe und auffällige Benutzerkonstellationen.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {usersWithAdminLock > 0 && <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">Es gibt aktuell <strong>{usersWithAdminLock}</strong> administrativ gesperrte Benutzer.</div>}
+              {usersWithTempLock > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">Es gibt aktuell <strong>{usersWithTempLock}</strong> Benutzer mit temporärer Login-Sperre.</div>}
+              {usersWithoutMandants > 0 && <div className="rounded-lg border border-zinc-500/20 bg-zinc-500/5 px-3 py-2"><strong>{usersWithoutMandants}</strong> nicht-administrative Benutzer haben derzeit keinen Mandanten zugewiesen.</div>}
+              {usersWithBroadAccess > 0 && <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2"><strong>{usersWithBroadAccess}</strong> nicht-administrative Benutzer haben Zugriff auf mindestens drei Mandanten.</div>}
+              {usersWithAdminLock === 0 && usersWithTempLock === 0 && usersWithoutMandants === 0 && usersWithBroadAccess === 0 && <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">Aktuell keine auffälligen Sicherheitsindikatoren in der Benutzerverwaltung.</div>}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-2">
+            {users.map((u: any) => (
             <Card key={u.id} className="group hover:border-border/80 transition-colors">
               <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -3850,6 +3876,15 @@ function BenutzerPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{u.name}</p>
                     <p className="text-xs text-muted-foreground">{u.email} · {u.role === "admin" ? "Administrator" : u.role === "dsb" ? "DSB" : "Nutzer"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Mandanten: {u.role === "admin" ? "Alle" : (() => {
+                      try {
+                        const ids: number[] = JSON.parse(u.mandantIds || "[]");
+                        const names = mandanten.filter((m: any) => ids.includes(m.id)).map((m: any) => m.name);
+                        return names.length ? names.join(", ") : "Keine Zuweisung";
+                      } catch {
+                        return "Keine Zuweisung";
+                      }
+                    })()}</p>
                   </div>
                 </div>
                 <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
@@ -3864,6 +3899,7 @@ function BenutzerPage() {
               </CardContent>
             </Card>
           ))}
+          </div>
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
