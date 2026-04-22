@@ -1058,6 +1058,39 @@ function VvtPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">VVT-Fokusliste</CardTitle>
+              <CardDescription>Konkrete Verarbeitungstätigkeiten mit priorisiertem Prüfbedarf</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine priorisierten VVT-Fälle.</p>
+              ) : (
+                <>
+                  {vvtMitFehlenderDsfa.slice(0, 3).map((item: any) => (
+                    <div key={`missing-dsfa-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">DSFA fehlt: {item.bezeichnung}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: DSFA anlegen oder vorhandene DSFA mit diesem VVT verknüpfen.</p>
+                    </div>
+                  ))}
+                  {vvtMitDrittlandtransfer.slice(0, 3).map((item: any) => (
+                    <div key={`transfer-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Drittlandtransfer: {item.bezeichnung}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Transfergrundlage, Anbieterprüfung und TOM-/AVV-Lage gezielt prüfen.</p>
+                    </div>
+                  ))}
+                  {vvtOhneLoeschbezug.slice(0, 3).map((item: any) => (
+                    <div key={`retention-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne Löschkonzept-Bezug: {item.bezeichnung}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Eintrag mit passender Löschklasse bzw. Löschregel verknüpfen.</p>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="space-y-2">
             {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
             {data.map((item: any) => {
