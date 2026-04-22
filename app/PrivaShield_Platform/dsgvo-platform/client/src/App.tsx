@@ -238,10 +238,25 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
   const { activeMandantId, setActiveMandantId } = useMandant();
   const [location] = useHashLocation();
 
-  const { data: mandanten = [] } = useQuery({
+  const { data: mandanten = [], isLoading: mandantenLoading } = useQuery({
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
   });
+
+  const sichtbareMandanten = user?.role === "admin"
+    ? mandanten
+    : mandanten.filter((m: any) => {
+        try {
+          const allowedIds = JSON.parse(user?.mandantIds || "[]");
+          return allowedIds.includes(m.id);
+        } catch {
+          return false;
+        }
+      });
+
+  const selectValue = activeMandantId !== null && sichtbareMandanten.some((m: any) => m.id === activeMandantId)
+    ? activeMandantId.toString()
+    : undefined;
 
   return (
     <div className="flex flex-col h-full bg-sidebar w-64 border-r border-sidebar-border">
@@ -263,12 +278,12 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
       {/* Mandanten-Auswahl */}
       <div className="px-3 py-3 border-b border-sidebar-border">
         <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-1">{t("tenant")}</p>
-        <Select value={activeMandantId?.toString() || ""} onValueChange={v => setActiveMandantId(Number(v))}>
+        <Select value={selectValue} onValueChange={v => setActiveMandantId(Number(v))} disabled={mandantenLoading || sichtbareMandanten.length === 0}>
           <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground" data-testid="select-mandant">
-            <SelectValue placeholder={t("selectTenant")} />
+            <SelectValue placeholder={mandantenLoading ? "Mandanten werden geladen..." : t("selectTenant")} />
           </SelectTrigger>
           <SelectContent>
-            {mandanten.map((m: any) => (
+            {sichtbareMandanten.map((m: any) => (
               <SelectItem key={m.id} value={m.id.toString()} className="text-xs">{m.name}</SelectItem>
             ))}
           </SelectContent>
