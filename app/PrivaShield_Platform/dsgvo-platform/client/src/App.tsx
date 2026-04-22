@@ -1030,28 +1030,33 @@ function VvtPage() {
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const route = new URL(location, "https://privashield.local");
-  const rawQuickFilter = route.searchParams.get("filter");
-  const rawSort = route.searchParams.get("sort");
-  const quickFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" =
-    rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch"
-      ? rawQuickFilter
-      : "all";
-  const vvtSort: "name-asc" | "name-desc" | "status" | "drittland" =
-    rawSort === "name-desc" || rawSort === "status" || rawSort === "drittland"
-      ? rawSort
-      : "name-asc";
-  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
+  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch">("all");
+  const [vvtSort, setVvtSortState] = useState<"name-asc" | "name-desc" | "status" | "drittland">("name-asc");
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawQuickFilter = route.searchParams.get("filter");
+    const rawSort = route.searchParams.get("sort");
+    setQuickFilterState(rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch" ? rawQuickFilter : "all");
+    setVvtSortState(rawSort === "name-desc" || rawSort === "status" || rawSort === "drittland" ? rawSort : "name-asc");
+  }, [location]);
+
+  const updateVvtRouteState = (nextFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch", nextSort: "name-asc" | "name-desc" | "status" | "drittland") => {
     const next = new URL(location, "https://privashield.local");
-    if (value === "all") next.searchParams.delete("filter");
-    else next.searchParams.set("filter", value);
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "name-asc") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
     setLocation(`${next.pathname}${next.search}`);
   };
+
+  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
+    setQuickFilterState(value);
+    updateVvtRouteState(value, vvtSort);
+  };
   const setVvtSort = (value: "name-asc" | "name-desc" | "status" | "drittland") => {
-    const next = new URL(location, "https://privashield.local");
-    if (value === "name-asc") next.searchParams.delete("sort");
-    else next.searchParams.set("sort", value);
-    setLocation(`${next.pathname}${next.search}`);
+    setVvtSortState(value);
+    updateVvtRouteState(quickFilter, value);
   };
 
   const save = (form: any) => {
@@ -1735,28 +1740,33 @@ function DsfaPage() {
       return [];
     }
   };
-  const route = new URL(location, "https://privashield.local");
-  const rawDsfaFilter = route.searchParams.get("filter");
-  const rawDsfaSort = route.searchParams.get("sort");
-  const dsfaFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk" =
-    rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk"
-      ? rawDsfaFilter
-      : "all";
-  const dsfaSort: "title-asc" | "title-desc" | "review" | "risk" =
-    rawDsfaSort === "title-desc" || rawDsfaSort === "review" || rawDsfaSort === "risk"
-      ? rawDsfaSort
-      : "title-asc";
-  const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
+  const [dsfaFilter, setDsfaFilterState] = useState<"all" | "missing-vvt" | "art36" | "review" | "high-risk">("all");
+  const [dsfaSort, setDsfaSortState] = useState<"title-asc" | "title-desc" | "review" | "risk">("title-asc");
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawDsfaFilter = route.searchParams.get("filter");
+    const rawDsfaSort = route.searchParams.get("sort");
+    setDsfaFilterState(rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk" ? rawDsfaFilter : "all");
+    setDsfaSortState(rawDsfaSort === "title-desc" || rawDsfaSort === "review" || rawDsfaSort === "risk" ? rawDsfaSort : "title-asc");
+  }, [location]);
+
+  const updateDsfaRouteState = (nextFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk", nextSort: "title-asc" | "title-desc" | "review" | "risk") => {
     const next = new URL(location, "https://privashield.local");
-    if (value === "all") next.searchParams.delete("filter");
-    else next.searchParams.set("filter", value);
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "title-asc") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
     setLocation(`${next.pathname}${next.search}`);
   };
+
+  const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
+    setDsfaFilterState(value);
+    updateDsfaRouteState(value, dsfaSort);
+  };
   const setDsfaSort = (value: "title-asc" | "title-desc" | "review" | "risk") => {
-    const next = new URL(location, "https://privashield.local");
-    if (value === "title-asc") next.searchParams.delete("sort");
-    else next.searchParams.set("sort", value);
-    setLocation(`${next.pathname}${next.search}`);
+    setDsfaSortState(value);
+    updateDsfaRouteState(dsfaFilter, value);
   };
   const filteredDsfa = data.filter((item: any) => {
     const risks = getRisks(item);
