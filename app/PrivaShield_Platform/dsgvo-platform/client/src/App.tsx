@@ -551,7 +551,19 @@ function Dashboard() {
   const dokumenteCount = dokumente.length;
   const leitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
   const prozessDokCount = dokumente.filter((d: any) => d.kategorie === "prozessbeschreibung" || d.kategorie === "verfahrensdokumentation").length;
+  const parseDsfaRisiken = (value: any) => {
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value || "[]") : value;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
   const dsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(activeMandant?.dsb || activeMandant?.dsbEmail || activeMandant?.datenschutzmanagerName));
+  const dsfaOhneVvt = dsfa.filter((item: any) => !item.vvtId).length;
+  const dsfaMitArt36 = dsfa.filter((item: any) => !!item.art36Erforderlich).length;
+  const dsfaReviewFaellig = dsfa.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now()).length;
+  const dsfaMitHohemRestrisiko = dsfa.filter((item: any) => parseDsfaRisiken(item.risiken).some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch")).length;
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
@@ -562,6 +574,10 @@ function Dashboard() {
     prozessDokCount >= 2,
     (stats?.vvt ?? 0) >= 3,
     dsfaMitDsbCheck,
+    dsfaOhneVvt === 0,
+    dsfaMitArt36 === 0,
+    dsfaReviewFaellig === 0,
+    dsfaMitHohemRestrisiko === 0,
     vvtOhneLoeschkonzept === 0,
     auditsVorhanden,
     tomUmfangreich,
@@ -680,7 +696,7 @@ function Dashboard() {
               <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && kiComplianceCheck && (
+              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && kiComplianceCheck && dsfaOhneVvt === 0 && dsfaMitArt36 === 0 && dsfaReviewFaellig === 0 && dsfaMitHohemRestrisiko === 0 && (
                 <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
@@ -689,6 +705,10 @@ function Dashboard() {
               {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
               {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
               {!kiComplianceCheck && <p className="text-orange-400">Prüfung zum Einsatz von KI-Tools und KI-VO-Konformität fehlt.</p>}
+              {dsfaOhneVvt > 0 && <p className="text-yellow-400">DSFA ohne VVT-Bezug: {dsfaOhneVvt}</p>}
+              {dsfaMitArt36 > 0 && <p className="text-red-400">DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>}
+              {dsfaReviewFaellig > 0 && <p className="text-yellow-400">Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>}
+              {dsfaMitHohemRestrisiko > 0 && <p className="text-red-400">DSFA mit hohem Restrisiko: {dsfaMitHohemRestrisiko}</p>}
             </CardContent>
           </Card>
 
@@ -722,6 +742,10 @@ function Dashboard() {
                 <p>VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschkonzept}</p>
                 <p>Interne Audits dokumentiert: {auditsVorhanden ? "ja" : "nein"}</p>
                 <p>TOM-Katalog umfangreich: {tomUmfangreich ? "ja" : `nein (${stats?.tom ?? 0})`}</p>
+                <p>DSFA ohne VVT-Bezug: {dsfaOhneVvt}</p>
+                <p>DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>
+                <p>Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>
+                <p>DSFA mit hohem Restrisiko: {dsfaMitHohemRestrisiko}</p>
                 <p>Offene kritische/notwendige Tasks: {kritischeOderNotwendigeAufgaben}</p>
               </div>
             </CardContent>
