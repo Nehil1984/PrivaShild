@@ -61,9 +61,14 @@ const MODULES: ExportModule[] = [
     icon: AlertTriangle, color: "text-yellow-400",
     columns: [
       { key: "titel", label: "Titel" },
+      { key: "vvtId", label: "VVT-Bezug" },
+      { key: "zweck", label: "Zweck" },
       { key: "beschreibung", label: "Beschreibung" },
+      { key: "rechtsgrundlage", label: "Rechtsgrundlage" },
+      { key: "reviewer", label: "Reviewer" },
       { key: "ergebnis", label: "Ergebnis" },
       { key: "status", label: "Status" },
+      { key: "naechstePruefungAm", label: "Nächste Prüfung" },
     ],
   },
   {

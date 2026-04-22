@@ -324,9 +324,15 @@ const MODULES = {
     label: "Datenschutz-Folgenabschätzung (DSFA – Art. 35 DSGVO)",
     columns: [
       { key: "titel", label: "Titel" },
+      { key: "vvtId", label: "VVT-Bezug" },
+      { key: "zweck", label: "Zweck" },
       { key: "beschreibung", label: "Beschreibung" },
+      { key: "rechtsgrundlage", label: "Rechtsgrundlage" },
+      { key: "verantwortlicherBereich", label: "Verantwortlicher Bereich" },
+      { key: "reviewer", label: "Reviewer" },
       { key: "ergebnis", label: "Ergebnis" },
       { key: "status", label: "Status" },
+      { key: "naechstePruefungAm", label: "Nächste Prüfung" },
     ],
   },
   datenpannen: {
@@ -448,6 +454,9 @@ function statusField(key, val) {
 }
 
 function buildTable(mod, rows) {
+  if (mod.key === "dsfa") {
+    return buildDsfaTable(mod, rows);
+  }
   const cols = mod.columns;
   if (!rows || rows.length === 0) {
     return `<div class="empty-note">Keine Einträge vorhanden</div>`;
@@ -483,6 +492,105 @@ function buildTable(mod, rows) {
         </table>
       </div>
     </div>`).join("");
+}
+
+function parseJsonArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function buildDsfaTable(mod, rows) {
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-note">Keine Einträge vorhanden</div>`;
+  }
+
+  return rows.map((row, index) => {
+    const risks = parseJsonArray(row.risiken);
+    const baseRows = [
+      ["Titel", row.titel],
+      ["VVT-Bezug", row.vvtId ? `VVT-ID ${row.vvtId}` : "—"],
+      ["Zweck", row.zweck],
+      ["Beschreibung", row.beschreibung],
+      ["Prozessablauf", row.prozessablauf],
+      ["Verarbeitungskontext", row.verarbeitungskontext],
+      ["Datenquellen", row.datenquellen],
+      ["Empfänger", row.empfaenger],
+      ["Drittlandtransfer", row.drittlandtransfer],
+      ["Auftragsverarbeiter", row.auftragsverarbeiter],
+      ["Systeme / Technologien", row.technologienSysteme],
+      ["Profiling", row.profiling],
+      ["Automatisierte Entscheidung", row.automatisierteEntscheidung],
+      ["Notwendigkeit & Verhältnismäßigkeit", row.notwendigkeit],
+      ["Rechtsgrundlage", row.rechtsgrundlage],
+      ["Zweckbindung", row.zweckbindungBewertung],
+      ["Datenminimierung", row.datenminimierungBewertung],
+      ["Speicherbegrenzung", row.speicherbegrenzungBewertung],
+      ["Transparenz", row.transparenzBewertung],
+      ["Betroffenenrechte", row.betroffenenrechteBewertung],
+      ["Zugriffskonzept", row.zugriffskonzeptBewertung],
+      ["Privacy by Design / Default", row.privacyByDesignBewertung],
+      ["Maßnahmen", row.massnahmen],
+      ["Restrisiko-Begründung", row.restrisikoBegruendung],
+      ["Art. 36 erforderlich", row.art36Erforderlich],
+      ["Art.-36-Begründung", row.art36Begruendung],
+      ["Ergebnis", row.ergebnis],
+      ["Behördenkonsultation", row.konsultation],
+      ["Status", row.status],
+      ["Reviewer", row.reviewer],
+      ["Verantwortlicher Bereich", row.verantwortlicherBereich],
+      ["DSB beteiligt", row.dsbBeteiligt],
+      ["DSB-Stellungnahme", row.dsbStellungnahme],
+      ["Freigabeentscheidung", row.freigabeentscheidung],
+      ["Freigabebegründung", row.freigabeBegruendung],
+      ["Freigabedatum", row.freigabeDatum],
+      ["Nächste Prüfung", row.naechstePruefungAm],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    const riskSection = risks.length === 0
+      ? `<tr><td class="record-label">Risikoanalyse</td><td class="record-value">Keine strukturierten Risiken hinterlegt</td></tr>`
+      : `<tr><td class="record-label">Risikoanalyse</td><td class="record-value">${risks.map((risk, riskIndex) => `
+          <div style="padding-bottom:12px; margin-bottom:12px; border-bottom:${riskIndex === risks.length - 1 ? 'none' : '1px solid #e2e8f0'};">
+            <strong>Risiko ${riskIndex + 1}: ${fmt(risk.titel)}</strong><br>
+            <strong>Beschreibung:</strong> ${fmt(risk.beschreibung)}<br>
+            <strong>Betroffene Rechte:</strong> ${fmt(risk.betroffeneRechte)}<br>
+            <strong>Betroffene Gruppen:</strong> ${fmt(risk.betroffeneGruppen)}<br>
+            <strong>Datenarten:</strong> ${fmt(risk.datenarten)}<br>
+            <strong>Ursache:</strong> ${fmt(risk.ursache)}<br>
+            <strong>Bestehende Kontrollen:</strong> ${fmt(risk.bestehendeKontrollen)}<br>
+            <strong>Eintrittswahrscheinlichkeit:</strong> ${fmt(risk.eintrittswahrscheinlichkeit)}<br>
+            <strong>Schweregrad:</strong> ${fmt(risk.schweregrad)}<br>
+            <strong>Inhärentes Risiko:</strong> ${fmt(risk.inhärentesRisiko)}<br>
+            <strong>Restrisiko:</strong> ${fmt(risk.restrisiko)}<br>
+            <strong>Weitere Maßnahmen:</strong> ${fmt(risk.weitereMassnahmen)}<br>
+            <strong>Verantwortlicher:</strong> ${fmt(risk.verantwortlicher)}<br>
+            <strong>Status:</strong> ${fmt(risk.status)}
+          </div>`).join("")}</td></tr>`;
+
+    return `
+      <div class="record-entry">
+        <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
+          <table class="record-table">
+            <tbody>
+              ${baseRows}
+              ${riskSection}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join("");
 }
 
 function buildMandantBox(m) {
