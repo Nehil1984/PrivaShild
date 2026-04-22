@@ -1023,9 +1023,11 @@ function VvtForm({ initial, onSave, onCancel }: any) {
 function VvtPage() {
   const { t } = useI18n();
   const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
   const { data, isLoading, create, update, remove } = useModuleData("vvt");
   const { data: dsfa = [] } = useModuleData("dsfa");
   const { data: loeschkonzept = [] } = useModuleData("loeschkonzept");
+  const { data: mandanten = [] } = useQuery({ queryKey: ["/api/mandanten"], queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()) });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
@@ -1078,6 +1080,7 @@ function VvtPage() {
     if (vvtSort === "drittland") return Number(!!b.drittlandtransfer) - Number(!!a.drittlandtransfer) || String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
     return String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
   });
+  const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
 
   return (
     <MandantGuard>
@@ -1085,6 +1088,16 @@ function VvtPage() {
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div> : (
         <div className="space-y-4">
+          <Card className="border-border/60 bg-muted/20">
+            <CardContent className="py-3 px-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aktiver Mandant</p>
+                <p className="text-sm font-medium">{activeMandantName}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Die VVT-Liste zeigt nur Einträge des aktuell ausgewählten Mandanten.</p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">VVT-Quick-Check</CardTitle>
@@ -1153,8 +1166,8 @@ function VvtPage() {
               <Button type="button" size="sm" variant={vvtSort === "status" ? "default" : "outline"} onClick={() => setVvtSort("status")}>Status</Button>
               <Button type="button" size="sm" variant={vvtSort === "drittland" ? "default" : "outline"} onClick={() => setVvtSort("drittland")}>Drittland zuerst</Button>
             </div>
-            {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Einträge für den aktuellen Filter.</CardContent></Card>}
-            {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine VVT-Einträge vorhanden.</CardContent></Card>}
+            {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine VVT-Einträge für den aktuellen Filter bei <span className="font-medium text-foreground">{activeMandantName}</span>.</CardContent></Card>}
+            {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für <span className="font-medium text-foreground">{activeMandantName}</span> sind aktuell keine VVT-Einträge vorhanden.</CardContent></Card>}
             {filteredData.map((item: any) => {
               const linkedDsfa = dsfa.filter((entry: any) => entry.vvtId === item.id);
               const hasRequiredButMissingDsfa = item.dsfa && linkedDsfa.length === 0;
@@ -1723,8 +1736,10 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
 function DsfaPage() {
   const { t } = useI18n();
   const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
   const { data, isLoading, create, update, remove } = useModuleData("dsfa");
   const { data: vvts = [] } = useModuleData("vvt");
+  const { data: mandanten = [] } = useQuery({ queryKey: ["/api/mandanten"], queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()) });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
@@ -1787,12 +1802,23 @@ function DsfaPage() {
     if (dsfaSort === "risk") return Number(bHigh) - Number(aHigh) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
     return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
+  const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
   return (
     <MandantGuard>
       <PageHeader title={t("dsfaTitle")} desc={t("dsfaDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
+          <Card className="border-border/60 bg-muted/20">
+            <CardContent className="py-3 px-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aktiver Mandant</p>
+                <p className="text-sm font-medium">{activeMandantName}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Die DSFA-Liste zeigt nur Einträge des aktuell ausgewählten Mandanten.</p>
+            </CardContent>
+          </Card>
+
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant={dsfaFilter === "all" ? "default" : "outline"} onClick={() => setDsfaFilter("all")}>Alle</Button>
             <Button type="button" size="sm" variant={dsfaFilter === "missing-vvt" ? "default" : "outline"} onClick={() => setDsfaFilter("missing-vvt")}>Ohne VVT</Button>
@@ -1807,8 +1833,8 @@ function DsfaPage() {
             <Button type="button" size="sm" variant={dsfaSort === "review" ? "default" : "outline"} onClick={() => setDsfaSort("review")}>Review zuerst</Button>
             <Button type="button" size="sm" variant={dsfaSort === "risk" ? "default" : "outline"} onClick={() => setDsfaSort("risk")}>Hohes Risiko zuerst</Button>
           </div>
-          {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter.</CardContent></Card>}
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine DSFAs vorhanden.</CardContent></Card>}
+          {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter bei <span className="font-medium text-foreground">{activeMandantName}</span>.</CardContent></Card>}
+          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für <span className="font-medium text-foreground">{activeMandantName}</span> sind aktuell keine DSFAs vorhanden.</CardContent></Card>}
           {filteredDsfa.map((item: any) => {
             const risks = getRisks(item);
             const hasHighResidualRisk = risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
