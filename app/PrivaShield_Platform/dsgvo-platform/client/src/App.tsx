@@ -1030,14 +1030,17 @@ function VvtPage() {
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const searchParams = new URLSearchParams(location.split("?")[1] || "");
-  const quickFilter = (searchParams.get("filter") as "all" | "missing-dsfa" | "drittland" | "missing-loesch" | null) || "all";
+  const route = new URL(location, "https://privashield.local");
+  const rawQuickFilter = route.searchParams.get("filter");
+  const quickFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" =
+    rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch"
+      ? rawQuickFilter
+      : "all";
   const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
-    const next = new URLSearchParams(location.split("?")[1] || "");
-    if (value === "all") next.delete("filter");
-    else next.set("filter", value);
-    const query = next.toString();
-    setLocation(query ? `/vvt?${query}` : "/vvt");
+    const next = new URL(location, "https://privashield.local");
+    if (value === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
   };
 
   const save = (form: any) => {
@@ -1093,7 +1096,7 @@ function VvtPage() {
                     <div key={`missing-dsfa-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">DSFA fehlt: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: DSFA anlegen oder vorhandene DSFA mit diesem VVT verknüpfen.</p>
-                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-dsfa")}>Nur diese Fälle</Button><Link href="/dsfa"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-dsfa")}>Nur diese Fälle</Button><Link href="/dsfa?filter=missing-vvt"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
                     </div>
                   ))}
                   {vvtMitDrittlandtransfer.slice(0, 3).map((item: any) => (
@@ -1709,13 +1712,17 @@ function DsfaPage() {
       return [];
     }
   };
-  const dsfaFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "all";
+  const route = new URL(location, "https://privashield.local");
+  const rawDsfaFilter = route.searchParams.get("filter");
+  const dsfaFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk" =
+    rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk"
+      ? rawDsfaFilter
+      : "all";
   const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
-    const next = new URLSearchParams(location.split("?")[1] || "");
-    if (value === "all") next.delete("filter");
-    else next.set("filter", value);
-    const query = next.toString();
-    setLocation(query ? `/dsfa?${query}` : "/dsfa");
+    const next = new URL(location, "https://privashield.local");
+    if (value === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
   };
   const filteredDsfa = data.filter((item: any) => {
     const risks = getRisks(item);
