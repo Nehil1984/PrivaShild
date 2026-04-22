@@ -121,6 +121,59 @@ function diffObjects(before: Record<string, any> | undefined, after: Record<stri
   return changes;
 }
 
+function normalizeDsfaRisks(raw: unknown) {
+  const input = typeof raw === "string"
+    ? (() => {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return raw;
+        }
+      })()
+    : raw;
+
+  if (!Array.isArray(input)) {
+    throw new Error("DSFA-Risiken müssen als JSON-Liste übergeben werden.");
+  }
+
+  return input.map((risk, index) => {
+    if (!risk || typeof risk !== "object" || Array.isArray(risk)) {
+      throw new Error(`DSFA-Risiko ${index + 1} ist ungültig.`);
+    }
+
+    const normalized = {
+      titel: String((risk as any).titel || "").trim(),
+      beschreibung: String((risk as any).beschreibung || "").trim(),
+      betroffeneRechte: String((risk as any).betroffeneRechte || "").trim(),
+      betroffeneGruppen: String((risk as any).betroffeneGruppen || "").trim(),
+      datenarten: String((risk as any).datenarten || "").trim(),
+      ursache: String((risk as any).ursache || "").trim(),
+      bestehendeKontrollen: String((risk as any).bestehendeKontrollen || "").trim(),
+      eintrittswahrscheinlichkeit: String((risk as any).eintrittswahrscheinlichkeit || "").trim(),
+      schweregrad: String((risk as any).schweregrad || "").trim(),
+      inhärentesRisiko: String((risk as any).inhärentesRisiko || "").trim(),
+      restrisiko: String((risk as any).restrisiko || "").trim(),
+      weitereMassnahmen: String((risk as any).weitereMassnahmen || "").trim(),
+      verantwortlicher: String((risk as any).verantwortlicher || "").trim(),
+      status: String((risk as any).status || "offen").trim() || "offen",
+    };
+
+    if (!normalized.titel) {
+      throw new Error(`DSFA-Risiko ${index + 1} benötigt einen Titel.`);
+    }
+
+    return normalized;
+  });
+}
+
+function sanitizeDsfaPayload(payload: Record<string, unknown>) {
+  if (!("risiken" in payload)) return payload;
+  return {
+    ...payload,
+    risiken: JSON.stringify(normalizeDsfaRisks(payload.risiken)),
+  };
+}
+
 async function getAllowedMandantIds(req: any): Promise<number[]> {
   if (req.userRole === "admin") {
     const all = await storage.getMandanten();
@@ -620,7 +673,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/mandanten/:mid/dsfa", authMiddleware, validateBody(requestDsfaSchema), async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
-    const item = await storage.createDsfa({ ...req.body, mandantId });
+    let sanitizedBody: ReturnType<typeof sanitizeDsfaPayload>;
+    try {
+      sanitizedBody = sanitizeDsfaPayload(req.body);
+    } catch (error: any) {
+      return res.status(400).json({ message: error?.message || "Ungültige DSFA-Risiken" });
+    }
+    const item = await storage.createDsfa({ ...(req.body as typeof req.body & { titel: string }), ...sanitizedBody, mandantId });
     const user = await storage.getUserById(req.userId);
     await storage.createMandantenLog({
       mandantId,
@@ -863,7 +922,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   crudRoutes("vvt", storage.getVvtByMandant.bind(storage), storage.getVvt.bind(storage), storage.createVvt.bind(storage), storage.updateVvt.bind(storage), storage.deleteVvt.bind(storage), insertVvtSchema.partial());
   crudRoutes("avv", storage.getAvvByMandant.bind(storage), storage.getAvv.bind(storage), storage.createAvv.bind(storage), storage.updateAvv.bind(storage), storage.deleteAvv.bind(storage), insertAvvSchema.partial());
-  crudRoutes("dsfa", storage.getDsfaByMandant.bind(storage), storage.getDsfa.bind(storage), storage.createDsfa.bind(storage), storage.updateDsfa.bind(storage), storage.deleteDsfa.bind(storage), insertDsfaSchema.partial());
+  app.get(`/api/dsfa`, authMiddleware, async (req: any, res) => {
+    const allMandants = await storage.getMandanten();
+    const allowedMandants = await getAllowedMandantIds(req);
+    const rows = [] as any[];
+    for (const mandant of allMandants) {
+      if (req.userRole !== "admin" && !allowedMandants.includes(mandant.id)) continue;
+      rows.push(...await storage.getDsfaByMandant(mandant.id));
+    }
+    res.json(rows.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))));
+  });
+
+  app.get(`/api/dsfa/:id`, authMiddleware, async (req: any, res) => {
+    const existing = await storage.getDsfa(Number(req.params.id));
+    if (!existing) return res.status(404).json({ message: "Nicht gefunden" });
+    if (!(await requireEntityAccess(req, res, existing))) return;
+    res.json(existing);
+  });
+
+  app.patch(`/api/dsfa/:id`, authMiddleware, validateBody(insertDsfaSchema.partial()), async (req: any, res) => {
+    const existing = await storage.getDsfa(Number(req.params.id));
+    if (!existing) return res.status(404).json({ message: "Nicht gefunden" });
+    if (!(await requireEntityAccess(req, res, existing))) return;
+    let sanitizedBody;
+    try {
+      sanitizedBody = sanitizeDsfaPayload(req.body);
+    } catch (error: any) {
+      return res.status(400).json({ message: error?.message || "Ungültige DSFA-Risiken" });
+    }
+    const updated = await storage.updateDsfa(Number(req.params.id), sanitizedBody);
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId: existing.mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `dsfa_aktualisiert`,
+      modul: "dsfa",
+      entitaetTyp: "dsfa",
+      entitaetId: existing.id,
+      beschreibung: `dsfa wurde aktualisiert.`,
+      detailsJson: JSON.stringify({ before: existing, after: updated }),
+    });
+    res.json(updated);
+  });
+
+  app.delete(`/api/dsfa/:id`, authMiddleware, async (req: any, res) => {
+    const existing = await storage.getDsfa(Number(req.params.id));
+    if (!existing) return res.status(404).json({ message: "Nicht gefunden" });
+    if (!(await requireEntityAccess(req, res, existing))) return;
+    await storage.deleteDsfa(Number(req.params.id));
+    const user = await storage.getUserById(req.userId);
+    await storage.createMandantenLog({
+      mandantId: existing.mandantId,
+      userId: req.userId,
+      userName: user?.name,
+      aktion: `dsfa_geloescht`,
+      modul: "dsfa",
+      entitaetTyp: "dsfa",
+      entitaetId: existing.id,
+      beschreibung: `dsfa wurde gelöscht.`,
+      detailsJson: JSON.stringify({ before: existing }),
+    });
+    res.json({ ok: true });
+  });
+
   crudRoutes("datenpannen", storage.getDatenpannenByMandant.bind(storage), storage.getDatenpanne.bind(storage), storage.createDatenpanne.bind(storage), storage.updateDatenpanne.bind(storage), storage.deleteDatenpanne.bind(storage), insertDatenpanneSchema.partial());
   crudRoutes("dsr", storage.getDsrByMandant.bind(storage), storage.getDsr.bind(storage), storage.createDsr.bind(storage), storage.updateDsr.bind(storage), storage.deleteDsr.bind(storage), insertDsrSchema.partial());
   crudRoutes("tom", storage.getTomByMandant.bind(storage), storage.getTom.bind(storage), storage.createTom.bind(storage), storage.updateTom.bind(storage), storage.deleteTom.bind(storage), insertTomSchema.partial());
