@@ -560,10 +560,14 @@ function Dashboard() {
     }
   };
   const dsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(activeMandant?.dsb || activeMandant?.dsbEmail || activeMandant?.datenschutzmanagerName));
-  const dsfaOhneVvt = dsfa.filter((item: any) => !item.vvtId).length;
-  const dsfaMitArt36 = dsfa.filter((item: any) => !!item.art36Erforderlich).length;
-  const dsfaReviewFaellig = dsfa.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now()).length;
-  const dsfaMitHohemRestrisiko = dsfa.filter((item: any) => parseDsfaRisiken(item.risiken).some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch")).length;
+  const dsfaOhneVvtItems = dsfa.filter((item: any) => !item.vvtId);
+  const dsfaArt36Items = dsfa.filter((item: any) => !!item.art36Erforderlich);
+  const dsfaReviewFaelligItems = dsfa.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now());
+  const dsfaMitHohemRestrisikoItems = dsfa.filter((item: any) => parseDsfaRisiken(item.risiken).some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch"));
+  const dsfaOhneVvt = dsfaOhneVvtItems.length;
+  const dsfaMitArt36 = dsfaArt36Items.length;
+  const dsfaReviewFaellig = dsfaReviewFaelligItems.length;
+  const dsfaMitHohemRestrisiko = dsfaMitHohemRestrisikoItems.length;
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
@@ -709,6 +713,45 @@ function Dashboard() {
               {dsfaMitArt36 > 0 && <p className="text-red-400">DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>}
               {dsfaReviewFaellig > 0 && <p className="text-yellow-400">Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>}
               {dsfaMitHohemRestrisiko > 0 && <p className="text-red-400">DSFA mit hohem Restrisiko: {dsfaMitHohemRestrisiko}</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">DSFA-Fokusliste</CardTitle>
+              <CardDescription>Konkrete Fälle mit priorisiertem Handlungsbedarf</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {dsfaOhneVvt === 0 && dsfaMitArt36 === 0 && dsfaReviewFaellig === 0 && dsfaMitHohemRestrisiko === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine priorisierten DSFA-Fälle.</p>
+              ) : (
+                <>
+                  {dsfaArt36Items.slice(0, 3).map((item: any) => (
+                    <div key={`art36-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">Art.-36-Prüfbedarf: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Restrisiko und Konsultationsentscheidung zeitnah prüfen.</p>
+                    </div>
+                  ))}
+                  {dsfaMitHohemRestrisikoItems.slice(0, 3).map((item: any) => (
+                    <div key={`risk-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">Hohes Restrisiko: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: zusätzliche Maßnahmen und Freigabeentscheidung priorisieren.</p>
+                    </div>
+                  ))}
+                  {dsfaReviewFaelligItems.slice(0, 3).map((item: any) => (
+                    <div key={`review-${item.id}`} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Review fällig: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Nächste Prüfung war am {new Date(item.naechstePruefungAm).toLocaleDateString("de-DE")} vorgesehen.</p>
+                    </div>
+                  ))}
+                  {dsfaOhneVvtItems.slice(0, 3).map((item: any) => (
+                    <div key={`novvt-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne VVT-Bezug: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: DSFA mit passendem Verarbeitungsvorgang verknüpfen.</p>
+                    </div>
+                  ))}
+                </>
+              )}
             </CardContent>
           </Card>
 
