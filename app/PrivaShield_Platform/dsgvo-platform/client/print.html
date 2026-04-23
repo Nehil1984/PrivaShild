@@ -1095,6 +1095,21 @@ function buildReportingRecommendation() {
     </div>`;
 }
 
+function buildImplementationRoadmap(members) {
+  const redCount = members.filter((member) => calculateGroupMemberMaturity(member).ampel === "rot").length;
+  const yellowCount = members.filter((member) => calculateGroupMemberMaturity(member).ampel === "gelb").length;
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Roadmap / Umsetzungsplanung</h2><span class="badge">Priorität & Zeithorizont</span></div>
+      <table class="data-table"><thead><tr><th>Zeithorizont</th><th>Priorität</th><th>Fokus</th><th>Empfohlene Umsetzung</th></tr></thead><tbody>
+        <tr><td>0–30 Tage</td><td><span class="${badgeClass("rot")}">hoch</span></td><td>Akute Governance-Lücken und rote Gesellschaften (${fmt(redCount)})</td><td>Verantwortlichkeiten festlegen, Eskalationen entscheiden, Mindest-Governance je Gesellschaft herstellen.</td></tr>
+        <tr><td>30–90 Tage</td><td><span class="${badgeClass("gelb")}">mittel</span></td><td>Gelbe Gesellschaften (${fmt(yellowCount)}) und gruppenweite Standardisierung</td><td>Datenschutzmanagement harmonisieren, Rollen modelisieren, Review- und Reportingzyklen etablieren.</td></tr>
+        <tr><td>90–180 Tage</td><td><span class="${badgeClass("grün")}">mittel</span></td><td>Nachweisqualität, Auditfähigkeit und nachhaltige Steuerung</td><td>Stammdatenqualität erhöhen, Maßnahmenpakete abschließen, Management- und Audit-Reporting verstetigen.</td></tr>
+        <tr><td>180+ Tage</td><td><span class="${badgeClass("grün")}">strategisch</span></td><td>Konzernweite Reifegradentwicklung</td><td>Roadmap in ein dauerhaftes Datenschutzprogramm überführen und jährlich an Strategie, Risiko und Governance anpassen.</td></tr>
+      </tbody></table>
+    </div>`;
+}
+
 function buildGroupMembersTable(members) {
   return `
     <div class="module-section">
@@ -1157,6 +1172,7 @@ async function render() {
         ${buildImmediateDecisionBlock(members)}
         ${buildMeasurePackages()}
         ${buildReportingRecommendation()}
+        ${buildImplementationRoadmap(members)}
         ${buildGroupMaturityReport(members)}
         ${buildGroupAmpelMatrix(members)}
         ${buildGroupMembersTable(members)}
