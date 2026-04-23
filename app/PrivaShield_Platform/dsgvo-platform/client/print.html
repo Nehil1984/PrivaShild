@@ -123,6 +123,32 @@ You may obtain a copy of the License at
     margin-left: auto; font-size: 10px; padding: 2px 8px;
     background: rgba(255,255,255,0.15); border-radius: 99px;
   }
+  .module-header .badge-accent {
+    margin-left: 8px;
+    font-size: 10px;
+    padding: 2px 8px;
+    background: rgba(79, 152, 163, 0.18);
+    color: #dff7fb;
+    border: 1px solid rgba(79, 152, 163, 0.35);
+    border-radius: 99px;
+  }
+  .copilot-summary {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+  }
+  .copilot-summary h3 {
+    font-size: 14px;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+  }
+  .copilot-summary p {
+    font-size: 11px;
+    color: #334155;
+    margin-bottom: 6px;
+  }
 
   /* Tabelle */
   .table-wrap {
@@ -451,6 +477,77 @@ function statusField(key, val) {
     return `<span class="${badgeClass(String(val))}">${fmt(val)}</span>`;
   }
   return fmt(val);
+}
+
+function containsCopilotText(value) {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.some(containsCopilotText);
+  if (typeof value === "object") return Object.values(value).some(containsCopilotText);
+  return /copilot|microsoft 365 copilot/i.test(String(value));
+}
+
+function isCopilotRow(row) {
+  return containsCopilotText(row);
+}
+
+function buildCopilotSummary(dataMap) {
+  const vvt = (dataMap.vvt || []).filter(isCopilotRow);
+  const avv = (dataMap.avv || []).filter(isCopilotRow);
+  const dsfa = (dataMap.dsfa || []).filter(isCopilotRow);
+  const tom = (dataMap.tom || []).filter(isCopilotRow);
+  const aufgaben = (dataMap.aufgaben || []).filter(isCopilotRow);
+  const dokumente = (dataMap.dokumente || []).filter(isCopilotRow);
+  const offeneAufgaben = aufgaben.filter((row) => String(row.status || "").toLowerCase() !== "erledigt");
+  const dsfaOhneReview = dsfa.filter((row) => !String(row.naechstePruefungAm || "").trim());
+  const avvOhnePruefung = avv.filter((row) => !String(row.pruefFaellig || row.pruef_faellig || "").trim());
+  const vvtOhneDsfaFlag = vvt.filter((row) => !row.dsfa);
+  const reviewNaheThemen = [
+    ...dsfa.filter((row) => String(row.naechstePruefungAm || "").trim()),
+    ...avv.filter((row) => String(row.pruefFaellig || row.pruef_faellig || "").trim()),
+    ...tom.filter((row) => String(row.pruefDatum || "").trim()),
+  ];
+  const dokumentierteBausteine = vvt.length + avv.length + dsfa.length + tom.length + dokumente.length;
+  const total = vvt.length + avv.length + dsfa.length + tom.length + aufgaben.length + dokumente.length;
+  if (total === 0) return "";
+
+  return `
+    <div class="copilot-summary">
+      <h3>Microsoft 365 Copilot – Datenschutz- & Compliance-Überblick</h3>
+      <p><strong>Erkannte Copilot-/Microsoft-365-Copilot-Einträge:</strong> ${fmt(total)}</p>
+      <p><strong>VVT:</strong> ${fmt(vvt.length)} · <strong>AVV:</strong> ${fmt(avv.length)} · <strong>DSFA:</strong> ${fmt(dsfa.length)} · <strong>TOM:</strong> ${fmt(tom.length)} · <strong>Aufgaben:</strong> ${fmt(aufgaben.length)} · <strong>Dokumente:</strong> ${fmt(dokumente.length)}</p>
+      <p><strong>Offene Copilot-Aufgaben:</strong> ${fmt(offeneAufgaben.length)} · <strong>Copilot-DSFA ohne Reviewdatum:</strong> ${fmt(dsfaOhneReview.length)} · <strong>Copilot-AVV ohne Prüffälligkeit:</strong> ${fmt(avvOhnePruefung.length)} · <strong>Copilot-VVT ohne DSFA-Pflicht:</strong> ${fmt(vvtOhneDsfaFlag.length)}</p>
+      <p>Prüfhinweis: Dieser Block dient der dokumentierten Steuerung eines Microsoft-365-Copilot-Einsatzes. Er ist als Bewertungs-, Nachweis- und Umsetzungsübersicht zu verstehen, nicht als pauschale Freigabeentscheidung.</p>
+    </div>
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Prüfstatus Microsoft 365 Copilot</h2>
+        <span class="badge">Managementsicht</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card">
+          <h3>Akut</h3>
+          <p><strong>Offene Aufgaben:</strong> ${fmt(offeneAufgaben.length)}</p>
+          <p><strong>DSFA ohne Reviewdatum:</strong> ${fmt(dsfaOhneReview.length)}</p>
+          <p><strong>AVV ohne Prüffälligkeit:</strong> ${fmt(avvOhnePruefung.length)}</p>
+          <p><strong>VVT ohne DSFA-Pflicht:</strong> ${fmt(vvtOhneDsfaFlag.length)}</p>
+          <p style="margin-top:8px;">${offeneAufgaben.length || dsfaOhneReview.length || avvOhnePruefung.length || vvtOhneDsfaFlag.length ? "Es bestehen prioritäre Copilot-Punkte mit kurzfristigem Handlungsbedarf." : "Aktuell keine unmittelbar erkennbaren Copilot-Sofortpunkte im Exportkontext."}</p>
+        </div>
+        <div class="info-card">
+          <h3>Mittelfristig</h3>
+          <p><strong>Review-nahe Themen:</strong> ${fmt(reviewNaheThemen.length)}</p>
+          <p><strong>Governance-/Dokumentationsaufgaben:</strong> ${fmt(aufgaben.length)}</p>
+          <p><strong>TOM mit Prüfdatum:</strong> ${fmt(tom.filter((row) => String(row.pruefDatum || "").trim()).length)}</p>
+          <p style="margin-top:8px;">Mittelfristig sollten Reviewzyklen, Herstellerunterlagen, technische Schutzmaßnahmen und organisatorische Vorgaben regelmäßig fortgeschrieben werden.</p>
+        </div>
+        <div class="info-card">
+          <h3>Dokumentiert</h3>
+          <p><strong>Dokumentierte Bausteine:</strong> ${fmt(dokumentierteBausteine)}</p>
+          <p><strong>Governance-Dokumente:</strong> ${fmt(dokumente.length)}</p>
+          <p><strong>Steuerungsnahe TOM:</strong> ${fmt(tom.length)}</p>
+          <p style="margin-top:8px;">Die vorhandenen Nachweisbausteine bilden eine belastbare Ausgangsbasis für Audit, DSB-Einbindung, Managementbewertung und Projektsteuerung.</p>
+        </div>
+      </div>
+    </div>`;
 }
 
 function buildTable(mod, rows) {
@@ -866,6 +963,7 @@ async function render() {
         <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p></div>
         <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
       </div>
+      ${buildCopilotSummary(dataMap)}
     `;
 
     config.modules.forEach(key => {
@@ -879,6 +977,7 @@ async function render() {
           <div class="module-header">
             <h2>${mod.label}</h2>
             <span class="badge">${rows.length} Einträge</span>
+            ${rows.some(isCopilotRow) ? '<span class="badge-accent">Copilot-Bezug</span>' : ''}
           </div>
           ${buildTable(mod, rows)}
         </div>
