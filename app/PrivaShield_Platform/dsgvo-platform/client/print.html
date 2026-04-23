@@ -935,6 +935,70 @@ function buildGroupRiskRollup(members) {
     </div>`;
 }
 
+function calculateGroupMemberMaturity(member) {
+  const checks = [
+    !!member.verantwortlicherName,
+    !!(member.dsb || member.dsbEmail || member.dsb_email),
+    !!member.datenschutzmanagerName,
+    !!member.itVerantwortlicherName,
+    !!member.anschrift,
+    !!member.webseite,
+    !!member.rechtsform,
+    !!member.branche,
+  ];
+  const fulfilled = checks.filter(Boolean).length;
+  const score = Math.round((fulfilled / checks.length) * 100);
+  const ampel = groupAmpelLabel(score);
+  const stufe = score >= 85 ? "hoch" : score >= 60 ? "mittel" : "niedrig";
+  const massnahmen = [];
+  if (!member.verantwortlicherName) massnahmen.push("Verantwortliche Stelle benennen");
+  if (!(member.dsb || member.dsbEmail || member.dsb_email)) massnahmen.push("DSB-Bezug dokumentieren");
+  if (!member.datenschutzmanagerName) massnahmen.push("Datenschutzmanager benennen");
+  if (!member.itVerantwortlicherName) massnahmen.push("IT-Verantwortung dokumentieren");
+  if (!member.anschrift) massnahmen.push("Anschrift ergänzen");
+  if (!member.webseite) massnahmen.push("Webseite ergänzen");
+  return { score, ampel, stufe, massnahmen };
+}
+
+function buildGroupMaturityReport(members) {
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Reifegradbewertung je Mandant</h2><span class="badge">${fmt(members.length)} Gesellschaften</span></div>
+      <table class="data-table"><thead><tr><th>Mandant</th><th>Reifegrad</th><th>Score</th><th>Ampel</th><th>Empfohlene Maßnahmen</th></tr></thead><tbody>
+      ${members.map(m => {
+        const maturity = calculateGroupMemberMaturity(m);
+        return `<tr><td>${fmt(m.name)}</td><td>${fmt(maturity.stufe)}</td><td>${fmt(maturity.score)}%</td><td><span class="${badgeClass(maturity.ampel)}">${fmt(maturity.ampel)}</span></td><td>${maturity.massnahmen.length ? maturity.massnahmen.map(item => `• ${fmt(item)}`).join("<br>") : "Keine vorrangigen Maßnahmen"}</td></tr>`;
+      }).join("")}
+      </tbody></table>
+    </div>`;
+}
+
+function buildGroupAmpelMatrix(members) {
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Ampel-Matrix pro Gesellschaft</h2><span class="badge">Vergleichsansicht</span></div>
+      <table class="data-table"><thead><tr><th>Mandant</th><th>Governance</th><th>DSB</th><th>Datenschutzmanagement</th><th>IT-Verantwortung</th><th>Stammdatenqualität</th><th>Gesamtampel</th></tr></thead><tbody>
+      ${members.map(m => {
+        const maturity = calculateGroupMemberMaturity(m);
+        const governance = m.verantwortlicherName ? "grün" : "rot";
+        const dsb = (m.dsb || m.dsbEmail || m.dsb_email) ? "grün" : "rot";
+        const dsm = m.datenschutzmanagerName ? "grün" : "gelb";
+        const it = m.itVerantwortlicherName ? "grün" : "gelb";
+        const stamm = (m.anschrift && m.webseite && m.rechtsform && m.branche) ? "grün" : (m.anschrift || m.webseite || m.rechtsform || m.branche) ? "gelb" : "rot";
+        return `<tr>
+          <td>${fmt(m.name)}</td>
+          <td><span class="${badgeClass(governance)}">${governance}</span></td>
+          <td><span class="${badgeClass(dsb)}">${dsb}</span></td>
+          <td><span class="${badgeClass(dsm)}">${dsm}</span></td>
+          <td><span class="${badgeClass(it)}">${it}</span></td>
+          <td><span class="${badgeClass(stamm)}">${stamm}</span></td>
+          <td><span class="${badgeClass(maturity.ampel)}">${maturity.ampel}</span></td>
+        </tr>`;
+      }).join("")}
+      </tbody></table>
+    </div>`;
+}
+
 function buildGroupMembersTable(members) {
   return `
     <div class="module-section">
@@ -991,6 +1055,8 @@ async function render() {
         ${buildGroupExecutiveSummary(gruppe, members)}
         ${buildGroupGovernanceCards(members)}
         ${buildGroupRiskRollup(members)}
+        ${buildGroupMaturityReport(members)}
+        ${buildGroupAmpelMatrix(members)}
         ${buildGroupMembersTable(members)}
         <div class="footer">
           <span>PrivaShield Datenschutzmanagement-Plattform</span>
