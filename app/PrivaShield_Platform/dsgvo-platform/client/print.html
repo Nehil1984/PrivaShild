@@ -999,6 +999,102 @@ function buildGroupAmpelMatrix(members) {
     </div>`;
 }
 
+function summarizeGroupActions(members) {
+  const actionMap = new Map();
+  members.forEach((member) => {
+    const maturity = calculateGroupMemberMaturity(member);
+    maturity.massnahmen.forEach((item) => {
+      actionMap.set(item, (actionMap.get(item) || 0) + 1);
+    });
+  });
+  return Array.from(actionMap.entries())
+    .map(([titel, count]) => ({ titel, count }))
+    .sort((a, b) => b.count - a.count || a.titel.localeCompare(b.titel, "de"))
+    .slice(0, 10);
+}
+
+function buildGroupTopActions(members) {
+  const topActions = summarizeGroupActions(members);
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Top-10 Handlungsfelder konzernweit</h2><span class="badge">Priorisierung</span></div>
+      <table class="data-table"><thead><tr><th>Rang</th><th>Handlungsfeld</th><th>Betroffene Gesellschaften</th></tr></thead><tbody>
+      ${topActions.length ? topActions.map((item, index) => `<tr><td>${index + 1}</td><td>${fmt(item.titel)}</td><td>${fmt(item.count)}</td></tr>`).join("") : `<tr><td colspan="3">Keine priorisierten Handlungsfelder identifiziert</td></tr>`}
+      </tbody></table>
+    </div>`;
+}
+
+function buildHighRiskCompanies(members) {
+  const ranked = members
+    .map((member) => ({ member, maturity: calculateGroupMemberMaturity(member) }))
+    .sort((a, b) => a.maturity.score - b.maturity.score || String(a.member.name || "").localeCompare(String(b.member.name || ""), "de"))
+    .slice(0, 10);
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Gesellschaften mit höchstem Risiko</h2><span class="badge">Top-Risiko</span></div>
+      <table class="data-table"><thead><tr><th>Gesellschaft</th><th>Score</th><th>Ampel</th><th>Hauptlücken</th></tr></thead><tbody>
+      ${ranked.map(({ member, maturity }) => `<tr><td>${fmt(member.name)}</td><td>${fmt(maturity.score)}%</td><td><span class="${badgeClass(maturity.ampel)}">${fmt(maturity.ampel)}</span></td><td>${maturity.massnahmen.length ? maturity.massnahmen.slice(0, 3).map(v => `• ${fmt(v)}`).join("<br>") : "Keine kritischen Hauptlücken"}</td></tr>`).join("")}
+      </tbody></table>
+    </div>`;
+}
+
+function buildAmpelRecommendations(members) {
+  const counts = { grün: 0, gelb: 0, rot: 0 };
+  members.forEach((member) => {
+    const { ampel } = calculateGroupMemberMaturity(member);
+    counts[ampel] = (counts[ampel] || 0) + 1;
+  });
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Management-Empfehlung je Ampelklasse</h2><span class="badge">Vorstandssicht</span></div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Grün (${fmt(counts.grün)})</h3><p>Mandanten mit stabiler Grundstruktur. Empfehlung: Reviewzyklen beibehalten, Nachweise aktualisieren und gruppenweite Standards verstetigen.</p></div>
+        <div class="info-card"><h3>Gelb (${fmt(counts.gelb)})</h3><p>Mandanten mit ausbaufähiger Governance. Empfehlung: gezielte Nachsteuerung über definierte Maßnahmenpakete, Verantwortungszuordnung und Termintracking.</p></div>
+        <div class="info-card"><h3>Rot (${fmt(counts.rot)})</h3><p>Mandanten mit prioritärem Handlungsbedarf. Empfehlung: kurzfristige Management-Eskalation, Mindest-Governance herstellen und zentrale Nachverfolgung etablieren.</p></div>
+      </div>
+    </div>`;
+}
+
+function buildImmediateDecisionBlock(members) {
+  const urgent = members
+    .map((member) => ({ member, maturity: calculateGroupMemberMaturity(member) }))
+    .filter(({ maturity }) => maturity.ampel === "rot")
+    .sort((a, b) => a.maturity.score - b.maturity.score)
+    .slice(0, 8);
+
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Sofortentscheidungen nötig</h2><span class="badge">Vorstand</span></div>
+      <table class="data-table"><thead><tr><th>Gesellschaft</th><th>Score</th><th>Ampel</th><th>Entscheidungsbedarf</th></tr></thead><tbody>
+      ${urgent.length ? urgent.map(({ member, maturity }) => `<tr><td>${fmt(member.name)}</td><td>${fmt(maturity.score)}%</td><td><span class="${badgeClass(maturity.ampel)}">${fmt(maturity.ampel)}</span></td><td>${maturity.massnahmen.length ? maturity.massnahmen.slice(0, 3).map(v => `• ${fmt(v)}`).join("<br>") : "Managementprüfung empfohlen"}</td></tr>`).join("") : `<tr><td colspan="4">Keine akuten Sofortentscheidungen aus dem aktuellen Konzernreport ableitbar</td></tr>`}
+      </tbody></table>
+    </div>`;
+}
+
+function buildMeasurePackages() {
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Konzernweite Maßnahmenpakete</h2><span class="badge">Standardisierung</span></div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Paket 1 – Governance-Basis</h3><p>• Verantwortliche Stellen verbindlich festlegen</p><p>• DSB-/Datenschutzmanager-Rollen je Gesellschaft dokumentieren</p><p>• Mindest-Governance in Konzernstandard überführen</p></div>
+        <div class="info-card"><h3>Paket 2 – Operative Datenschutzsteuerung</h3><p>• Verantwortlichkeiten für IT und Datenschutzprozesse harmonisieren</p><p>• Review- und Berichtsläufe definieren</p><p>• Eskalations- und Freigabewege gruppenweit vereinheitlichen</p></div>
+        <div class="info-card"><h3>Paket 3 – Daten- und Nachweisqualität</h3><p>• Stammdatenqualität je Gesellschaft nachziehen</p><p>• Webseiten-, Anschrifts- und Governance-Angaben vervollständigen</p><p>• Management- und Audit-Reporting auf denselben Datenstand ausrichten</p></div>
+      </div>
+    </div>`;
+}
+
+function buildReportingRecommendation() {
+  return `
+    <div class="module-section">
+      <div class="module-header"><h2>Reporting- und Review-Empfehlung</h2><span class="badge">Taktung</span></div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Monatlich</h3><p>• rote Gesellschaften nachverfolgen</p><p>• Sofortmaßnahmen und Eskalationen prüfen</p><p>• wesentliche Änderungen im Governance-Status berichten</p></div>
+        <div class="info-card"><h3>Quartalsweise</h3><p>• Ampel-Matrix im Managementreview behandeln</p><p>• Maßnahmenpakete bewerten und priorisieren</p><p>• gruppenweite Reifegradentwicklung vergleichen</p></div>
+        <div class="info-card"><h3>Jährlich</h3><p>• Konzernweites Datenschutzprogramm bewerten</p><p>• Rollen-, Governance- und Auditmodell neu justieren</p><p>• Bericht als Vorstands- und Auditgrundlage fortschreiben</p></div>
+      </div>
+    </div>`;
+}
+
 function buildGroupMembersTable(members) {
   return `
     <div class="module-section">
@@ -1055,6 +1151,12 @@ async function render() {
         ${buildGroupExecutiveSummary(gruppe, members)}
         ${buildGroupGovernanceCards(members)}
         ${buildGroupRiskRollup(members)}
+        ${buildGroupTopActions(members)}
+        ${buildHighRiskCompanies(members)}
+        ${buildAmpelRecommendations(members)}
+        ${buildImmediateDecisionBlock(members)}
+        ${buildMeasurePackages()}
+        ${buildReportingRecommendation()}
         ${buildGroupMaturityReport(members)}
         ${buildGroupAmpelMatrix(members)}
         ${buildGroupMembersTable(members)}
