@@ -63,7 +63,7 @@ export interface IStorage {
   createVorlagenpaket(data: InsertVorlagenpaket): Promise<Vorlagenpaket>;
   updateVorlagenpaket(id: number, data: Partial<InsertVorlagenpaket>): Promise<Vorlagenpaket | undefined>;
   deleteVorlagenpaket(id: number): Promise<void>;
-  applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }): Promise<{ ok: true; created: Record<string, number> }>;
+  applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }): Promise<{ ok: true; created: Record<string, number>; skipped?: Record<string, number> }>;
 
   // Mandanten-Logs
   getMandantenLogs(mandantId: number): Promise<MandantenLog[]>;

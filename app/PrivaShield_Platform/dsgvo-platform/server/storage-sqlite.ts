@@ -90,8 +90,210 @@ export class DatabaseStorage implements IStorage {
   async createVorlagenpaket(data: InsertVorlagenpaket) { return db.insert(vorlagenpakete).values({ ...data, createdAt: new Date().toISOString() }).returning().get(); }
   async updateVorlagenpaket(id: number, data: Partial<InsertVorlagenpaket>) { return db.update(vorlagenpakete).set(data).where(eq(vorlagenpakete.id, id)).returning().get(); }
   async deleteVorlagenpaket(id: number) { db.delete(vorlagenpakete).where(eq(vorlagenpakete.id, id)).run(); }
-  async applyVorlagenpaketToMandant(_mandantId: number, _paketId: number, _user?: { id?: number; name?: string }) {
-    return { ok: true as const, created: { aufgaben: 0, dokumente: 0 } };
+  async applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }) {
+    const paket = await this.getVorlagenpaket(paketId);
+    if (!paket) throw new Error("Vorlagenpaket nicht gefunden");
+    const inhalt = JSON.parse(paket.inhaltJson || "{}");
+    const now = new Date().toISOString();
+    const created = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
+    const skipped = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
+
+    for (const a of inhalt.aufgaben || []) {
+      if (!String(a?.titel || "").trim()) {
+        skipped.aufgaben++;
+        continue;
+      }
+      db.insert(aufgaben).values({
+        mandantId,
+        titel: a.titel,
+        beschreibung: a.beschreibung || "",
+        typ: a.typ || "task",
+        prioritaet: a.prioritaet || "mittel",
+        status: a.status || "offen",
+        fortschritt: a.fortschritt || 0,
+        verantwortlicher: a.verantwortlicher || "",
+        startDatum: a.startDatum || null,
+        faelligAm: a.faelligAm || null,
+        abgeschlossenAm: null,
+        kategorie: a.kategorie || "sonstige",
+        referenzId: null,
+        parentTaskId: null,
+        sortierung: a.sortierung || 0,
+        vorlagenBezug: paket.name,
+        createdAt: now,
+      }).run();
+      created.aufgaben++;
+    }
+
+    for (const d of inhalt.dokumente || []) {
+      if (!String(d?.titel || "").trim()) {
+        skipped.dokumente++;
+        continue;
+      }
+      db.insert(dokumente).values({
+        mandantId,
+        titel: d.titel,
+        kategorie: d.kategorie || "vorlage",
+        beschreibung: d.beschreibung || "",
+        dokumentTyp: d.dokumentTyp || "vorlage",
+        dateiname: d.dateiname || "",
+        version: d.version || "1.0",
+        status: d.status || "entwurf",
+        gueltigBis: null,
+        verantwortlicher: d.verantwortlicher || "",
+        freigegebenVon: null,
+        freigegebenAm: null,
+        naechstePruefungAm: null,
+        inhalt: d.inhalt || "",
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      created.dokumente++;
+    }
+
+    for (const item of inhalt.vvt || []) {
+      if (!String(item?.bezeichnung || "").trim()) {
+        skipped.vvt++;
+        continue;
+      }
+      db.insert(vvt).values({
+        mandantId,
+        bezeichnung: item.bezeichnung,
+        zweck: item.zweck || "",
+        rechtsgrundlage: item.rechtsgrundlage || "",
+        datenkategorien: JSON.stringify(Array.isArray(item.datenkategorien) ? item.datenkategorien : []),
+        betroffenePersonen: JSON.stringify(Array.isArray(item.betroffenePersonen) ? item.betroffenePersonen : []),
+        empfaenger: item.empfaenger || "",
+        drittlandtransfer: !!item.drittlandtransfer,
+        loeschfrist: item.loeschfrist || "",
+        loeschklasse: item.loeschklasse || "",
+        aufbewahrungsgrund: item.aufbewahrungsgrund || "",
+        tomHinweis: item.tomHinweis || "",
+        verantwortlicher: item.verantwortlicher || "",
+        verantwortlicherEmail: item.verantwortlicherEmail || "",
+        verantwortlicherTelefon: item.verantwortlicherTelefon || "",
+        status: item.status || "entwurf",
+        dsfa: !!item.dsfa,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      created.vvt++;
+    }
+
+    for (const item of inhalt.avv || []) {
+      if (!String(item?.auftragsverarbeiter || "").trim()) {
+        skipped.avv++;
+        continue;
+      }
+      db.insert(avv).values({
+        mandantId,
+        auftragsverarbeiter: item.auftragsverarbeiter,
+        gegenstand: item.gegenstand || "",
+        vertragsdatum: item.vertragsdatum || "",
+        laufzeit: item.laufzeit || "",
+        status: item.status || "entwurf",
+        sccs: !!item.sccs,
+        subauftragnehmer: JSON.stringify(Array.isArray(item.subauftragnehmer) ? item.subauftragnehmer : []),
+        avKontaktName: item.avKontaktName || "",
+        avKontaktEmail: item.avKontaktEmail || "",
+        avKontaktTelefon: item.avKontaktTelefon || "",
+        genehmigteSubdienstleister: JSON.stringify(Array.isArray(item.genehmigteSubdienstleister) ? item.genehmigteSubdienstleister : []),
+        pruefFaellig: item.pruefFaellig || "",
+        notizen: item.notizen || "",
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      created.avv++;
+    }
+
+    for (const item of inhalt.dsfa || []) {
+      if (!String(item?.titel || "").trim()) {
+        skipped.dsfa++;
+        continue;
+      }
+      db.insert(dsfa).values({
+        mandantId,
+        titel: item.titel,
+        vvtId: item.vvtId ?? null,
+        beschreibung: item.beschreibung || "",
+        zweck: item.zweck || "",
+        prozessablauf: item.prozessablauf || "",
+        verarbeitungskontext: item.verarbeitungskontext || "",
+        datenquellen: item.datenquellen || "",
+        empfaenger: item.empfaenger || "",
+        drittlandtransfer: !!item.drittlandtransfer,
+        auftragsverarbeiter: item.auftragsverarbeiter || "",
+        technologienSysteme: item.technologienSysteme || "",
+        profiling: !!item.profiling,
+        automatisierteEntscheidung: !!item.automatisierteEntscheidung,
+        notwendigkeit: item.notwendigkeit || "",
+        rechtsgrundlage: item.rechtsgrundlage || "",
+        zweckbindungBewertung: item.zweckbindungBewertung || "",
+        datenminimierungBewertung: item.datenminimierungBewertung || "",
+        speicherbegrenzungBewertung: item.speicherbegrenzungBewertung || "",
+        transparenzBewertung: item.transparenzBewertung || "",
+        betroffenenrechteBewertung: item.betroffenenrechteBewertung || "",
+        zugriffskonzeptBewertung: item.zugriffskonzeptBewertung || "",
+        privacyByDesignBewertung: item.privacyByDesignBewertung || "",
+        risiken: JSON.stringify(Array.isArray(item.risiken) ? item.risiken : []),
+        massnahmen: item.massnahmen || "",
+        restrisikoBegruendung: item.restrisikoBegruendung || "",
+        art36Erforderlich: !!item.art36Erforderlich,
+        art36Begruendung: item.art36Begruendung || "",
+        ergebnis: item.ergebnis || "",
+        konsultation: !!item.konsultation,
+        status: item.status || "entwurf",
+        reviewer: item.reviewer || "",
+        verantwortlicherBereich: item.verantwortlicherBereich || "",
+        dsbBeteiligt: !!item.dsbBeteiligt,
+        dsbStellungnahme: item.dsbStellungnahme || "",
+        freigabeentscheidung: item.freigabeentscheidung || "",
+        freigabeBegruendung: item.freigabeBegruendung || "",
+        freigabeDatum: item.freigabeDatum || "",
+        naechstePruefungAm: item.naechstePruefungAm || "",
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      created.dsfa++;
+    }
+
+    for (const item of inhalt.tom || []) {
+      if (!String(item?.kategorie || "").trim() || !String(item?.massnahme || "").trim()) {
+        skipped.tom++;
+        continue;
+      }
+      db.insert(tom).values({
+        mandantId,
+        kategorie: item.kategorie,
+        massnahme: item.massnahme,
+        beschreibung: item.beschreibung || "",
+        status: item.status || "geplant",
+        verantwortlicher: item.verantwortlicher || "",
+        pruefDatum: item.pruefDatum || "",
+        pruefintervall: item.pruefintervall || "",
+        schutzziel: item.schutzziel || "",
+        nachweis: item.nachweis || "",
+        wirksamkeit: item.wirksamkeit || "",
+        notizen: item.notizen || "",
+        createdAt: now,
+      }).run();
+      created.tom++;
+    }
+
+    db.insert(mandantenLogs).values({
+      mandantId,
+      zeitpunkt: now,
+      userId: user?.id ?? null,
+      userName: user?.name ?? "System",
+      aktion: "vorlagenpaket_zugewiesen",
+      modul: "vorlagenpakete",
+      entitaetTyp: "vorlagenpaket",
+      entitaetId: paketId,
+      beschreibung: `Vorlagenpaket '${paket.name}' wurde angewendet.`,
+      detailsJson: JSON.stringify({ paketId, paketName: paket.name, created, skipped }),
+    }).run();
+
+    return { ok: true as const, created, skipped };
   }
 
   // Mandanten-Logs

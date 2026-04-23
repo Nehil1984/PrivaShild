@@ -79,6 +79,426 @@ const defaultData: DbSchema = {
         ]
       }),
       createdAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      name: "Microsoft 365 Copilot – Datenschutz- & Compliance-Paket",
+      beschreibung: "Musterpaket für datenschutzrechtliche Bewertung, Governance und Dokumentation beim Einsatz von Microsoft 365 Copilot.",
+      kategorie: "ki-compliance",
+      version: "1.0",
+      aktiv: true,
+      inhaltJson: JSON.stringify({
+        meta: {
+          templateKey: "m365-copilot-compliance",
+          templateLabel: "Microsoft 365 Copilot – Datenschutz- & Compliance-Paket",
+          scope: "ki-compliance",
+          source: "interne Fachvorlage TOM / DSGVO",
+          notes: "Bewertungs- und Umsetzungspaket, keine pauschale Freigabe",
+        },
+        aufgaben: [
+          {
+            titel: "Microsoft 365 Copilot: AVV / DPA prüfen",
+            beschreibung: "Prüfung des Auftragsverarbeitungsverhältnisses mit Microsoft, inklusive Data Processing Addendum, Product Terms und dokumentierter Datenschutzgarantien.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "avv",
+            sortierung: 10,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Subprocessor-Liste dokumentieren",
+            beschreibung: "Herstellerangaben zu Unterauftragsverarbeitern erfassen, bewerten und intern dokumentieren.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "avv",
+            sortierung: 20,
+          },
+          {
+            titel: "Microsoft 365 Copilot: EU Data Boundary und Drittlandbezug prüfen",
+            beschreibung: "Prüfen, welche Datenflüsse innerhalb der EU/EWR verbleiben und welche optionalen Funktionen, Support- oder Integrationsszenarien Drittlandbezüge auslösen können.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "vvt",
+            sortierung: 30,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Berechtigungsreview für Teams, SharePoint und OneDrive durchführen",
+            beschreibung: "Oversharing-Risiken identifizieren; Freigaben, Link-Sharing, Gruppen- und Rollenberechtigungen gezielt überprüfen.",
+            typ: "task",
+            prioritaet: "kritisch",
+            status: "offen",
+            kategorie: "tom",
+            sortierung: 40,
+          },
+          {
+            titel: "Microsoft 365 Copilot: sensible Datenquellen identifizieren",
+            beschreibung: "Bereiche mit besonders sensiblen, vertraulichen oder berufsgeheimnisgeschützten Daten erfassen und gesondert bewerten.",
+            typ: "task",
+            prioritaet: "kritisch",
+            status: "offen",
+            kategorie: "dsfa",
+            sortierung: 50,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Ausschluss- und Einschränkungskonzept festlegen",
+            beschreibung: "Festlegen, welche Datenquellen, Bibliotheken oder Arbeitsbereiche vom Einsatz ausgenommen oder technisch eingeschränkt werden sollen.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "tom",
+            sortierung: 60,
+          },
+          {
+            titel: "Microsoft 365 Copilot: VVT-Eintrag erstellen",
+            beschreibung: "Verarbeitungstätigkeit für den Einsatz von Microsoft 365 Copilot mit Zweck, Datenkategorien, Betroffenengruppen, Empfängern und Drittlandprüfung dokumentieren.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "vvt",
+            sortierung: 70,
+          },
+          {
+            titel: "Microsoft 365 Copilot: DSFA durchführen",
+            beschreibung: "Datenschutz-Folgenabschätzung mit Risikobewertung, Maßnahmenkatalog, Restrisikoanalyse und ggf. Art.-36-Prüfung durchführen.",
+            typ: "milestone",
+            prioritaet: "kritisch",
+            status: "offen",
+            kategorie: "dsfa",
+            sortierung: 80,
+          },
+          {
+            titel: "Microsoft 365 Copilot: DSB-Stellungnahme einholen",
+            beschreibung: "Datenschutzbeauftragten in die Bewertung einbinden und Stellungnahme dokumentieren.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "dsfa",
+            sortierung: 90,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Betriebsrat / Mitbestimmung prüfen",
+            beschreibung: "Prüfen, ob und in welchem Umfang Mitbestimmungsrechte berührt sind; Dokumentation und Abstimmung vorbereiten.",
+            typ: "task",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "dokumente",
+            sortierung: 100,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Mitarbeiterinformation erstellen",
+            beschreibung: "Datenschutzbezogene Information für Beschäftigte zum Einsatz von Copilot und zur Verarbeitung personenbezogener Daten vorbereiten.",
+            typ: "task",
+            prioritaet: "mittel",
+            status: "offen",
+            kategorie: "dokumente",
+            sortierung: 110,
+          },
+          {
+            titel: "Microsoft 365 Copilot: KI-Nutzungsrichtlinie abstimmen",
+            beschreibung: "Regeln für zulässige Nutzung, unzulässige Eingaben, Verifikation von Ergebnissen und Umgang mit sensiblen Daten festlegen.",
+            typ: "milestone",
+            prioritaet: "hoch",
+            status: "offen",
+            kategorie: "dokumente",
+            sortierung: 120,
+          },
+          {
+            titel: "Microsoft 365 Copilot: Review-Termin festlegen",
+            beschreibung: "Regelmäßige Überprüfung von Konfiguration, Risiken, Dokumentation und Herstellerangaben terminieren.",
+            typ: "review",
+            prioritaet: "mittel",
+            status: "offen",
+            kategorie: "dsfa",
+            sortierung: 130,
+          },
+        ],
+        dokumente: [
+          {
+            titel: "Mitarbeiterinformation – Microsoft 365 Copilot",
+            kategorie: "vorlage",
+            dokumentTyp: "information",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Information der Beschäftigten über Einsatz, Datenverarbeitung, Zwecke, Empfänger, Schutzmaßnahmen und Rechte im Zusammenhang mit Microsoft 365 Copilot.",
+          },
+          {
+            titel: "KI-Nutzungsrichtlinie – Microsoft 365 Copilot",
+            kategorie: "richtlinie",
+            dokumentTyp: "richtlinie",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Regelung zulässiger Anwendungsfälle, Verbot sensibler Eingaben ohne Freigabe, Pflicht zur Ergebnisprüfung, Verantwortlichkeiten und Eskalationswege.",
+          },
+          {
+            titel: "Prüfvermerk AVV / DPA – Microsoft 365 Copilot",
+            kategorie: "vertrag",
+            dokumentTyp: "pruefvermerk",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Dokumentation der Prüfung von DPA, Product Terms, Subprozessoren, EU Data Boundary, SCC-Konstellationen und Restrisiken.",
+          },
+          {
+            titel: "DSFA-Freigabevermerk – Microsoft 365 Copilot",
+            kategorie: "risikobewertung",
+            dokumentTyp: "freigabevermerk",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Management-/DSB-Freigabe der DSFA, dokumentierte Restrisiken, Maßnahmenstatus und Reviewtermin.",
+          },
+          {
+            titel: "Mitbestimmungs- / Betriebsratsnotiz – Microsoft 365 Copilot",
+            kategorie: "protokoll",
+            dokumentTyp: "vermerk",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Dokumentation mitbestimmungsrelevanter Aspekte, Gesprächsstände, Abgrenzung zur Leistungs- und Verhaltenskontrolle und offene Punkte.",
+          },
+          {
+            titel: "Management Summary – Einführung Microsoft 365 Copilot",
+            kategorie: "verfahrensdokumentation",
+            dokumentTyp: "management-summary",
+            status: "entwurf",
+            version: "1.0",
+            inhalt: "Zweck der Vorlage: Verdichtete Managemententscheidung zu Nutzen, Risiken, Maßnahmen, Freigabebedingungen und Reviewpflichten.",
+          },
+        ],
+        vvt: [
+          {
+            bezeichnung: "Microsoft 365 Copilot – KI-gestützte Assistenz in Microsoft 365",
+            zweck: "Unterstützung von Beschäftigten bei Recherche, Zusammenfassung, Entwurfserstellung, Wissenserschließung und produktivitätssteigernder Nutzung freigegebener Inhalte innerhalb der Microsoft-365-Umgebung.",
+            rechtsgrundlage: "Art. 6 Abs. 1 lit. f DSGVO; ergänzend je Use Case gesondert zu prüfen; bei Beschäftigtendaten zusätzlich arbeitsrechtlich und national zu würdigen.",
+            datenkategorien: ["Beschäftigtendaten", "Kommunikationsdaten", "Dokumenteninhalte", "Kunden- und Interessentendaten", "Vertrags- und Projektdaten", "Nutzungs- und Metadaten"],
+            betroffenePersonen: ["Beschäftigte", "Kunden", "Interessenten", "Lieferantenkontakte", "Geschäftspartnerkontakte"],
+            empfaenger: "Microsoft als Auftragsverarbeiter sowie interne berechtigte Stellen",
+            drittlandtransfer: true,
+            loeschfrist: "Gemäß zugrunde liegenden Quellsystemen, Retention Policies und dokumentierten Aufbewahrungsregeln.",
+            loeschklasse: "KI-Systeme / Produktivsysteme",
+            aufbewahrungsgrund: "Erforderlichkeit für den jeweiligen Geschäftsprozess sowie gesetzliche und interne Aufbewahrungsregeln.",
+            tomHinweis: "Berechtigungskonzept, Sensitivity Labels, DLP, Audit Logging, Freigabe- und Sharing-Review, Richtlinie zur KI-Nutzung.",
+            verantwortlicher: "",
+            verantwortlicherEmail: "",
+            verantwortlicherTelefon: "",
+            status: "entwurf",
+            dsfa: true,
+          },
+        ],
+        avv: [
+          {
+            auftragsverarbeiter: "Microsoft / Microsoft 365",
+            gegenstand: "Bereitstellung und Betrieb von Microsoft 365 Copilot sowie damit verbundener Cloud-Dienste.",
+            vertragsdatum: "",
+            laufzeit: "",
+            status: "entwurf",
+            sccs: true,
+            subauftragnehmer: ["Gemäß aktueller Herstellerliste gesondert zu dokumentieren"],
+            avKontaktName: "",
+            avKontaktEmail: "",
+            avKontaktTelefon: "",
+            genehmigteSubdienstleister: [],
+            pruefFaellig: "",
+            notizen: "DPA, Product Terms, EU Data Boundary, Subprocessor-Liste sowie Drittland- und Support-Konstellationen prüfen.",
+          },
+        ],
+        dsfa: [
+          {
+            titel: "DSFA – Einsatz von Microsoft 365 Copilot",
+            beschreibung: "Bewertung der datenschutzrechtlichen Risiken beim Einsatz von Microsoft 365 Copilot zur KI-gestützten Verarbeitung, Analyse, Zusammenfassung und Generierung von Inhalten auf Basis freigegebener Daten aus Microsoft-365-Diensten.",
+            zweck: "Produktivitätssteigerung, Wissenserschließung, Unterstützung bei Kommunikation und Dokumentenarbeit.",
+            prozessablauf: "Nutzer geben Prompts ein; Copilot verarbeitet freigegebene Kontextdaten aus angebundenen Quellen; das System erzeugt Antwort, Zusammenfassung oder Entwurf; Nutzer prüft und verwendet das Ergebnis.",
+            verarbeitungskontext: "Cloudbasierte KI-Unterstützung in Microsoft 365 mit potenziellem Zugriff auf Inhalte aus Exchange, Teams, SharePoint, OneDrive und weiteren freigegebenen Datenquellen.",
+            datenquellen: "Exchange Online, Teams, SharePoint Online, OneDrive, Office-Dokumente, optional weitere M365-Quellen.",
+            empfaenger: "Microsoft sowie konzernangehörige technische Leistungserbringer gemäß DPA und Subprocessor-Dokumentation.",
+            drittlandtransfer: true,
+            auftragsverarbeiter: "Microsoft",
+            technologienSysteme: "Microsoft 365 Copilot, Microsoft 365, Entra ID, Purview, Exchange Online, SharePoint Online, Teams",
+            profiling: false,
+            automatisierteEntscheidung: false,
+            notwendigkeit: "Nur zulässig bei dokumentierter Zweckdefinition, rollenbezogenem Einsatz und Begrenzung auf erforderliche Datenquellen.",
+            rechtsgrundlage: "Art. 6 Abs. 1 lit. f DSGVO; ergänzend je Use Case sowie im Beschäftigungskontext gesondert zu würdigen.",
+            zweckbindungBewertung: "Prüfbedürftig; Zweckgrenzen und zulässige Einsatzszenarien müssen dokumentiert und intern kommuniziert werden.",
+            datenminimierungBewertung: "Kritisch wegen möglichem breitem Kontextzugriff; Zugriff auf unnötige Datenquellen ist technisch und organisatorisch zu vermeiden.",
+            speicherbegrenzungBewertung: "An Quellsysteme, Retention Policies und dokumentierte Löschregeln zu koppeln.",
+            transparenzBewertung: "Aktive Information der Beschäftigten und interne Transparenzmaßnahmen erforderlich.",
+            betroffenenrechteBewertung: "Betroffenenrechte sind organisatorisch sicherzustellen; Auskunfts- und Löschprozesse müssen die Copilot-Nutzung mitdenken.",
+            zugriffskonzeptBewertung: "Zentraler Risikofaktor; Berechtigungskonzept und Freigabestrukturen sind vor Rollout zu überprüfen.",
+            privacyByDesignBewertung: "Abhängig von Konfiguration, Restriktionen, Governance und Ausschluss sensibler Datenbereiche.",
+            risiken: [
+              {
+                titel: "Oversharing durch zu weite Berechtigungen",
+                beschreibung: "Copilot greift auf Inhalte zu, die formal freigegeben, aber organisatorisch nicht für den konkreten Nutzungskontext bestimmt sind.",
+                betroffeneRechte: "Vertraulichkeit, Datenminimierung",
+                betroffeneGruppen: "Beschäftigte, Kunden, Geschäftspartner",
+                datenarten: "Dokumenteninhalte, Kommunikationsdaten, Vertragsdaten",
+                ursache: "Historisch gewachsene Freigaben und unzureichendes Berechtigungsmanagement",
+                bestehendeKontrollen: "M365-Berechtigungen, Gruppensteuerung, manuelle Freigaberegeln",
+                eintrittswahrscheinlichkeit: "mittel",
+                schweregrad: "hoch",
+                inhärentesRisiko: "hoch",
+                restrisiko: "mittel",
+                weitereMassnahmen: "Berechtigungsreview, Ausschluss sensibler Bibliotheken, Sensitivity Labels, DLP",
+                verantwortlicher: "IT / Datenschutz",
+                status: "offen",
+              },
+              {
+                titel: "Verarbeitung sensibler oder vertraulicher Daten ohne ausreichende Einschränkung",
+                beschreibung: "Besonders schützenswerte Inhalte werden in Prompts oder Kontexten verarbeitet, obwohl dies organisatorisch oder rechtlich unzulässig ist.",
+                betroffeneRechte: "Vertraulichkeit, Integrität",
+                betroffeneGruppen: "Beschäftigte, Kunden, Patienten, Mandanten",
+                datenarten: "besondere Kategorien personenbezogener Daten, vertrauliche Inhalte",
+                ursache: "Fehlende Nutzungsrichtlinien und technische Restriktionen",
+                bestehendeKontrollen: "Allgemeine Datenschutzregeln",
+                eintrittswahrscheinlichkeit: "mittel",
+                schweregrad: "hoch",
+                inhärentesRisiko: "hoch",
+                restrisiko: "mittel",
+                weitereMassnahmen: "KI-Nutzungsrichtlinie, Schulung, Ausschluss sensibler Bereiche",
+                verantwortlicher: "Datenschutz / Fachbereich",
+                status: "offen",
+              },
+              {
+                titel: "Unzureichende Transparenz gegenüber Beschäftigten und sonstigen Betroffenen",
+                beschreibung: "Betroffene verstehen nicht ausreichend, dass und wie personenbezogene Daten im Rahmen des Copilot-Einsatzes verarbeitet werden.",
+                betroffeneRechte: "Transparenz, informationelle Selbstbestimmung",
+                betroffeneGruppen: "Beschäftigte, Kunden, Ansprechpartner",
+                datenarten: "Kommunikations- und Inhaltsdaten",
+                ursache: "Fehlende oder unklare Informationen",
+                bestehendeKontrollen: "Allgemeine Datenschutzhinweise",
+                eintrittswahrscheinlichkeit: "mittel",
+                schweregrad: "mittel",
+                inhärentesRisiko: "mittel",
+                restrisiko: "niedrig",
+                weitereMassnahmen: "Mitarbeiterinformation, Governance-Dokumentation, interne Kommunikation",
+                verantwortlicher: "Datenschutz / HR",
+                status: "offen",
+              },
+            ],
+            massnahmen: "Berechtigungsreview vor Rollout, Freigaben in SharePoint und Teams prüfen, sensible Bereiche einschränken oder ausschließen, Purview / DLP / Labels konfigurieren, Mitarbeiterinformation erstellen, Betriebsrat einbinden, KI-Nutzungsrichtlinie einführen, DSFA regelmäßig reviewen, Audit- und Logauswertung definieren.",
+            restrisikoBegruendung: "Das verbleibende Risiko ist nur bei wirksam umgesetztem Berechtigungs-, Governance- und Kontrollkonzept vertretbar.",
+            art36Erforderlich: false,
+            art36Begruendung: "",
+            ergebnis: "offen",
+            konsultation: false,
+            status: "entwurf",
+            reviewer: "",
+            verantwortlicherBereich: "Datenschutz / IT / Compliance",
+            dsbBeteiligt: true,
+            dsbStellungnahme: "",
+            freigabeentscheidung: "",
+            freigabeBegruendung: "",
+            freigabeDatum: "",
+            naechstePruefungAm: "",
+          },
+        ],
+        tom: [
+          {
+            kategorie: "zugriffskontrolle",
+            massnahme: "Rollen- und Berechtigungskonzept für M365-Datenquellen überprüfen",
+            beschreibung: "Prüfung von Rollen, Gruppen, Bibliotheken, Teams und individuellen Freigaben auf Oversharing-Risiken.",
+            status: "geplant",
+            verantwortlicher: "IT",
+            pruefDatum: "",
+            pruefintervall: "halbjährlich",
+            schutzziel: "Vertraulichkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "trennung",
+            massnahme: "Vertrauliche Bereiche und sensible Bibliotheken gesondert absichern",
+            beschreibung: "Sensible Inhalte und besonders geschützte Bereiche sind organisatorisch und technisch vom allgemeinen Copilot-Kontext abzugrenzen.",
+            status: "geplant",
+            verantwortlicher: "IT / Fachbereich",
+            pruefDatum: "",
+            pruefintervall: "quartalsweise",
+            schutzziel: "Vertraulichkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "weitergabe",
+            massnahme: "Externe Freigaben und Link-Sharing überprüfen und einschränken",
+            beschreibung: "Öffentliche oder unkontrollierte Freigaben sind im Hinblick auf Copilot-Risiken besonders zu prüfen.",
+            status: "geplant",
+            verantwortlicher: "IT",
+            pruefDatum: "",
+            pruefintervall: "quartalsweise",
+            schutzziel: "Vertraulichkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "zugangskontrolle",
+            massnahme: "MFA und bedingte Zugriffe für relevante Benutzergruppen absichern",
+            beschreibung: "Zugriff auf produktive KI-gestützte Dienste nur unter wirksamen Authentifizierungs- und Zugriffsbedingungen.",
+            status: "geplant",
+            verantwortlicher: "IT",
+            pruefDatum: "",
+            pruefintervall: "jährlich",
+            schutzziel: "Vertraulichkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "auftrag",
+            massnahme: "Microsoft-Vertragsunterlagen, DPA und Subprocessor-Prüfung dokumentieren",
+            beschreibung: "Vertragliche und organisatorische Kontrolle des Auftragsverarbeiters und seiner Unterauftragnehmer dokumentieren.",
+            status: "geplant",
+            verantwortlicher: "Datenschutz / Einkauf",
+            pruefDatum: "",
+            pruefintervall: "jährlich",
+            schutzziel: "Rechtmäßigkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "eingabe",
+            massnahme: "Audit-Logs und Nachvollziehbarkeit für relevante Copilot- und M365-Aktivitäten sicherstellen",
+            beschreibung: "Sicherstellen, dass sicherheits- und compliance-relevante Aktivitäten nachvollzogen und geprüft werden können.",
+            status: "geplant",
+            verantwortlicher: "IT / Compliance",
+            pruefDatum: "",
+            pruefintervall: "monatlich",
+            schutzziel: "Nachvollziehbarkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "verfuegbarkeit",
+            massnahme: "Retention-, Backup- und Wiederherstellungslogik dokumentieren",
+            beschreibung: "Sicherstellen, dass Lösch- und Aufbewahrungslogik sowie Wiederherstellungsfähigkeit dokumentiert und abgestimmt sind.",
+            status: "geplant",
+            verantwortlicher: "IT",
+            pruefDatum: "",
+            pruefintervall: "jährlich",
+            schutzziel: "Verfügbarkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+          {
+            kategorie: "trennung",
+            massnahme: "Richtlinie für zulässige und unzulässige KI-Nutzung festlegen",
+            beschreibung: "Verbotene Inhalte, sensible Eingaben, Prüfpflichten und Eskalationsregeln verbindlich festlegen.",
+            status: "geplant",
+            verantwortlicher: "Datenschutz / Compliance / HR",
+            pruefDatum: "",
+            pruefintervall: "jährlich",
+            schutzziel: "Rechtmäßigkeit",
+            nachweis: "",
+            wirksamkeit: "",
+            notizen: "",
+          },
+        ],
+      }),
+      createdAt: new Date().toISOString(),
     }
   ],
   mandantenLogs: [],
@@ -331,14 +751,18 @@ export class LowdbStorage implements IStorage {
     db.data.vorlagenpakete = db.data.vorlagenpakete.filter((p) => p.id !== id);
     await db.write();
   }
-  async applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }): Promise<{ ok: true; created: Record<string, number> }> {
+  async applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }): Promise<{ ok: true; created: Record<string, number>; skipped: Record<string, number> }> {
     const db = await getDb();
     const paket = db.data.vorlagenpakete.find((p) => p.id === paketId);
     if (!paket) throw new Error("Vorlagenpaket nicht gefunden");
     const inhalt = JSON.parse(paket.inhaltJson || "{}");
-    let aufgabenCount = 0;
-    let dokumenteCount = 0;
+    const created = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
+    const skipped = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
     for (const a of inhalt.aufgaben || []) {
+      if (!String(a?.titel || "").trim()) {
+        skipped.aufgaben++;
+        continue;
+      }
       (db.data.aufgaben as Aufgabe[]).push({
         id: nextId(db, "aufgaben"),
         mandantId,
@@ -359,9 +783,13 @@ export class LowdbStorage implements IStorage {
         vorlagenBezug: paket.name,
         createdAt: new Date().toISOString(),
       });
-      aufgabenCount++;
+      created.aufgaben++;
     }
     for (const d of inhalt.dokumente || []) {
+      if (!String(d?.titel || "").trim()) {
+        skipped.dokumente++;
+        continue;
+      }
       (db.data.dokumente as Dokument[]).push({
         id: nextId(db, "dokumente"),
         mandantId,
@@ -381,7 +809,136 @@ export class LowdbStorage implements IStorage {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-      dokumenteCount++;
+      created.dokumente++;
+    }
+    for (const item of inhalt.vvt || []) {
+      if (!String(item?.bezeichnung || "").trim()) {
+        skipped.vvt++;
+        continue;
+      }
+      (db.data.vvt as Vvt[]).push({
+        id: nextId(db, "vvt"),
+        mandantId,
+        bezeichnung: item.bezeichnung,
+        zweck: item.zweck || "",
+        rechtsgrundlage: item.rechtsgrundlage || "",
+        datenkategorien: JSON.stringify(Array.isArray(item.datenkategorien) ? item.datenkategorien : []),
+        betroffenePersonen: JSON.stringify(Array.isArray(item.betroffenePersonen) ? item.betroffenePersonen : []),
+        empfaenger: item.empfaenger || "",
+        drittlandtransfer: !!item.drittlandtransfer,
+        loeschfrist: item.loeschfrist || "",
+        loeschklasse: item.loeschklasse || "",
+        aufbewahrungsgrund: item.aufbewahrungsgrund || "",
+        tomHinweis: item.tomHinweis || "",
+        verantwortlicher: item.verantwortlicher || "",
+        verantwortlicherEmail: item.verantwortlicherEmail || "",
+        verantwortlicherTelefon: item.verantwortlicherTelefon || "",
+        status: item.status || "entwurf",
+        dsfa: !!item.dsfa,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      created.vvt++;
+    }
+    for (const item of inhalt.avv || []) {
+      if (!String(item?.auftragsverarbeiter || "").trim()) {
+        skipped.avv++;
+        continue;
+      }
+      (db.data.avv as Avv[]).push({
+        id: nextId(db, "avv"),
+        mandantId,
+        auftragsverarbeiter: item.auftragsverarbeiter,
+        gegenstand: item.gegenstand || "",
+        vertragsdatum: item.vertragsdatum || "",
+        laufzeit: item.laufzeit || "",
+        status: item.status || "entwurf",
+        sccs: !!item.sccs,
+        subauftragnehmer: JSON.stringify(Array.isArray(item.subauftragnehmer) ? item.subauftragnehmer : []),
+        avKontaktName: item.avKontaktName || "",
+        avKontaktEmail: item.avKontaktEmail || "",
+        avKontaktTelefon: item.avKontaktTelefon || "",
+        genehmigteSubdienstleister: JSON.stringify(Array.isArray(item.genehmigteSubdienstleister) ? item.genehmigteSubdienstleister : []),
+        pruefFaellig: item.pruefFaellig || "",
+        notizen: item.notizen || "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      created.avv++;
+    }
+    for (const item of inhalt.dsfa || []) {
+      if (!String(item?.titel || "").trim()) {
+        skipped.dsfa++;
+        continue;
+      }
+      (db.data.dsfa as Dsfa[]).push({
+        id: nextId(db, "dsfa"),
+        mandantId,
+        titel: item.titel,
+        vvtId: item.vvtId ?? null as any,
+        beschreibung: item.beschreibung || "",
+        zweck: item.zweck || "",
+        prozessablauf: item.prozessablauf || "",
+        verarbeitungskontext: item.verarbeitungskontext || "",
+        datenquellen: item.datenquellen || "",
+        empfaenger: item.empfaenger || "",
+        drittlandtransfer: !!item.drittlandtransfer,
+        auftragsverarbeiter: item.auftragsverarbeiter || "",
+        technologienSysteme: item.technologienSysteme || "",
+        profiling: !!item.profiling,
+        automatisierteEntscheidung: !!item.automatisierteEntscheidung,
+        notwendigkeit: item.notwendigkeit || "",
+        rechtsgrundlage: item.rechtsgrundlage || "",
+        zweckbindungBewertung: item.zweckbindungBewertung || "",
+        datenminimierungBewertung: item.datenminimierungBewertung || "",
+        speicherbegrenzungBewertung: item.speicherbegrenzungBewertung || "",
+        transparenzBewertung: item.transparenzBewertung || "",
+        betroffenenrechteBewertung: item.betroffenenrechteBewertung || "",
+        zugriffskonzeptBewertung: item.zugriffskonzeptBewertung || "",
+        privacyByDesignBewertung: item.privacyByDesignBewertung || "",
+        risiken: JSON.stringify(Array.isArray(item.risiken) ? item.risiken : []),
+        massnahmen: item.massnahmen || "",
+        restrisikoBegruendung: item.restrisikoBegruendung || "",
+        art36Erforderlich: !!item.art36Erforderlich,
+        art36Begruendung: item.art36Begruendung || "",
+        ergebnis: item.ergebnis || "",
+        konsultation: !!item.konsultation,
+        status: item.status || "entwurf",
+        reviewer: item.reviewer || "",
+        verantwortlicherBereich: item.verantwortlicherBereich || "",
+        dsbBeteiligt: !!item.dsbBeteiligt,
+        dsbStellungnahme: item.dsbStellungnahme || "",
+        freigabeentscheidung: item.freigabeentscheidung || "",
+        freigabeBegruendung: item.freigabeBegruendung || "",
+        freigabeDatum: item.freigabeDatum || "",
+        naechstePruefungAm: item.naechstePruefungAm || "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      created.dsfa++;
+    }
+    for (const item of inhalt.tom || []) {
+      if (!String(item?.kategorie || "").trim() || !String(item?.massnahme || "").trim()) {
+        skipped.tom++;
+        continue;
+      }
+      (db.data.tom as Tom[]).push({
+        id: nextId(db, "tom"),
+        mandantId,
+        kategorie: item.kategorie,
+        massnahme: item.massnahme,
+        beschreibung: item.beschreibung || "",
+        status: item.status || "geplant",
+        verantwortlicher: item.verantwortlicher || "",
+        pruefDatum: item.pruefDatum || "",
+        pruefintervall: item.pruefintervall || "",
+        schutzziel: item.schutzziel || "",
+        nachweis: item.nachweis || "",
+        wirksamkeit: item.wirksamkeit || "",
+        notizen: item.notizen || "",
+        createdAt: new Date().toISOString(),
+      });
+      created.tom++;
     }
     db.data.mandantenLogs.push({
       id: nextId(db, "mandantenLogs"),
@@ -394,7 +951,7 @@ export class LowdbStorage implements IStorage {
       entitaetTyp: "vorlagenpaket",
       entitaetId: paketId,
       beschreibung: `Vorlagenpaket '${paket.name}' wurde angewendet.`,
-      detailsJson: JSON.stringify({ paketId, paketName: paket.name, created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } }),
+      detailsJson: JSON.stringify({ paketId, paketName: paket.name, created, skipped }),
     });
     db.data.vorlagenpaketHistorie.push({
       id: nextId(db, "vorlagenpaketHistorie"),
@@ -404,10 +961,10 @@ export class LowdbStorage implements IStorage {
       paketVersion: paket.version || "1.0",
       angewendetAm: new Date().toISOString(),
       angewendetVon: user?.name ?? "System",
-      detailsJson: JSON.stringify({ created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } }),
+      detailsJson: JSON.stringify({ created, skipped }),
     });
     await db.write();
-    return { ok: true, created: { aufgaben: aufgabenCount, dokumente: dokumenteCount } };
+    return { ok: true, created, skipped };
   }
 
   // ─── Mandanten-Logs ───────────────────────────────────────────────────────

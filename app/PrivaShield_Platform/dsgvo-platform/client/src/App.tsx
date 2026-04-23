@@ -513,6 +513,16 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dsfa`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: avv = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/avv`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/avv`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
+  const { data: tom = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/tom`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/tom`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: loeschkonzept = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/loeschkonzept`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then(r => r.json()) : [],
@@ -568,6 +578,15 @@ function Dashboard() {
   const dsfaMitArt36 = dsfaArt36Items.length;
   const dsfaReviewFaellig = dsfaReviewFaelligItems.length;
   const dsfaMitHohemRestrisiko = dsfaMitHohemRestrisikoItems.length;
+  const copilotVvtItems = vvt.filter((entry: any) => /copilot/i.test(String(entry?.bezeichnung || "")));
+  const copilotDsfaItems = dsfa.filter((item: any) => /copilot/i.test(String(item?.titel || "")) || /copilot/i.test(String(item?.beschreibung || "")));
+  const copilotAvvItems = avv.filter((item: any) => /microsoft/i.test(String(item?.auftragsverarbeiter || "")) || /copilot/i.test(String(item?.gegenstand || "")));
+  const copilotTomItems = tom.filter((item: any) => /copilot|ki-/i.test(String(item?.massnahme || "")) || /copilot|ki-/i.test(String(item?.beschreibung || "")));
+  const copilotTasksOpenItems = aufgaben.filter((item: any) => /copilot/i.test(String(item?.titel || "")) && item.status !== "erledigt");
+  const copilotDsfaOhneReviewItems = copilotDsfaItems.filter((item: any) => !String(item?.naechstePruefungAm || "").trim());
+  const copilotAvvOhnePruefungItems = copilotAvvItems.filter((item: any) => !String(item?.pruefFaellig || "").trim());
+  const copilotVvtOhneDsfaItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
+  const copilotStatusVorhanden = copilotVvtItems.length > 0 || copilotDsfaItems.length > 0 || copilotAvvItems.length > 0 || copilotTomItems.length > 0;
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
@@ -683,6 +702,13 @@ function Dashboard() {
                   <>
                     <p>KI-Prüfung erfasst: <span className="font-medium">Ja</span></p>
                     <p className="text-muted-foreground">{kiComplianceCheck.titel} · {kiComplianceCheck.status}</p>
+                    {copilotStatusVorhanden && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 mt-3 space-y-1">
+                        <p>Copilot-Paket erkannt: <span className="font-medium">Ja</span></p>
+                        <p className="text-muted-foreground">VVT: {copilotVvtItems.length} · AVV: {copilotAvvItems.length} · DSFA: {copilotDsfaItems.length} · TOM: {copilotTomItems.length}</p>
+                        <p className="text-muted-foreground">Offene Copilot-Aufgaben: {copilotTasksOpenItems.length}</p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -700,7 +726,7 @@ function Dashboard() {
               <CardDescription>Schnelle Einschätzung des aktuellen Handlungsbedarfs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && kiComplianceCheck && dsfaOhneVvt === 0 && dsfaMitArt36 === 0 && dsfaReviewFaellig === 0 && dsfaMitHohemRestrisiko === 0 && (
+              {kritischeAufgaben.length === 0 && leitlinieVorhanden && offeneReviews.length === 0 && webDatenschutzCheck && datenschutzhinweiseCheck && kiComplianceCheck && dsfaOhneVvt === 0 && dsfaMitArt36 === 0 && dsfaReviewFaellig === 0 && dsfaMitHohemRestrisiko === 0 && copilotDsfaOhneReviewItems.length === 0 && copilotAvvOhnePruefungItems.length === 0 && copilotVvtOhneDsfaItems.length === 0 && (
                 <p className="text-muted-foreground">Aktuell keine auffälligen Warnhinweise.</p>
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
@@ -709,6 +735,11 @@ function Dashboard() {
               {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
               {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
               {!kiComplianceCheck && <p className="text-orange-400">Prüfung zum Einsatz von KI-Tools und KI-VO-Konformität fehlt.</p>}
+              {copilotStatusVorhanden && copilotDsfaItems.length === 0 && <p className="text-red-400">Copilot-Bezug erkannt, aber keine eigene DSFA dokumentiert.</p>}
+              {copilotDsfaOhneReviewItems.length > 0 && <p className="text-yellow-400">Copilot-DSFA ohne Reviewdatum: {copilotDsfaOhneReviewItems.length}</p>}
+              {copilotAvvOhnePruefungItems.length > 0 && <p className="text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit: {copilotAvvOhnePruefungItems.length}</p>}
+              {copilotVvtOhneDsfaItems.length > 0 && <p className="text-yellow-400">Copilot-VVT ohne gesetzte DSFA-Pflicht: {copilotVvtOhneDsfaItems.length}</p>}
+              {copilotTasksOpenItems.length > 0 && <p className="text-orange-400">Offene Copilot-Aufgaben: {copilotTasksOpenItems.length}</p>}
               {dsfaOhneVvt > 0 && <p className="text-yellow-400">DSFA ohne VVT-Bezug: {dsfaOhneVvt}</p>}
               {dsfaMitArt36 > 0 && <p className="text-red-400">DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>}
               {dsfaReviewFaellig > 0 && <p className="text-yellow-400">Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>}
@@ -761,6 +792,49 @@ function Dashboard() {
 
           <Card>
             <CardHeader>
+              <CardTitle className="text-sm">Copilot-Compliance-Fokus</CardTitle>
+              <CardDescription>Direkte Einstiege in offene Microsoft-365-Copilot-Arbeitspunkte</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {!copilotStatusVorhanden ? (
+                <p className="text-muted-foreground">Aktuell keine Copilot-spezifischen Einträge erkannt.</p>
+              ) : (
+                <>
+                  {copilotDsfaOhneReviewItems.length > 0 && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Copilot-DSFA ohne Reviewdatum</p>
+                      <p className="text-xs text-muted-foreground">{copilotDsfaOhneReviewItems.length} Fall/Fälle benötigen einen gesetzten Prüftermin.</p>
+                      <div className="mt-2"><Link href="/dsfa?filter=copilot-missing-review"><a className="text-xs text-primary hover:underline">Zur DSFA-Seite</a></Link></div>
+                    </div>
+                  )}
+                  {copilotAvvOhnePruefungItems.length > 0 && (
+                    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit</p>
+                      <p className="text-xs text-muted-foreground">{copilotAvvOhnePruefungItems.length} Vertrag/Verträge haben noch keinen Reviewtermin.</p>
+                      <div className="mt-2"><Link href="/avv?filter=copilot-missing-review"><a className="text-xs text-primary hover:underline">Zur AVV-Seite</a></Link></div>
+                    </div>
+                  )}
+                  {copilotVvtOhneDsfaItems.length > 0 && (
+                    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Copilot-VVT ohne DSFA-Pflicht</p>
+                      <p className="text-xs text-muted-foreground">{copilotVvtOhneDsfaItems.length} Verarbeitung(en) sollten fachlich auf gesetzte DSFA-Pflicht geprüft werden.</p>
+                      <div className="mt-2"><Link href="/vvt?filter=copilot-missing-dsfa-flag"><a className="text-xs text-primary hover:underline">Zur VVT-Seite</a></Link></div>
+                    </div>
+                  )}
+                  {copilotTasksOpenItems.length > 0 && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                      <p className="font-medium text-primary">Offene Copilot-Aufgaben</p>
+                      <p className="text-xs text-muted-foreground">{copilotTasksOpenItems.length} Aufgabe(n) sind noch offen oder in Bearbeitung.</p>
+                      <div className="mt-2"><Link href="/aufgaben?filter=copilot-open"><a className="text-xs text-primary hover:underline">Zur Aufgaben-Seite</a></Link></div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-sm">Gruppenkontext</CardTitle>
               <CardDescription>Kennzahlen zur zugeordneten Gruppe</CardDescription>
             </CardHeader>
@@ -789,6 +863,10 @@ function Dashboard() {
                 <p>VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschkonzept}</p>
                 <p>Interne Audits dokumentiert: {auditsVorhanden ? "ja" : "nein"}</p>
                 <p>TOM-Katalog umfangreich: {tomUmfangreich ? "ja" : `nein (${stats?.tom ?? 0})`}</p>
+                <p>Copilot-Paket aktiv: {copilotStatusVorhanden ? "ja" : "nein"}</p>
+                <p>Copilot-DSFA ohne Reviewdatum: {copilotDsfaOhneReviewItems.length}</p>
+                <p>Copilot-AVV ohne Prüffälligkeit: {copilotAvvOhnePruefungItems.length}</p>
+                <p>Offene Copilot-Aufgaben: {copilotTasksOpenItems.length}</p>
                 <p>DSFA ohne VVT-Bezug: {dsfaOhneVvt}</p>
                 <p>DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>
                 <p>Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>
@@ -1032,18 +1110,18 @@ function VvtPage() {
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch">("all");
+  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag">("all");
   const [vvtSort, setVvtSortState] = useState<"name-asc" | "name-desc" | "status" | "drittland">("name-asc");
 
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawQuickFilter = route.searchParams.get("filter");
     const rawSort = route.searchParams.get("sort");
-    setQuickFilterState(rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch" ? rawQuickFilter : "all");
+    setQuickFilterState(rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch" || rawQuickFilter === "copilot" || rawQuickFilter === "copilot-missing-dsfa-flag" ? rawQuickFilter : "all");
     setVvtSortState(rawSort === "name-desc" || rawSort === "status" || rawSort === "drittland" ? rawSort : "name-asc");
   }, [location]);
 
-  const updateVvtRouteState = (nextFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch", nextSort: "name-asc" | "name-desc" | "status" | "drittland") => {
+  const updateVvtRouteState = (nextFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag", nextSort: "name-asc" | "name-desc" | "status" | "drittland") => {
     const next = new URL(location, "https://privashield.local");
     if (nextFilter === "all") next.searchParams.delete("filter");
     else next.searchParams.set("filter", nextFilter);
@@ -1052,7 +1130,7 @@ function VvtPage() {
     setLocation(`${next.pathname}${next.search}`);
   };
 
-  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch") => {
+  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag") => {
     setQuickFilterState(value);
     updateVvtRouteState(value, vvtSort);
   };
@@ -1069,10 +1147,14 @@ function VvtPage() {
   const vvtMitFehlenderDsfa = data.filter((item: any) => item.dsfa && !dsfa.some((entry: any) => entry.vvtId === item.id));
   const vvtMitDrittlandtransfer = data.filter((item: any) => !!item.drittlandtransfer);
   const vvtOhneLoeschbezug = data.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase()));
+  const copilotVvtItems = data.filter((item: any) => /copilot/i.test(String(item?.bezeichnung || "")));
+  const copilotVvtOhneDsfaFlagItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
   const filteredData = data.filter((item: any) => {
     if (quickFilter === "missing-dsfa") return vvtMitFehlenderDsfa.some((entry: any) => entry.id === item.id);
     if (quickFilter === "drittland") return vvtMitDrittlandtransfer.some((entry: any) => entry.id === item.id);
     if (quickFilter === "missing-loesch") return vvtOhneLoeschbezug.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "copilot") return copilotVvtItems.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "copilot-missing-dsfa-flag") return copilotVvtOhneDsfaFlagItems.some((entry: any) => entry.id === item.id);
     return true;
   }).slice().sort((a: any, b: any) => {
     if (vvtSort === "name-desc") return String(b.bezeichnung || "").localeCompare(String(a.bezeichnung || ""), "de");
@@ -1158,6 +1240,8 @@ function VvtPage() {
               <Button type="button" size="sm" variant={quickFilter === "missing-dsfa" ? "default" : "outline"} onClick={() => setQuickFilter("missing-dsfa")}>DSFA fehlt</Button>
               <Button type="button" size="sm" variant={quickFilter === "drittland" ? "default" : "outline"} onClick={() => setQuickFilter("drittland")}>Drittlandtransfer</Button>
               <Button type="button" size="sm" variant={quickFilter === "missing-loesch" ? "default" : "outline"} onClick={() => setQuickFilter("missing-loesch")}>Ohne Löschkonzept</Button>
+              <Button type="button" size="sm" variant={quickFilter === "copilot" ? "default" : "outline"} onClick={() => setQuickFilter("copilot")}>Copilot</Button>
+              <Button type="button" size="sm" variant={quickFilter === "copilot-missing-dsfa-flag" ? "default" : "outline"} onClick={() => setQuickFilter("copilot-missing-dsfa-flag")}>Copilot ohne DSFA-Pflicht</Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Sortierung:</span>
@@ -1342,22 +1426,48 @@ function AvvForm({ initial, onSave, onCancel }: any) {
 
 function AvvPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("avv");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [avvFilter, setAvvFilterState] = useState<"all" | "copilot" | "copilot-missing-review">("all");
   const { toast } = useToast();
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    setAvvFilterState(rawFilter === "copilot" || rawFilter === "copilot-missing-review" ? rawFilter : "all");
+  }, [location]);
+  const setAvvFilter = (value: "all" | "copilot" | "copilot-missing-review") => {
+    setAvvFilterState(value);
+    const next = new URL(location, "https://privashield.local");
+    if (value === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
+  };
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
+  const filteredData = data.filter((item: any) => {
+    const isCopilot = /microsoft/i.test(String(item?.auftragsverarbeiter || "")) || /copilot/i.test(String(item?.gegenstand || ""));
+    if (avvFilter === "copilot") return isCopilot;
+    if (avvFilter === "copilot-missing-review") return isCopilot && !String(item?.pruefFaellig || "").trim();
+    return true;
+  });
   return (
     <MandantGuard>
       <PageHeader title={t("avvTitle")} desc={t("avvDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <Button type="button" size="sm" variant={avvFilter === "all" ? "default" : "outline"} onClick={() => setAvvFilter("all")}>Alle</Button>
+        <Button type="button" size="sm" variant={avvFilter === "copilot" ? "default" : "outline"} onClick={() => setAvvFilter("copilot")}>Copilot / Microsoft</Button>
+        <Button type="button" size="sm" variant={avvFilter === "copilot-missing-review" ? "default" : "outline"} onClick={() => setAvvFilter("copilot-missing-review")}>Ohne Prüffälligkeit</Button>
+      </div>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
+          {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine AVV-Verträge in dieser Ansicht.</CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine AVV-Verträge vorhanden.</CardContent></Card>}
-          {data.map((item: any) => (
+          {filteredData.map((item: any) => (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
               <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1755,18 +1865,18 @@ function DsfaPage() {
       return [];
     }
   };
-  const [dsfaFilter, setDsfaFilterState] = useState<"all" | "missing-vvt" | "art36" | "review" | "high-risk">("all");
+  const [dsfaFilter, setDsfaFilterState] = useState<"all" | "missing-vvt" | "art36" | "review" | "high-risk" | "copilot" | "copilot-missing-review">("all");
   const [dsfaSort, setDsfaSortState] = useState<"title-asc" | "title-desc" | "review" | "risk">("title-asc");
 
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawDsfaFilter = route.searchParams.get("filter");
     const rawDsfaSort = route.searchParams.get("sort");
-    setDsfaFilterState(rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk" ? rawDsfaFilter : "all");
+    setDsfaFilterState(rawDsfaFilter === "missing-vvt" || rawDsfaFilter === "art36" || rawDsfaFilter === "review" || rawDsfaFilter === "high-risk" || rawDsfaFilter === "copilot" || rawDsfaFilter === "copilot-missing-review" ? rawDsfaFilter : "all");
     setDsfaSortState(rawDsfaSort === "title-desc" || rawDsfaSort === "review" || rawDsfaSort === "risk" ? rawDsfaSort : "title-asc");
   }, [location]);
 
-  const updateDsfaRouteState = (nextFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk", nextSort: "title-asc" | "title-desc" | "review" | "risk") => {
+  const updateDsfaRouteState = (nextFilter: "all" | "missing-vvt" | "art36" | "review" | "high-risk" | "copilot" | "copilot-missing-review", nextSort: "title-asc" | "title-desc" | "review" | "risk") => {
     const next = new URL(location, "https://privashield.local");
     if (nextFilter === "all") next.searchParams.delete("filter");
     else next.searchParams.set("filter", nextFilter);
@@ -1775,7 +1885,7 @@ function DsfaPage() {
     setLocation(`${next.pathname}${next.search}`);
   };
 
-  const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk") => {
+  const setDsfaFilter = (value: "all" | "missing-vvt" | "art36" | "review" | "high-risk" | "copilot" | "copilot-missing-review") => {
     setDsfaFilterState(value);
     updateDsfaRouteState(value, dsfaSort);
   };
@@ -1785,10 +1895,13 @@ function DsfaPage() {
   };
   const filteredDsfa = data.filter((item: any) => {
     const risks = getRisks(item);
+    const isCopilot = /copilot/i.test(String(item?.titel || "")) || /copilot/i.test(String(item?.beschreibung || ""));
     if (dsfaFilter === "missing-vvt") return !item.vvtId;
     if (dsfaFilter === "art36") return !!item.art36Erforderlich;
     if (dsfaFilter === "review") return !!(item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now());
     if (dsfaFilter === "high-risk") return risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    if (dsfaFilter === "copilot") return isCopilot;
+    if (dsfaFilter === "copilot-missing-review") return isCopilot && !String(item?.naechstePruefungAm || "").trim();
     return true;
   }).slice().sort((a: any, b: any) => {
     const aRisks = getRisks(a);
@@ -1825,6 +1938,8 @@ function DsfaPage() {
             <Button type="button" size="sm" variant={dsfaFilter === "art36" ? "default" : "outline"} onClick={() => setDsfaFilter("art36")}>Art. 36</Button>
             <Button type="button" size="sm" variant={dsfaFilter === "review" ? "default" : "outline"} onClick={() => setDsfaFilter("review")}>Review fällig</Button>
             <Button type="button" size="sm" variant={dsfaFilter === "high-risk" ? "default" : "outline"} onClick={() => setDsfaFilter("high-risk")}>Hohes Restrisiko</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "copilot" ? "default" : "outline"} onClick={() => setDsfaFilter("copilot")}>Copilot</Button>
+            <Button type="button" size="sm" variant={dsfaFilter === "copilot-missing-review" ? "default" : "outline"} onClick={() => setDsfaFilter("copilot-missing-review")}>Copilot ohne Reviewdatum</Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground">Sortierung:</span>
@@ -2711,22 +2826,51 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
 
 function AufgabenPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("aufgaben");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
   const [typFilter, setTypFilter] = useState("alle");
   const { toast } = useToast();
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    if (route.searchParams.get("filter") === "copilot-open") {
+      setFilter("offen");
+      setTypFilter("alle");
+    }
+  }, [location]);
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
   const today = new Date().toISOString().split("T")[0];
-  const filtered = data.filter((a: any) => (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter));
+  const filtered = data.filter((a: any) => {
+    const copilotOnly = new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open";
+    if (copilotOnly && !/copilot/i.test(String(a?.titel || ""))) return false;
+    if (copilotOnly && a.status === "erledigt") return false;
+    return (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter);
+  });
   return (
     <MandantGuard>
       <PageHeader title={t("tasksTitle")} desc={t("tasksDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Aufgabe</Button>} />
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <Button type="button" size="sm" variant={new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" ? "default" : "outline"} onClick={() => {
+          const next = new URL(location, "https://privashield.local");
+          next.searchParams.set("filter", "copilot-open");
+          setLocation(`${next.pathname}${next.search}`);
+          setFilter("offen");
+          setTypFilter("alle");
+        }}>Copilot offen</Button>
+        {new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" && (
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            const next = new URL(location, "https://privashield.local");
+            next.searchParams.delete("filter");
+            setLocation(`${next.pathname}${next.search}`);
+          }}>Copilot-Filter löschen</Button>
+        )}
+      </div>
       <div className="flex gap-2 mb-4">
         {["alle", "offen", "in_bearbeitung", "erledigt"].map(f => (
           <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 rounded-full text-xs transition-colors ${filter === f ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
@@ -4192,6 +4336,59 @@ function VorlagenpaketePage() {
   };
   const applyPreset = (key: string) => {
     setPreset(key);
+    if (key === "copilot") {
+      setForm((p) => ({ ...p, inhaltJson: JSON.stringify({
+        meta: {
+          templateKey: "m365-copilot-compliance",
+          templateLabel: "Microsoft 365 Copilot – Datenschutz- & Compliance-Paket",
+          scope: "ki-compliance",
+          source: "interne Fachvorlage TOM / DSGVO",
+          notes: "Bewertungs- und Umsetzungspaket, keine pauschale Freigabe"
+        },
+        aufgaben: [
+          { titel: "Microsoft 365 Copilot: AVV / DPA prüfen", beschreibung: "Prüfung des Auftragsverarbeitungsverhältnisses mit Microsoft, inklusive Data Processing Addendum, Product Terms und dokumentierter Datenschutzgarantien.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "avv", sortierung: 10 },
+          { titel: "Microsoft 365 Copilot: Subprocessor-Liste dokumentieren", beschreibung: "Herstellerangaben zu Unterauftragsverarbeitern erfassen, bewerten und intern dokumentieren.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "avv", sortierung: 20 },
+          { titel: "Microsoft 365 Copilot: EU Data Boundary und Drittlandbezug prüfen", beschreibung: "Prüfen, welche Datenflüsse innerhalb der EU/EWR verbleiben und welche optionalen Funktionen, Support- oder Integrationsszenarien Drittlandbezüge auslösen können.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "vvt", sortierung: 30 },
+          { titel: "Microsoft 365 Copilot: Berechtigungsreview für Teams, SharePoint und OneDrive durchführen", beschreibung: "Oversharing-Risiken identifizieren; Freigaben, Link-Sharing, Gruppen- und Rollenberechtigungen gezielt überprüfen.", typ: "task", prioritaet: "kritisch", status: "offen", kategorie: "tom", sortierung: 40 },
+          { titel: "Microsoft 365 Copilot: sensible Datenquellen identifizieren", beschreibung: "Bereiche mit besonders sensiblen, vertraulichen oder berufsgeheimnisgeschützten Daten erfassen und gesondert bewerten.", typ: "task", prioritaet: "kritisch", status: "offen", kategorie: "dsfa", sortierung: 50 },
+          { titel: "Microsoft 365 Copilot: Ausschluss- und Einschränkungskonzept festlegen", beschreibung: "Festlegen, welche Datenquellen, Bibliotheken oder Arbeitsbereiche vom Einsatz ausgenommen oder technisch eingeschränkt werden sollen.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "tom", sortierung: 60 },
+          { titel: "Microsoft 365 Copilot: VVT-Eintrag erstellen", beschreibung: "Verarbeitungstätigkeit für den Einsatz von Microsoft 365 Copilot mit Zweck, Datenkategorien, Betroffenengruppen, Empfängern und Drittlandprüfung dokumentieren.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "vvt", sortierung: 70 },
+          { titel: "Microsoft 365 Copilot: DSFA durchführen", beschreibung: "Datenschutz-Folgenabschätzung mit Risikobewertung, Maßnahmenkatalog, Restrisikoanalyse und ggf. Art.-36-Prüfung durchführen.", typ: "milestone", prioritaet: "kritisch", status: "offen", kategorie: "dsfa", sortierung: 80 },
+          { titel: "Microsoft 365 Copilot: DSB-Stellungnahme einholen", beschreibung: "Datenschutzbeauftragten in die Bewertung einbinden und Stellungnahme dokumentieren.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "dsfa", sortierung: 90 },
+          { titel: "Microsoft 365 Copilot: Betriebsrat / Mitbestimmung prüfen", beschreibung: "Prüfen, ob und in welchem Umfang Mitbestimmungsrechte berührt sind; Dokumentation und Abstimmung vorbereiten.", typ: "task", prioritaet: "hoch", status: "offen", kategorie: "dokumente", sortierung: 100 },
+          { titel: "Microsoft 365 Copilot: Mitarbeiterinformation erstellen", beschreibung: "Datenschutzbezogene Information für Beschäftigte zum Einsatz von Copilot und zur Verarbeitung personenbezogener Daten vorbereiten.", typ: "task", prioritaet: "mittel", status: "offen", kategorie: "dokumente", sortierung: 110 },
+          { titel: "Microsoft 365 Copilot: KI-Nutzungsrichtlinie abstimmen", beschreibung: "Regeln für zulässige Nutzung, unzulässige Eingaben, Verifikation von Ergebnissen und Umgang mit sensiblen Daten festlegen.", typ: "milestone", prioritaet: "hoch", status: "offen", kategorie: "dokumente", sortierung: 120 },
+          { titel: "Microsoft 365 Copilot: Review-Termin festlegen", beschreibung: "Regelmäßige Überprüfung von Konfiguration, Risiken, Dokumentation und Herstellerangaben terminieren.", typ: "review", prioritaet: "mittel", status: "offen", kategorie: "dsfa", sortierung: 130 }
+        ],
+        dokumente: [
+          { titel: "Mitarbeiterinformation – Microsoft 365 Copilot", kategorie: "vorlage", dokumentTyp: "information", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Information der Beschäftigten über Einsatz, Datenverarbeitung, Zwecke, Empfänger, Schutzmaßnahmen und Rechte im Zusammenhang mit Microsoft 365 Copilot." },
+          { titel: "KI-Nutzungsrichtlinie – Microsoft 365 Copilot", kategorie: "richtlinie", dokumentTyp: "richtlinie", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Regelung zulässiger Anwendungsfälle, Verbot sensibler Eingaben ohne Freigabe, Pflicht zur Ergebnisprüfung, Verantwortlichkeiten und Eskalationswege." },
+          { titel: "Prüfvermerk AVV / DPA – Microsoft 365 Copilot", kategorie: "vertrag", dokumentTyp: "pruefvermerk", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Dokumentation der Prüfung von DPA, Product Terms, Subprozessoren, EU Data Boundary, SCC-Konstellationen und Restrisiken." },
+          { titel: "DSFA-Freigabevermerk – Microsoft 365 Copilot", kategorie: "risikobewertung", dokumentTyp: "freigabevermerk", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Management-/DSB-Freigabe der DSFA, dokumentierte Restrisiken, Maßnahmenstatus und Reviewtermin." },
+          { titel: "Mitbestimmungs- / Betriebsratsnotiz – Microsoft 365 Copilot", kategorie: "protokoll", dokumentTyp: "vermerk", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Dokumentation mitbestimmungsrelevanter Aspekte, Gesprächsstände, Abgrenzung zur Leistungs- und Verhaltenskontrolle und offene Punkte." },
+          { titel: "Management Summary – Einführung Microsoft 365 Copilot", kategorie: "verfahrensdokumentation", dokumentTyp: "management-summary", status: "entwurf", version: "1.0", inhalt: "Zweck der Vorlage: Verdichtete Managemententscheidung zu Nutzen, Risiken, Maßnahmen, Freigabebedingungen und Reviewpflichten." }
+        ],
+        vvt: [
+          { bezeichnung: "Microsoft 365 Copilot – KI-gestützte Assistenz in Microsoft 365", zweck: "Unterstützung von Beschäftigten bei Recherche, Zusammenfassung, Entwurfserstellung, Wissenserschließung und produktivitätssteigernder Nutzung freigegebener Inhalte innerhalb der Microsoft-365-Umgebung.", rechtsgrundlage: "Art. 6 Abs. 1 lit. f DSGVO; ergänzend je Use Case gesondert zu prüfen; bei Beschäftigtendaten zusätzlich arbeitsrechtlich und national zu würdigen.", datenkategorien: ["Beschäftigtendaten", "Kommunikationsdaten", "Dokumenteninhalte", "Kunden- und Interessentendaten", "Vertrags- und Projektdaten", "Nutzungs- und Metadaten"], betroffenePersonen: ["Beschäftigte", "Kunden", "Interessenten", "Lieferantenkontakte", "Geschäftspartnerkontakte"], empfaenger: "Microsoft als Auftragsverarbeiter sowie interne berechtigte Stellen", drittlandtransfer: true, loeschfrist: "Gemäß zugrunde liegenden Quellsystemen, Retention Policies und dokumentierten Aufbewahrungsregeln.", loeschklasse: "KI-Systeme / Produktivsysteme", aufbewahrungsgrund: "Erforderlichkeit für den jeweiligen Geschäftsprozess sowie gesetzliche und interne Aufbewahrungsregeln.", tomHinweis: "Berechtigungskonzept, Sensitivity Labels, DLP, Audit Logging, Freigabe- und Sharing-Review, Richtlinie zur KI-Nutzung.", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", status: "entwurf", dsfa: true }
+        ],
+        avv: [
+          { auftragsverarbeiter: "Microsoft / Microsoft 365", gegenstand: "Bereitstellung und Betrieb von Microsoft 365 Copilot sowie damit verbundener Cloud-Dienste.", vertragsdatum: "", laufzeit: "", status: "entwurf", sccs: true, subauftragnehmer: ["Gemäß aktueller Herstellerliste gesondert zu dokumentieren"], avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: [], pruefFaellig: "", notizen: "DPA, Product Terms, EU Data Boundary, Subprocessor-Liste sowie Drittland- und Support-Konstellationen prüfen." }
+        ],
+        dsfa: [
+          { titel: "DSFA – Einsatz von Microsoft 365 Copilot", beschreibung: "Bewertung der datenschutzrechtlichen Risiken beim Einsatz von Microsoft 365 Copilot zur KI-gestützten Verarbeitung, Analyse, Zusammenfassung und Generierung von Inhalten auf Basis freigegebener Daten aus Microsoft-365-Diensten.", zweck: "Produktivitätssteigerung, Wissenserschließung, Unterstützung bei Kommunikation und Dokumentenarbeit.", prozessablauf: "Nutzer geben Prompts ein; Copilot verarbeitet freigegebene Kontextdaten aus angebundenen Quellen; das System erzeugt Antwort, Zusammenfassung oder Entwurf; Nutzer prüft und verwendet das Ergebnis.", verarbeitungskontext: "Cloudbasierte KI-Unterstützung in Microsoft 365 mit potenziellem Zugriff auf Inhalte aus Exchange, Teams, SharePoint, OneDrive und weiteren freigegebenen Datenquellen.", datenquellen: "Exchange Online, Teams, SharePoint Online, OneDrive, Office-Dokumente, optional weitere M365-Quellen.", empfaenger: "Microsoft sowie konzernangehörige technische Leistungserbringer gemäß DPA und Subprocessor-Dokumentation.", drittlandtransfer: true, auftragsverarbeiter: "Microsoft", technologienSysteme: "Microsoft 365 Copilot, Microsoft 365, Entra ID, Purview, Exchange Online, SharePoint Online, Teams", profiling: false, automatisierteEntscheidung: false, notwendigkeit: "Nur zulässig bei dokumentierter Zweckdefinition, rollenbezogenem Einsatz und Begrenzung auf erforderliche Datenquellen.", rechtsgrundlage: "Art. 6 Abs. 1 lit. f DSGVO; ergänzend je Use Case sowie im Beschäftigungskontext gesondert zu würdigen.", zweckbindungBewertung: "Prüfbedürftig; Zweckgrenzen und zulässige Einsatzszenarien müssen dokumentiert und intern kommuniziert werden.", datenminimierungBewertung: "Kritisch wegen möglichem breitem Kontextzugriff; Zugriff auf unnötige Datenquellen ist technisch und organisatorisch zu vermeiden.", speicherbegrenzungBewertung: "An Quellsysteme, Retention Policies und dokumentierte Löschregeln zu koppeln.", transparenzBewertung: "Aktive Information der Beschäftigten und interne Transparenzmaßnahmen erforderlich.", betroffenenrechteBewertung: "Betroffenenrechte sind organisatorisch sicherzustellen; Auskunfts- und Löschprozesse müssen die Copilot-Nutzung mitdenken.", zugriffskonzeptBewertung: "Zentraler Risikofaktor; Berechtigungskonzept und Freigabestrukturen sind vor Rollout zu überprüfen.", privacyByDesignBewertung: "Abhängig von Konfiguration, Restriktionen, Governance und Ausschluss sensibler Datenbereiche.", risiken: [{ titel: "Oversharing durch zu weite Berechtigungen", beschreibung: "Copilot greift auf Inhalte zu, die formal freigegeben, aber organisatorisch nicht für den konkreten Nutzungskontext bestimmt sind.", betroffeneRechte: "Vertraulichkeit, Datenminimierung", betroffeneGruppen: "Beschäftigte, Kunden, Geschäftspartner", datenarten: "Dokumenteninhalte, Kommunikationsdaten, Vertragsdaten", ursache: "Historisch gewachsene Freigaben und unzureichendes Berechtigungsmanagement", bestehendeKontrollen: "M365-Berechtigungen, Gruppensteuerung, manuelle Freigaberegeln", eintrittswahrscheinlichkeit: "mittel", schweregrad: "hoch", inhärentesRisiko: "hoch", restrisiko: "mittel", weitereMassnahmen: "Berechtigungsreview, Ausschluss sensibler Bibliotheken, Sensitivity Labels, DLP", verantwortlicher: "IT / Datenschutz", status: "offen" }, { titel: "Verarbeitung sensibler oder vertraulicher Daten ohne ausreichende Einschränkung", beschreibung: "Besonders schützenswerte Inhalte werden in Prompts oder Kontexten verarbeitet, obwohl dies organisatorisch oder rechtlich unzulässig ist.", betroffeneRechte: "Vertraulichkeit, Integrität", betroffeneGruppen: "Beschäftigte, Kunden, Patienten, Mandanten", datenarten: "besondere Kategorien personenbezogener Daten, vertrauliche Inhalte", ursache: "Fehlende Nutzungsrichtlinien und technische Restriktionen", bestehendeKontrollen: "Allgemeine Datenschutzregeln", eintrittswahrscheinlichkeit: "mittel", schweregrad: "hoch", inhärentesRisiko: "hoch", restrisiko: "mittel", weitereMassnahmen: "KI-Nutzungsrichtlinie, Schulung, Ausschluss sensibler Bereiche", verantwortlicher: "Datenschutz / Fachbereich", status: "offen" }, { titel: "Unzureichende Transparenz gegenüber Beschäftigten und sonstigen Betroffenen", beschreibung: "Betroffene verstehen nicht ausreichend, dass und wie personenbezogene Daten im Rahmen des Copilot-Einsatzes verarbeitet werden.", betroffeneRechte: "Transparenz, informationelle Selbstbestimmung", betroffeneGruppen: "Beschäftigte, Kunden, Ansprechpartner", datenarten: "Kommunikations- und Inhaltsdaten", ursache: "Fehlende oder unklare Informationen", bestehendeKontrollen: "Allgemeine Datenschutzhinweise", eintrittswahrscheinlichkeit: "mittel", schweregrad: "mittel", inhärentesRisiko: "mittel", restrisiko: "niedrig", weitereMassnahmen: "Mitarbeiterinformation, Governance-Dokumentation, interne Kommunikation", verantwortlicher: "Datenschutz / HR", status: "offen" }], massnahmen: "Berechtigungsreview vor Rollout, Freigaben in SharePoint und Teams prüfen, sensible Bereiche einschränken oder ausschließen, Purview / DLP / Labels konfigurieren, Mitarbeiterinformation erstellen, Betriebsrat einbinden, KI-Nutzungsrichtlinie einführen, DSFA regelmäßig reviewen, Audit- und Logauswertung definieren.", restrisikoBegruendung: "Das verbleibende Risiko ist nur bei wirksam umgesetztem Berechtigungs-, Governance- und Kontrollkonzept vertretbar.", art36Erforderlich: false, art36Begruendung: "", ergebnis: "offen", konsultation: false, status: "entwurf", reviewer: "", verantwortlicherBereich: "Datenschutz / IT / Compliance", dsbBeteiligt: true, dsbStellungnahme: "", freigabeentscheidung: "", freigabeBegruendung: "", freigabeDatum: "", naechstePruefungAm: "" }
+        ],
+        tom: [
+          { kategorie: "zugriffskontrolle", massnahme: "Rollen- und Berechtigungskonzept für M365-Datenquellen überprüfen", beschreibung: "Prüfung von Rollen, Gruppen, Bibliotheken, Teams und individuellen Freigaben auf Oversharing-Risiken.", status: "geplant", verantwortlicher: "IT", pruefDatum: "", pruefintervall: "halbjährlich", schutzziel: "Vertraulichkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "trennung", massnahme: "Vertrauliche Bereiche und sensible Bibliotheken gesondert absichern", beschreibung: "Sensible Inhalte und besonders geschützte Bereiche sind organisatorisch und technisch vom allgemeinen Copilot-Kontext abzugrenzen.", status: "geplant", verantwortlicher: "IT / Fachbereich", pruefDatum: "", pruefintervall: "quartalsweise", schutzziel: "Vertraulichkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "weitergabe", massnahme: "Externe Freigaben und Link-Sharing überprüfen und einschränken", beschreibung: "Öffentliche oder unkontrollierte Freigaben sind im Hinblick auf Copilot-Risiken besonders zu prüfen.", status: "geplant", verantwortlicher: "IT", pruefDatum: "", pruefintervall: "quartalsweise", schutzziel: "Vertraulichkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "zugangskontrolle", massnahme: "MFA und bedingte Zugriffe für relevante Benutzergruppen absichern", beschreibung: "Zugriff auf produktive KI-gestützte Dienste nur unter wirksamen Authentifizierungs- und Zugriffsbedingungen.", status: "geplant", verantwortlicher: "IT", pruefDatum: "", pruefintervall: "jährlich", schutzziel: "Vertraulichkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "auftrag", massnahme: "Microsoft-Vertragsunterlagen, DPA und Subprocessor-Prüfung dokumentieren", beschreibung: "Vertragliche und organisatorische Kontrolle des Auftragsverarbeiters und seiner Unterauftragnehmer dokumentieren.", status: "geplant", verantwortlicher: "Datenschutz / Einkauf", pruefDatum: "", pruefintervall: "jährlich", schutzziel: "Rechtmäßigkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "eingabe", massnahme: "Audit-Logs und Nachvollziehbarkeit für relevante Copilot- und M365-Aktivitäten sicherstellen", beschreibung: "Sicherstellen, dass sicherheits- und compliance-relevante Aktivitäten nachvollzogen und geprüft werden können.", status: "geplant", verantwortlicher: "IT / Compliance", pruefDatum: "", pruefintervall: "monatlich", schutzziel: "Nachvollziehbarkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "verfuegbarkeit", massnahme: "Retention-, Backup- und Wiederherstellungslogik dokumentieren", beschreibung: "Sicherstellen, dass Lösch- und Aufbewahrungslogik sowie Wiederherstellungsfähigkeit dokumentiert und abgestimmt sind.", status: "geplant", verantwortlicher: "IT", pruefDatum: "", pruefintervall: "jährlich", schutzziel: "Verfügbarkeit", nachweis: "", wirksamkeit: "", notizen: "" },
+          { kategorie: "trennung", massnahme: "Richtlinie für zulässige und unzulässige KI-Nutzung festlegen", beschreibung: "Verbotene Inhalte, sensible Eingaben, Prüfpflichten und Eskalationsregeln verbindlich festlegen.", status: "geplant", verantwortlicher: "Datenschutz / Compliance / HR", pruefDatum: "", pruefintervall: "jährlich", schutzziel: "Rechtmäßigkeit", nachweis: "", wirksamkeit: "", notizen: "" }
+        ]
+      }, null, 2), name: "Microsoft 365 Copilot – Datenschutz- & Compliance-Paket", beschreibung: "Musterpaket für datenschutzrechtliche Bewertung, Governance und Dokumentation beim Einsatz von Microsoft 365 Copilot.", kategorie: "ki-compliance", version: "1.0" }));
+    }
     if (key === "dsgvo") {
       setForm((p) => ({ ...p, inhaltJson: JSON.stringify({
         aufgaben: [
@@ -4276,6 +4473,7 @@ function VorlagenpaketePage() {
                   <Button type="button" variant={preset === "konzern" ? "default" : "outline"} size="sm" onClick={() => applyPreset("konzern")}>Konzern</Button>
                   <Button type="button" variant={preset === "dsgvo" ? "default" : "outline"} size="sm" onClick={() => applyPreset("dsgvo")}>DSGVO Basis</Button>
                   <Button type="button" variant={preset === "isms" ? "default" : "outline"} size="sm" onClick={() => applyPreset("isms")}>ISMS Basis</Button>
+                  <Button type="button" variant={preset === "copilot" ? "default" : "outline"} size="sm" onClick={() => applyPreset("copilot")}>M365 Copilot</Button>
                 </div>
               </div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
