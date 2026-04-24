@@ -28,6 +28,7 @@ import {
   type Dsr, type InsertDsr,
   type Tom, type InsertTom,
   type Audit, type InsertAudit,
+  type Pdca, type InsertPdca,
   type Loeschkonzept, type InsertLoeschkonzept,
   type Aufgabe, type InsertAufgabe,
   type Dokument, type InsertDokument,
@@ -121,6 +122,13 @@ export interface IStorage {
   createAudit(data: InsertAudit): Promise<Audit>;
   updateAudit(id: number, data: Partial<InsertAudit>): Promise<Audit | undefined>;
   deleteAudit(id: number): Promise<void>;
+
+  // PDCA
+  getPdcaByMandant(mandantId: number): Promise<Pdca[]>;
+  getPdca(id: number): Promise<Pdca | undefined>;
+  createPdca(data: InsertPdca): Promise<Pdca>;
+  updatePdca(id: number, data: Partial<InsertPdca>): Promise<Pdca | undefined>;
+  deletePdca(id: number): Promise<void>;
 
   // Löschkonzept
   getLoeschkonzeptByMandant(mandantId: number): Promise<Loeschkonzept[]>;

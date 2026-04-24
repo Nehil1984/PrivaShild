@@ -391,6 +391,50 @@ export const requestAuditSchema = insertAuditSchema.omit({ mandantId: true });
 export type InsertAudit = z.infer<typeof insertAuditSchema>;
 export type Audit = typeof audits.$inferSelect;
 
+// ─── PDCA / Verbesserungszyklus ───────────────────────────────────────────
+export const pdca = sqliteTable("pdca", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mandantId: integer("mandant_id").notNull(),
+  titel: text("titel").notNull(),
+  beschreibung: text("beschreibung"),
+  zyklusTyp: text("zyklus_typ").default("verbesserungsmassnahme"),
+  zeitraumVon: text("zeitraum_von"),
+  zeitraumBis: text("zeitraum_bis"),
+  status: text("status").default("geplant"),
+  prioritaet: text("prioritaet").default("mittel"),
+  verantwortlicher: text("verantwortlicher"),
+  naechstePruefungAm: text("naechste_pruefung_am"),
+  planZiele: text("plan_ziele"),
+  planAnforderungen: text("plan_anforderungen"),
+  planRisiken: text("plan_risiken"),
+  planMassnahmen: text("plan_massnahmen"),
+  planKennzahlen: text("plan_kennzahlen"),
+  doUmsetzung: text("do_umsetzung"),
+  doFortschritt: integer("do_fortschritt").default(0),
+  doNachweise: text("do_nachweise"),
+  doBeteiligte: text("do_beteiligte"),
+  doAbweichungen: text("do_abweichungen"),
+  checkPruefungen: text("check_pruefungen"),
+  checkErgebnisse: text("check_ergebnisse"),
+  checkKennzahlen: text("check_kennzahlen"),
+  checkSollIst: text("check_soll_ist"),
+  checkFeststellungen: text("check_feststellungen"),
+  actKorrekturen: text("act_korrekturen"),
+  actVerbesserungen: text("act_verbesserungen"),
+  actEntscheidungen: text("act_entscheidungen"),
+  actFolgemassnahmen: text("act_folgemassnahmen"),
+  actNaechsterZyklus: text("act_naechster_zyklus"),
+  tags: text("tags").default("[]"),
+  createdAt: text("created_at").default(new Date().toISOString()),
+  updatedAt: text("updated_at").default(new Date().toISOString()),
+});
+export const insertPdcaSchema = createInsertSchema(pdca).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  titel: z.string().trim().min(1, "Titel ist erforderlich"),
+});
+export const requestPdcaSchema = insertPdcaSchema.omit({ mandantId: true });
+export type InsertPdca = z.infer<typeof insertPdcaSchema>;
+export type Pdca = typeof pdca.$inferSelect;
+
 
 
 // ─── Interne Notizen ───────────────────────────────────────────────────────

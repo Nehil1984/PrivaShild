@@ -36,7 +36,7 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen, RefreshCcw
 } from "lucide-react";
 
 
@@ -225,6 +225,7 @@ const navItems = [
   { path: "/dsr", label: "DSR / Betroffenenrechte", icon: UserCheck },
   { path: "/tom", label: "TOM-Katalog", icon: Lock },
   { path: "/audits", label: "Interne Audits", icon: ClipboardList },
+  { path: "/pdca", label: "PDCA / Verbesserungszyklus", icon: RefreshCcw },
   { path: "/loeschkonzept", label: "Löschkonzept", icon: Database },
   { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
@@ -2821,6 +2822,196 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
         </DialogFooter>
       </div>
     </div>
+  );
+}
+
+function PdcaForm({ initial, onSave, onCancel }: any) {
+  const [form, setForm] = useState({
+    titel: "",
+    beschreibung: "",
+    zyklusTyp: "verbesserungsmassnahme",
+    zeitraumVon: "",
+    zeitraumBis: "",
+    status: "geplant",
+    prioritaet: "mittel",
+    verantwortlicher: "",
+    naechstePruefungAm: "",
+    planZiele: "",
+    planAnforderungen: "",
+    planRisiken: "",
+    planMassnahmen: "",
+    planKennzahlen: "",
+    doUmsetzung: "",
+    doFortschritt: 0,
+    doNachweise: "",
+    doBeteiligte: "",
+    doAbweichungen: "",
+    checkPruefungen: "",
+    checkErgebnisse: "",
+    checkKennzahlen: "",
+    checkSollIst: "",
+    checkFeststellungen: "",
+    actKorrekturen: "",
+    actVerbesserungen: "",
+    actEntscheidungen: "",
+    actFolgemassnahmen: "",
+    actNaechsterZyklus: "",
+    tags: "[]",
+    ...initial,
+  });
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Kurzbeschreibung</Label><Textarea value={form.beschreibung || ""} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="space-y-1"><Label className="text-xs">Zyklustyp</Label><Select value={form.zyklusTyp || "verbesserungsmassnahme"} onValueChange={v => set("zyklusTyp", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="verbesserungsmassnahme">Verbesserungsmaßnahme</SelectItem><SelectItem value="audit_follow_up">Audit-Follow-up</SelectItem><SelectItem value="kontrollzyklus">Kontrollzyklus</SelectItem><SelectItem value="management_review">Management-Review</SelectItem></SelectContent></Select></div>
+        <div className="space-y-1"><Label className="text-xs">Status</Label><Select value={form.status || "geplant"} onValueChange={v => set("status", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="geplant">Geplant</SelectItem><SelectItem value="in_bearbeitung">In Bearbeitung</SelectItem><SelectItem value="überprüfung">In Überprüfung</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem></SelectContent></Select></div>
+        <div className="space-y-1"><Label className="text-xs">Priorität</Label><Select value={form.prioritaet || "mittel"} onValueChange={v => set("prioritaet", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="niedrig">Niedrig</SelectItem><SelectItem value="mittel">Mittel</SelectItem><SelectItem value="hoch">Hoch</SelectItem><SelectItem value="kritisch">Kritisch</SelectItem></SelectContent></Select></div>
+        <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher || ""} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Zeitraum von</Label><Input type="date" value={form.zeitraumVon || ""} onChange={e => set("zeitraumVon", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Zeitraum bis</Label><Input type="date" value={form.zeitraumBis || ""} onChange={e => set("zeitraumBis", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.naechstePruefungAm || ""} onChange={e => set("naechstePruefungAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Fortschritt (%)</Label><Input type="number" min="0" max="100" value={form.doFortschritt ?? 0} onChange={e => set("doFortschritt", Number(e.target.value))} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Tags (JSON-Array oder Freitext)</Label><Input value={form.tags || ""} onChange={e => set("tags", e.target.value)} className="h-8 text-sm" placeholder='z. B. ["DSMS","Review"]' /></div>
+        <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1"><Label className="text-xs">PLAN – Ziele</Label><Textarea value={form.planZiele || ""} onChange={e => set("planZiele", e.target.value)} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">PLAN – Anforderungen</Label><Textarea value={form.planAnforderungen || ""} onChange={e => set("planAnforderungen", e.target.value)} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">PLAN – Risiken</Label><Textarea value={form.planRisiken || ""} onChange={e => set("planRisiken", e.target.value)} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">PLAN – Maßnahmen & Kennzahlen</Label><Textarea value={`${form.planMassnahmen || ""}${form.planKennzahlen ? `\n\nKennzahlen:\n${form.planKennzahlen}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const parts = raw.split("\n\nKennzahlen:\n");
+            set("planMassnahmen", parts[0] || "");
+            set("planKennzahlen", parts[1] || "");
+          }} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">DO – Umsetzung</Label><Textarea value={form.doUmsetzung || ""} onChange={e => set("doUmsetzung", e.target.value)} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">DO – Nachweise / Beteiligte / Abweichungen</Label><Textarea value={`${form.doNachweise || ""}${form.doBeteiligte ? `\n\nBeteiligte:\n${form.doBeteiligte}` : ""}${form.doAbweichungen ? `\n\nAbweichungen:\n${form.doAbweichungen}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const beteiligteSplit = raw.split("\n\nBeteiligte:\n");
+            const nachweise = beteiligteSplit[0] || "";
+            const rest = beteiligteSplit[1] || "";
+            const abwSplit = rest.split("\n\nAbweichungen:\n");
+            set("doNachweise", nachweise);
+            set("doBeteiligte", abwSplit[0] || "");
+            set("doAbweichungen", abwSplit[1] || "");
+          }} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">CHECK – Prüfungen / Ergebnisse</Label><Textarea value={`${form.checkPruefungen || ""}${form.checkErgebnisse ? `\n\nErgebnisse:\n${form.checkErgebnisse}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const parts = raw.split("\n\nErgebnisse:\n");
+            set("checkPruefungen", parts[0] || "");
+            set("checkErgebnisse", parts[1] || "");
+          }} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">CHECK – Kennzahlen / Soll-Ist / Feststellungen</Label><Textarea value={`${form.checkKennzahlen || ""}${form.checkSollIst ? `\n\nSoll-Ist:\n${form.checkSollIst}` : ""}${form.checkFeststellungen ? `\n\nFeststellungen:\n${form.checkFeststellungen}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const sollSplit = raw.split("\n\nSoll-Ist:\n");
+            const kennzahlen = sollSplit[0] || "";
+            const festSplit = (sollSplit[1] || "").split("\n\nFeststellungen:\n");
+            set("checkKennzahlen", kennzahlen);
+            set("checkSollIst", festSplit[0] || "");
+            set("checkFeststellungen", festSplit[1] || "");
+          }} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">ACT – Korrekturen / Verbesserungen</Label><Textarea value={`${form.actKorrekturen || ""}${form.actVerbesserungen ? `\n\nVerbesserungen:\n${form.actVerbesserungen}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const parts = raw.split("\n\nVerbesserungen:\n");
+            set("actKorrekturen", parts[0] || "");
+            set("actVerbesserungen", parts[1] || "");
+          }} className="text-sm min-h-20" /></div>
+          <div className="space-y-1"><Label className="text-xs">ACT – Entscheidungen / Folgemaßnahmen / Nächster Zyklus</Label><Textarea value={`${form.actEntscheidungen || ""}${form.actFolgemassnahmen ? `\n\nFolgemaßnahmen:\n${form.actFolgemassnahmen}` : ""}${form.actNaechsterZyklus ? `\n\nNächster Zyklus:\n${form.actNaechsterZyklus}` : ""}`} onChange={e => {
+            const raw = e.target.value;
+            const folgeSplit = raw.split("\n\nFolgemaßnahmen:\n");
+            const entscheidungen = folgeSplit[0] || "";
+            const nextSplit = (folgeSplit[1] || "").split("\n\nNächster Zyklus:\n");
+            set("actEntscheidungen", entscheidungen);
+            set("actFolgemassnahmen", nextSplit[0] || "");
+            set("actNaechsterZyklus", nextSplit[1] || "");
+          }} className="text-sm min-h-20" /></div>
+        </div>
+      </div>
+      <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
+          <Button size="sm" className="bg-primary" onClick={() => onSave(form)} disabled={!form.titel}>Speichern</Button>
+        </DialogFooter>
+      </div>
+    </div>
+  );
+}
+
+function PdcaPage() {
+  const { data, isLoading, create, update, remove } = useModuleData("pdca");
+  const [modal, setModal] = useState<null | "new" | any>(null);
+  const [delId, setDelId] = useState<number | null>(null);
+  const [filter, setFilter] = useState("alle");
+  const { toast } = useToast();
+  const save = (form: any) => {
+    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  };
+  const filtered = data.filter((item: any) => filter === "alle" ? true : item.status === filter);
+  const offene = data.filter((item: any) => item.status !== "abgeschlossen");
+  const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen");
+  return (
+    <MandantGuard>
+      <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
+        action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Review fällig</p><p className="text-2xl font-bold">{reviewFaellig.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Ø Fortschritt</p><p className="text-2xl font-bold">{data.length ? Math.round(data.reduce((sum: number, item: any) => sum + Number(item.doFortschritt || 0), 0) / data.length) : 0}%</p></CardContent></Card>
+      </div>
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[
+          ["alle", "Alle"],
+          ["geplant", "Geplant"],
+          ["in_bearbeitung", "In Bearbeitung"],
+          ["überprüfung", "In Überprüfung"],
+          ["abgeschlossen", "Abgeschlossen"],
+        ].map(([key, label]) => (
+          <button key={key} onClick={() => setFilter(key)} className={`px-3 py-1 rounded-full text-xs transition-colors ${filter === key ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>{label}</button>
+        ))}
+      </div>
+      {isLoading ? <Skeleton className="h-32 w-full" /> : (
+        <div className="space-y-3">
+          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine PDCA-Zyklen in dieser Ansicht.</CardContent></Card>}
+          {filtered.map((item: any) => (
+            <Card key={item.id} className="group hover:border-border/80 transition-colors">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+                  <div>
+                    <p className="text-sm font-semibold">{item.titel}</p>
+                    <p className="text-xs text-muted-foreground">{item.zyklusTyp || "verbesserungsmassnahme"} · {item.verantwortlicher || "—"}{item.zeitraumVon || item.zeitraumBis ? ` · ${item.zeitraumVon || "?"} bis ${item.zeitraumBis || "?"}` : ""}{item.naechstePruefungAm ? ` · nächste Prüfung ${item.naechstePruefungAm}` : ""}</p>
+                  </div>
+                  <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                    <StatusBadge value={item.prioritaet} />
+                    <StatusBadge value={item.status} />
+                    <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                {item.beschreibung && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{item.beschreibung}</p>}
+                <div className="h-2 w-full rounded bg-secondary overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, Number(item.doFortschritt || 0)))}%` }} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">PLAN</p><p className="text-muted-foreground whitespace-pre-wrap">{item.planZiele || item.planMassnahmen || item.planRisiken || "—"}</p></div>
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">DO</p><p className="text-muted-foreground whitespace-pre-wrap">{item.doUmsetzung || item.doNachweise || item.doAbweichungen || "—"}</p></div>
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">CHECK</p><p className="text-muted-foreground whitespace-pre-wrap">{item.checkErgebnisse || item.checkFeststellungen || item.checkSollIst || "—"}</p></div>
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">ACT</p><p className="text-muted-foreground whitespace-pre-wrap">{item.actKorrekturen || item.actVerbesserungen || item.actFolgemassnahmen || "—"}</p></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+      <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer PDCA-Zyklus" : "PDCA-Zyklus bearbeiten"}</DialogTitle></DialogHeader></div>
+          {modal && <PdcaForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog open={delId !== null} title="PDCA-Zyklus löschen?" desc="Dieser Vorgang kann nicht rückgängig gemacht werden."
+        onConfirm={() => { remove.mutate(delId!); setDelId(null); }} onCancel={() => setDelId(null)} />
+    </MandantGuard>
   );
 }
 
@@ -5529,6 +5720,7 @@ function AppRoutes() {
           <Route path="/dsr" component={DsrPage} />
           <Route path="/tom" component={TomPage} />
           <Route path="/audits" component={AuditsPage} />
+          <Route path="/pdca" component={PdcaPage} />
           <Route path="/loeschkonzept" component={LoeschkonzeptPage} />
           <Route path="/aufgaben" component={AufgabenPage} />
           <Route path="/dokumente" component={DokumentePage} />

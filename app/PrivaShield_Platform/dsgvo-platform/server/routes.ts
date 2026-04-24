@@ -15,7 +15,7 @@ import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
 import { listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
-import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
+import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertPdcaSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestPdcaSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -999,6 +999,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   crudRoutes("dsr", storage.getDsrByMandant.bind(storage), storage.getDsr.bind(storage), storage.createDsr.bind(storage), storage.updateDsr.bind(storage), storage.deleteDsr.bind(storage), insertDsrSchema.partial());
   crudRoutes("tom", storage.getTomByMandant.bind(storage), storage.getTom.bind(storage), storage.createTom.bind(storage), storage.updateTom.bind(storage), storage.deleteTom.bind(storage), insertTomSchema.partial());
   crudRoutes("audits", storage.getAuditsByMandant.bind(storage), storage.getAudit.bind(storage), storage.createAudit.bind(storage), storage.updateAudit.bind(storage), storage.deleteAudit.bind(storage), insertAuditSchema.partial());
+  crudRoutes("pdca", storage.getPdcaByMandant.bind(storage), storage.getPdca.bind(storage), storage.createPdca.bind(storage), storage.updatePdca.bind(storage), storage.deletePdca.bind(storage), insertPdcaSchema.partial());
   crudRoutes("aufgaben", storage.getAufgabenByMandant.bind(storage), storage.getAufgabe.bind(storage), storage.createAufgabe.bind(storage), storage.updateAufgabe.bind(storage), storage.deleteAufgabe.bind(storage));
   crudRoutes("dokumente", storage.getDokumenteByMandant.bind(storage), storage.getDokument.bind(storage), storage.createDokument.bind(storage), storage.updateDokument.bind(storage), storage.deleteDokument.bind(storage), insertDokumentSchema.partial());
 

@@ -29,6 +29,7 @@ import type {
   Dsr, InsertDsr,
   Tom, InsertTom,
   Audit, InsertAudit,
+  Pdca, InsertPdca,
   Loeschkonzept, InsertLoeschkonzept,
   Aufgabe, InsertAufgabe,
   Dokument, InsertDokument,
@@ -50,6 +51,7 @@ interface DbSchema {
   dsr: Dsr[];
   tom: Tom[];
   audits: Audit[];
+  pdca: Pdca[];
   loeschkonzept: Loeschkonzept[];
   aufgaben: Aufgabe[];
   dokumente: Dokument[];
@@ -511,6 +513,7 @@ const defaultData: DbSchema = {
   dsr: [],
   tom: [],
   audits: [],
+  pdca: [],
   loeschkonzept: [],
   aufgaben: [],
   dokumente: [],
@@ -564,6 +567,7 @@ function syncNextIds(db: Low<DbSchema>) {
     "dokumente",
     "loeschkonzept",
     "audits",
+    "pdca",
     "interneNotizen",
   ];
 
@@ -1124,6 +1128,12 @@ export class LowdbStorage implements IStorage {
   async updateInterneNotiz(id: number, data: Partial<InsertInterneNotiz>) { return this._update<InterneNotiz>("interneNotizen", id, { ...data, updatedAt: new Date().toISOString() } as any); }
   async deleteInterneNotiz(id: number) { return this._delete("interneNotizen", id); }
 
+  async getPdcaByMandant(mandantId: number) { return this._getAll<Pdca>("pdca", mandantId); }
+  async getPdca(id: number) { return this._getOne<Pdca>("pdca", id); }
+  async createPdca(data: InsertPdca) { const now = new Date().toISOString(); return this._create<Pdca>("pdca", { ...data, createdAt: now, updatedAt: now } as any); }
+  async updatePdca(id: number, data: Partial<InsertPdca>) { return this._update<Pdca>("pdca", id, { ...data, updatedAt: new Date().toISOString() } as any); }
+  async deletePdca(id: number) { return this._delete("pdca", id); }
+
   // ─── Stats ────────────────────────────────────────────────────────────────
   async getStatsForMandant(mandantId: number): Promise<Record<string, number>> {
     const db = await getDb();
@@ -1136,6 +1146,7 @@ export class LowdbStorage implements IStorage {
       dsr: f("dsr"),
       tom: f("tom"),
       audits: f("audits"),
+      pdca: f("pdca"),
       loeschkonzept: f("loeschkonzept"),
       aufgaben: f("aufgaben"),
       offeneAufgaben: (db.data.aufgaben as Aufgabe[]).filter((x) => x.mandantId === mandantId && x.status === "offen").length,
