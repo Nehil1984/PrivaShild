@@ -529,6 +529,11 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: pdca = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/pdca`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/pdca`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: interneNotizen = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then(r => r.json()) : [],
@@ -589,6 +594,8 @@ function Dashboard() {
   const copilotVvtOhneDsfaItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
   const copilotStatusVorhanden = copilotVvtItems.length > 0 || copilotDsfaItems.length > 0 || copilotAvvItems.length > 0 || copilotTomItems.length > 0;
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const pdcaOffenItems = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
+  const pdcaReviewFaelligItems = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
@@ -628,6 +635,7 @@ function Dashboard() {
     { label: "DSR-Anfragen", value: stats?.dsr ?? 0, icon: UserCheck, path: "/dsr", color: "text-purple-400" },
     { label: "TOM-Maßnahmen", value: stats?.tom ?? 0, icon: Lock, path: "/tom", color: "text-emerald-400" },
     { label: "Interne Audits", value: stats?.audits ?? 0, icon: ClipboardList, path: "/audits", color: "text-cyan-400" },
+    { label: "PDCA-Zyklen", value: stats?.pdca ?? 0, icon: RefreshCcw, path: "/pdca", color: "text-sky-400" },
     { label: "Offene Aufgaben", value: stats?.offeneAufgaben ?? 0, icon: CheckSquare, path: "/aufgaben", color: "text-orange-400" },
     { label: "Dokumente", value: stats?.dokumente ?? 0, icon: FolderOpen, path: "/dokumente", color: "text-indigo-400" },
   ];
@@ -691,6 +699,22 @@ function Dashboard() {
               <CardContent className="space-y-2 text-sm">
                 <p>Richtlinien vorhanden: <span className="font-medium">{richtlinien.length > 0 ? "Ja" : "Nein"}</span></p>
                 {richtlinien.length === 0 ? <p className="text-muted-foreground">Noch keine Richtlinien vorhanden.</p> : richtlinien.map((d: any) => <p key={d.id} className="text-muted-foreground">{d.titel} · {d.status}</p>)}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">PDCA / Verbesserungszyklus</CardTitle>
+                <CardDescription>Kontinuierliche Verbesserung, Reviewzyklen und Nachsteuerung</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p>Dokumentierte PDCA-Zyklen: <span className="font-medium">{pdca.length}</span></p>
+                <p>Offen / laufend: <span className="font-medium">{pdcaOffenItems.length}</span></p>
+                <p>Review fällig: <span className="font-medium">{pdcaReviewFaelligItems.length}</span></p>
+                {pdca.length > 0 ? (
+                  pdca.slice(0, 3).map((item: any) => <p key={item.id} className="text-muted-foreground">{item.titel} · {item.status}{item.naechstePruefungAm ? ` · Prüfung ${item.naechstePruefungAm}` : ""}</p>)
+                ) : (
+                  <p className="text-muted-foreground">Noch keine PDCA-Zyklen dokumentiert.</p>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -5114,6 +5138,7 @@ const EXPORT_MODULES = [
   { key: "dsr", label: "Betroffenenrechte / DSR (Art. 15–22)", icon: UserCheck, color: "text-purple-400" },
   { key: "tom", label: "TOM-Katalog (Art. 32)", icon: Lock, color: "text-green-400" },
   { key: "audits", label: "Interne Audits & Auditprotokoll", icon: ClipboardList, color: "text-cyan-400" },
+  { key: "pdca", label: "PDCA / Verbesserungszyklus", icon: RefreshCcw, color: "text-sky-400" },
   { key: "loeschkonzept", label: "Löschkonzept & Löschklassen", icon: Database, color: "text-sky-400" },
   { key: "aufgaben", label: "Aufgaben & Maßnahmenplan", icon: CheckSquare, color: "text-orange-400" },
   { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-slate-400" },
@@ -5145,6 +5170,11 @@ function ExportPage() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/audits`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: pdca = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/pdca`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/pdca`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: aufgaben = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/aufgaben`).then((r) => r.json()) : [],
@@ -5173,6 +5203,8 @@ function ExportPage() {
   const exportierbareInterneNotizen = interneNotizen.filter((note: any) => !!note.exportieren);
   const auditTodos = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
   const auditDeviationCount = audits.reduce((sum: number, item: any) => sum + String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length, 0);
+  const pdcaReviewFaellig = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
+  const pdcaOffen = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const managementSummary = {
     score: mandant?.verantwortlicherName ? 75 : 40,
     ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
@@ -5180,6 +5212,10 @@ function ExportPage() {
     audits: audits.length,
     auditDeviationCount,
     auditTodos: auditTodos.length,
+    pdca: pdca.length,
+    pdcaOpen: pdcaOffen.length,
+    pdcaReviewFaellig: pdcaReviewFaellig.length,
+    fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
   };
 
   const toggle = (key: string) => {

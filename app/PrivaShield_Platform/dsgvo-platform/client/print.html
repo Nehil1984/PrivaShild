@@ -412,6 +412,21 @@ const MODULES = {
       { key: "status", label: "Status" },
     ],
   },
+  pdca: {
+    label: "PDCA / Verbesserungszyklus",
+    columns: [
+      { key: "titel", label: "Titel" },
+      { key: "zyklusTyp", label: "Zyklustyp" },
+      { key: "status", label: "Status" },
+      { key: "prioritaet", label: "Priorität" },
+      { key: "verantwortlicher", label: "Verantwortlicher" },
+      { key: "naechstePruefungAm", label: "Nächste Prüfung" },
+      { key: "planZiele", label: "PLAN – Ziele" },
+      { key: "doUmsetzung", label: "DO – Umsetzung" },
+      { key: "checkErgebnisse", label: "CHECK – Ergebnisse" },
+      { key: "actFolgemassnahmen", label: "ACT – Folgemaßnahmen" },
+    ],
+  },
   loeschkonzept: {
     label: "Löschkonzept & Löschklassen",
     columns: [
@@ -557,6 +572,9 @@ function buildTable(mod, rows) {
   if (mod.key === "dsfa") {
     return buildDsfaTable(mod, rows);
   }
+  if (mod.key === "pdca") {
+    return buildPdcaTable(mod, rows);
+  }
   const cols = mod.columns;
   if (!rows || rows.length === 0) {
     return `<div class="empty-note">Keine Einträge vorhanden</div>`;
@@ -639,6 +657,71 @@ function buildVvtTable(mod, rows) {
               ${contextRows}
               <tr><td class="record-label" style="font-weight:700;">Datenbild & Beteiligte</td><td class="record-value"></td></tr>
               ${detailsRows}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function buildPdcaTable(mod, rows) {
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-note">Keine Einträge vorhanden</div>`;
+  }
+
+  return rows.map((row, index) => {
+    const contextRows = [
+      ["Titel", row.titel],
+      ["Kurzbeschreibung", row.beschreibung],
+      ["Zyklustyp", row.zyklusTyp],
+      ["Status", row.status],
+      ["Priorität", row.prioritaet],
+      ["Verantwortlicher", row.verantwortlicher],
+      ["Zeitraum", row.zeitraumVon || row.zeitraumBis ? `${fmt(row.zeitraumVon)} bis ${fmt(row.zeitraumBis)}` : "—"],
+      ["Nächste Prüfung", row.naechstePruefungAm],
+      ["Fortschritt", row.doFortschritt === null || row.doFortschritt === undefined ? "—" : `${row.doFortschritt}%`],
+      ["Tags", row.tags],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    const pdcaRows = [
+      ["PLAN – Ziele", row.planZiele],
+      ["PLAN – Anforderungen", row.planAnforderungen],
+      ["PLAN – Risiken", row.planRisiken],
+      ["PLAN – Maßnahmen", row.planMassnahmen],
+      ["PLAN – Kennzahlen", row.planKennzahlen],
+      ["DO – Umsetzung", row.doUmsetzung],
+      ["DO – Nachweise", row.doNachweise],
+      ["DO – Beteiligte", row.doBeteiligte],
+      ["DO – Abweichungen", row.doAbweichungen],
+      ["CHECK – Prüfungen", row.checkPruefungen],
+      ["CHECK – Ergebnisse", row.checkErgebnisse],
+      ["CHECK – Kennzahlen", row.checkKennzahlen],
+      ["CHECK – Soll-Ist", row.checkSollIst],
+      ["CHECK – Feststellungen", row.checkFeststellungen],
+      ["ACT – Korrekturen", row.actKorrekturen],
+      ["ACT – Verbesserungen", row.actVerbesserungen],
+      ["ACT – Entscheidungen", row.actEntscheidungen],
+      ["ACT – Folgemaßnahmen", row.actFolgemassnahmen],
+      ["ACT – Nächster Zyklus", row.actNaechsterZyklus],
+    ].map(([label, value]) => `
+      <tr>
+        <td class="record-label">${label}</td>
+        <td class="record-value">${statusField(String(label).toLowerCase(), value)}</td>
+      </tr>`).join("");
+
+    return `
+      <div class="record-entry">
+        <div class="table-wrap" style="margin-bottom:${index === rows.length - 1 ? '0' : '16px'};">
+          <table class="record-table">
+            <tbody>
+              <tr><td class="record-label" style="font-weight:700;">Steuerungsrahmen</td><td class="record-value"></td></tr>
+              ${contextRows}
+              <tr><td class="record-label" style="font-weight:700;">PDCA-Inhalte</td><td class="record-value"></td></tr>
+              ${pdcaRows}
             </tbody>
           </table>
         </div>
@@ -838,6 +921,26 @@ function buildAuditSummary(audits, auditTodos) {
         <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p></div>
         <div class="info-card"><h3>Wesentliche Abweichungen</h3><p>${deviations.length ? deviations.slice(0, 8).map(d => `• ${d}`).join("<br>") : "Keine dokumentierten Abweichungen"}</p></div>
         <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p></div>
+      </div>
+    </div>`;
+}
+
+function buildPdcaSummary(rows) {
+  if (!rows || rows.length === 0) return "";
+  const offene = rows.filter(r => String(r.status || "") !== "abgeschlossen").length;
+  const reviewFaellig = rows.filter(r => r.naechstePruefungAm && new Date(r.naechstePruefungAm).getTime() < Date.now() && String(r.status || "") !== "abgeschlossen").length;
+  const kritisch = rows.filter(r => String(r.prioritaet || "").toLowerCase() === "kritisch" && String(r.status || "") !== "abgeschlossen").length;
+  const statusSet = Array.from(new Set(rows.map(r => r.status).filter(Boolean)));
+  return `
+    <div class="module-section">
+      <div class="module-header">
+        <h2>PDCA-Steuerung und Reviewstatus</h2>
+        <span class="badge">${fmt(rows.length)} Zyklen</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Übersicht</h3><p><strong>Zyklen gesamt:</strong> ${fmt(rows.length)}</p><p><strong>Offen / laufend:</strong> ${fmt(offene)}</p><p><strong>Review fällig:</strong> ${fmt(reviewFaellig)}</p><p><strong>Kritische Zyklen:</strong> ${fmt(kritisch)}</p></div>
+        <div class="info-card"><h3>Statusbild</h3><p>${statusSet.length ? statusSet.map(s => `• ${fmt(s)}`).join("<br>") : "Keine Statuswerte dokumentiert"}</p></div>
+        <div class="info-card"><h3>Prüfhinweis</h3><p>${reviewFaellig > 0 ? "Es bestehen PDCA-Zyklen mit fälliger Review- oder Nachsteuerungslogik." : "Aktuell keine unmittelbar fälligen PDCA-Reviews im Exportkontext erkennbar."}</p><p style="margin-top:8px;">Der PDCA-Block unterstützt Managementbewertung, Maßnahmenverfolgung und Nachweisführung zur kontinuierlichen Verbesserung.</p></div>
       </div>
     </div>`;
 }
@@ -1222,6 +1325,9 @@ async function render() {
         <p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p>
         <p><strong>Audit-Abweichungen:</strong> ${fmt(config.managementSummary?.auditDeviationCount)}</p>
         <p><strong>Offene Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p>
+        <p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p>
+        <p><strong>PDCA offen / laufend:</strong> ${fmt(config.managementSummary?.pdcaOpen)}</p>
+        <p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p>
         <p><strong>Löschkonzept-Einträge:</strong> ${fmt((dataMap.loeschkonzept || []).length)}</p>
         <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
         <p><strong>Interne Notizen (freigegeben):</strong> ${fmt((dataMap.interne_notizen || []).filter(n => n.exportieren).length)}</p>
@@ -1229,8 +1335,8 @@ async function render() {
         <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
       </div>
       <div class="info-grid">
-        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p></div>
-        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
+        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p><p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p></div>
+        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
       </div>
       ${buildCopilotSummary(dataMap)}
     `;
@@ -1257,6 +1363,7 @@ async function render() {
       html += `<div class="module-section"><div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p></div><div class="info-card" style="grid-column: span 2"><h3>Offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• ${fmt(item)}`).join("<br>")}</p></div></div></div>`;
     }
     html += buildAuditSummary(config.audits || [], config.auditTodos || []);
+    html += buildPdcaSummary(dataMap.pdca || []);
     html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
     html += buildLogsBox(config.logs || []);
 

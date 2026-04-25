@@ -457,7 +457,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/mandanten/:mid/export-context", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
-    const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente, interneNotizen] = await Promise.all([
+    const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, pdca, loeschkonzept, aufgaben, dokumente, interneNotizen] = await Promise.all([
       storage.getMandant(mandantId),
       storage.getMandantenLogs(mandantId),
       storage.getStatsForMandant(mandantId),
@@ -468,12 +468,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       storage.getDsrByMandant(mandantId),
       storage.getTomByMandant(mandantId),
       storage.getAuditsByMandant(mandantId),
+      storage.getPdcaByMandant(mandantId),
       storage.getLoeschkonzeptByMandant(mandantId),
       storage.getAufgabenByMandant(mandantId),
       storage.getDokumenteByMandant(mandantId),
       storage.getInterneNotizenByMandant(mandantId),
     ]);
-    res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, loeschkonzept, aufgaben, dokumente, interne_notizen: interneNotizen } });
+    res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, pdca, loeschkonzept, aufgaben, dokumente, interne_notizen: interneNotizen } });
   });
 
   // ─── BENUTZER (Admin only) ────────────────────────────────────────────────
