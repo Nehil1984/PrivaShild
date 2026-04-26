@@ -2522,6 +2522,16 @@ function AuditForm({ initial, onSave, onCancel }: any) {
   const { data: pdca = [] } = useModuleData("pdca");
   const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", verknuepftePdcaIds: "[]", followUpDatum: "", naechstesAuditAm: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const selectedPdcaIds = (() => {
+    try { return JSON.parse(form.verknuepftePdcaIds || "[]"); } catch { return []; }
+  })();
+  const togglePdcaLink = (id: number) => {
+    const next = selectedPdcaIds.includes(id)
+      ? selectedPdcaIds.filter((value: number) => value !== id)
+      : [...selectedPdcaIds, id];
+    set("verknuepftePdcaIds", JSON.stringify(next));
+  };
+  const auditFollowUps = pdca.filter((item: any) => item.zyklusTyp === "audit_follow_up");
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = auditTemplates[value];
@@ -2566,10 +2576,25 @@ function AuditForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Positive Aspekte</Label><Textarea value={form.positiveAspekte} onChange={e => set("positiveAspekte", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Abweichungen / Findings</Label><Textarea value={form.abweichungen} onChange={e => set("abweichungen", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Empfehlungen / To-dos</Label><Textarea value={form.empfehlungen} onChange={e => set("empfehlungen", e.target.value)} className="text-sm min-h-16" /></div>
-        <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Verknüpfte PDCA-Zyklen (JSON-ID-Liste)</Label>
-          <Input value={form.verknuepftePdcaIds || "[]"} onChange={e => set("verknuepftePdcaIds", e.target.value)} className="h-8 text-sm" placeholder='z. B. [1,2]' />
-          <p className="text-[11px] text-muted-foreground">Verfügbare Audit-Follow-ups: {pdca.filter((item: any) => item.zyklusTyp === "audit_follow_up").map((item: any) => `#${item.id} ${item.titel}`).join(" · ") || "keine"}</p>
+        <div className="col-span-2 space-y-2">
+          <Label className="text-xs">Verknüpfte PDCA-Zyklen</Label>
+          <div className="rounded-lg border p-3 space-y-2 max-h-44 overflow-y-auto">
+            {auditFollowUps.length === 0 && <p className="text-xs text-muted-foreground">Keine Audit-Follow-ups verfügbar.</p>}
+            {auditFollowUps.map((item: any) => (
+              <label key={item.id} className="flex items-start gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPdcaIds.includes(item.id)}
+                  onChange={() => togglePdcaLink(item.id)}
+                />
+                <span>
+                  <span className="font-medium">#{item.id} {item.titel}</span>
+                  <span className="block text-muted-foreground">Status: {item.status || "—"}{item.verantwortlicher ? ` · Verantwortlich: ${item.verantwortlicher}` : ""}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Auswahl wird intern als Referenzliste gespeichert.</p>
         </div>
         <div className="space-y-1"><Label className="text-xs">Follow-up am</Label><Input type="date" value={form.followUpDatum || ""} onChange={e => set("followUpDatum", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächstes Audit am</Label><Input type="date" value={form.naechstesAuditAm || ""} onChange={e => set("naechstesAuditAm", e.target.value)} className="h-8 text-sm" /></div>
