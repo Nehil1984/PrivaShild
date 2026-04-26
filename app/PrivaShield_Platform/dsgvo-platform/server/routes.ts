@@ -174,6 +174,93 @@ function sanitizeDsfaPayload(payload: Record<string, unknown>) {
   };
 }
 
+function normalizeAuditPdcaIds(raw: unknown): string {
+  const input = typeof raw === "string"
+    ? (() => {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return [];
+        }
+      })()
+    : raw;
+
+  if (!Array.isArray(input)) return "[]";
+  const normalized = Array.from(new Set(input.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)));
+  return JSON.stringify(normalized);
+}
+
+function sanitizeAuditPayload(payload: Record<string, unknown>) {
+  return {
+    ...payload,
+    verknuepftePdcaIds: normalizeAuditPdcaIds(payload.verknuepftePdcaIds),
+  };
+}
+
+function sanitizePdcaPayload(payload: Record<string, unknown>) {
+  const rawAuditId = payload.verknuepftesAuditId;
+  const normalizedAuditId = rawAuditId === null || rawAuditId === undefined || rawAuditId === "" || rawAuditId === "none"
+    ? null
+    : Number(rawAuditId);
+
+  return {
+    ...payload,
+    verknuepftesAuditId: Number.isInteger(normalizedAuditId) && (normalizedAuditId as number) > 0 ? normalizedAuditId : null,
+  };
+}
+
+async function syncAuditPdcaLinks(mandantId: number) {
+  const [audits, pdcaEntries] = await Promise.all([
+    storage.getAuditsByMandant(mandantId),
+    storage.getPdcaByMandant(mandantId),
+  ]);
+
+  const linkedAuditIds = new Set<number>();
+
+  for (const audit of audits) {
+    let pdcaIds: number[] = [];
+    try {
+      pdcaIds = JSON.parse((audit as any).verknuepftePdcaIds || "[]");
+    } catch {
+      pdcaIds = [];
+    }
+
+    const validPdcaIds = pdcaIds.filter((id) => pdcaEntries.some((entry) => entry.id === id));
+    if (JSON.stringify(validPdcaIds) !== JSON.stringify(pdcaIds)) {
+      await storage.updateAudit(audit.id, { verknuepftePdcaIds: JSON.stringify(validPdcaIds) } as any);
+    }
+
+    for (const pdcaId of validPdcaIds) {
+      const entry = pdcaEntries.find((item) => item.id === pdcaId);
+      if (!entry) continue;
+      linkedAuditIds.add(audit.id);
+      if ((entry as any).verknuepftesAuditId !== audit.id) {
+        await storage.updatePdca(entry.id, { verknuepftesAuditId: audit.id } as any);
+      }
+    }
+  }
+
+  for (const entry of pdcaEntries) {
+    const auditId = (entry as any).verknuepftesAuditId;
+    if (!auditId) continue;
+    const audit = audits.find((item) => item.id === auditId);
+    if (!audit) {
+      await storage.updatePdca(entry.id, { verknuepftesAuditId: null } as any);
+      continue;
+    }
+    let auditLinks: number[] = [];
+    try {
+      auditLinks = JSON.parse((audit as any).verknuepftePdcaIds || "[]");
+    } catch {
+      auditLinks = [];
+    }
+    if (!auditLinks.includes(entry.id)) {
+      auditLinks.push(entry.id);
+      await storage.updateAudit(audit.id, { verknuepftePdcaIds: JSON.stringify(Array.from(new Set(auditLinks))) } as any);
+    }
+  }
+}
+
 async function getAllowedMandantIds(req: any): Promise<number[]> {
   if (req.userRole === "admin") {
     const all = await storage.getMandanten();
@@ -844,7 +931,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     app.post(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
       const mandantId = Number(req.params.mid);
       if (!(await requireMandantAccess(req, res, mandantId))) return;
-      const item = await create({ ...req.body, mandantId });
+      const body = path === "audits"
+        ? sanitizeAuditPayload(req.body)
+        : path === "pdca"
+          ? sanitizePdcaPayload(req.body)
+          : req.body;
+      const item = await create({ ...body, mandantId });
       const user = await storage.getUserById(req.userId);
       await storage.createMandantenLog({
         mandantId,
@@ -857,6 +949,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         beschreibung: `${path} wurde angelegt.`,
         detailsJson: JSON.stringify(item),
       });
+      if (path === "audits" || path === "pdca") await syncAuditPdcaLinks(mandantId);
       res.status(201).json(item);
     });
     app.put(`/api/${path}/:id`, authMiddleware, async (req: any, res, next) => {
@@ -864,7 +957,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return validateBody(updateSchema)(req, res, async () => {
           const existing = await getOne(Number(req.params.id));
           if (!(await requireEntityAccess(req, res, existing))) return;
-          const item = await update(Number(req.params.id), req.body);
+          const body = path === "audits"
+            ? sanitizeAuditPayload(req.body)
+            : path === "pdca"
+              ? sanitizePdcaPayload(req.body)
+              : req.body;
+          const item = await update(Number(req.params.id), body);
           if (!item) return res.status(404).json({ message: "Nicht gefunden" });
           const user = await storage.getUserById(req.userId);
           await storage.createMandantenLog({
@@ -878,13 +976,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             beschreibung: `${path} wurde aktualisiert.`,
             detailsJson: JSON.stringify({ after: item, changes: diffObjects(existing, item) }),
           });
+          if (path === "audits" || path === "pdca") await syncAuditPdcaLinks(item.mandantId);
           res.json(item);
         });
       }
 
       const existing = await getOne(Number(req.params.id));
       if (!(await requireEntityAccess(req, res, existing))) return;
-      const item = await update(Number(req.params.id), req.body);
+      const body = path === "audits"
+        ? sanitizeAuditPayload(req.body)
+        : path === "pdca"
+          ? sanitizePdcaPayload(req.body)
+          : req.body;
+      const item = await update(Number(req.params.id), body);
       if (!item) return res.status(404).json({ message: "Nicht gefunden" });
       const user = await storage.getUserById(req.userId);
       await storage.createMandantenLog({
@@ -898,6 +1002,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         beschreibung: `${path} wurde aktualisiert.`,
         detailsJson: JSON.stringify({ after: item, changes: diffObjects(existing, item) }),
       });
+      if (path === "audits" || path === "pdca") await syncAuditPdcaLinks(item.mandantId);
       res.json(item);
     });
     app.delete(`/api/${path}/:id`, authMiddleware, async (req: any, res) => {

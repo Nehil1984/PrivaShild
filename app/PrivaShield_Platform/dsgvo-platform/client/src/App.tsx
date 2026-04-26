@@ -2766,10 +2766,13 @@ function AuditsPage() {
           <CardTitle className="text-sm">Audit-zu-PDCA-Verzahnung</CardTitle>
           <CardDescription>Nachverfolgung von Audit-Feststellungen über PDCA-Zyklen und offene To-dos</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
           <div><p className="text-xs text-muted-foreground">Audit-Follow-up-Zyklen</p><p className="text-2xl font-bold">{auditFollowUps.length}</p></div>
           <div><p className="text-xs text-muted-foreground">Offene Follow-ups</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></div>
           <div><p className="text-xs text-muted-foreground">Audit-To-dos ohne Abschluss</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></div>
+          <div><p className="text-xs text-muted-foreground">Explizit verknüpfte Audits</p><p className="text-2xl font-bold">{data.filter((item: any) => {
+            try { return JSON.parse(item.verknuepftePdcaIds || "[]").length > 0; } catch { return false; }
+          }).length}</p></div>
         </CardContent>
       </Card>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
