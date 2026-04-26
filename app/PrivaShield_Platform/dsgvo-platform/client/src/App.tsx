@@ -2519,7 +2519,8 @@ const auditTemplates: Record<string, any> = {
 
 function AuditForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", followUpDatum: "", naechstesAuditAm: "", ...initial });
+  const { data: pdca = [] } = useModuleData("pdca");
+  const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", verknuepftePdcaIds: "[]", followUpDatum: "", naechstesAuditAm: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
@@ -2565,6 +2566,11 @@ function AuditForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">Positive Aspekte</Label><Textarea value={form.positiveAspekte} onChange={e => set("positiveAspekte", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Abweichungen / Findings</Label><Textarea value={form.abweichungen} onChange={e => set("abweichungen", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Empfehlungen / To-dos</Label><Textarea value={form.empfehlungen} onChange={e => set("empfehlungen", e.target.value)} className="text-sm min-h-16" /></div>
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Verknüpfte PDCA-Zyklen (JSON-ID-Liste)</Label>
+          <Input value={form.verknuepftePdcaIds || "[]"} onChange={e => set("verknuepftePdcaIds", e.target.value)} className="h-8 text-sm" placeholder='z. B. [1,2]' />
+          <p className="text-[11px] text-muted-foreground">Verfügbare Audit-Follow-ups: {pdca.filter((item: any) => item.zyklusTyp === "audit_follow_up").map((item: any) => `#${item.id} ${item.titel}`).join(" · ") || "keine"}</p>
+        </div>
         <div className="space-y-1"><Label className="text-xs">Follow-up am</Label><Input type="date" value={form.followUpDatum || ""} onChange={e => set("followUpDatum", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächstes Audit am</Label><Input type="date" value={form.naechstesAuditAm || ""} onChange={e => set("naechstesAuditAm", e.target.value)} className="h-8 text-sm" /></div>
       </div>
@@ -2733,6 +2739,7 @@ function AuditsPage() {
   const { t } = useI18n();
   const { data, isLoading, create, update, remove } = useModuleData("audits");
   const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
@@ -2741,22 +2748,40 @@ function AuditsPage() {
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
   const offeneAuditAufgaben = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
+  const auditFollowUps = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
+  const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + (String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length || 0), 0);
   return (
     <MandantGuard>
       <PageHeader title={t("auditsTitle")} desc={t("auditsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Audit</Button>} />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Audits gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Abweichungen gesamt</p><p className="text-2xl font-bold">{gesamtAbweichungen}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Audit-To-dos</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">PDCA Audit-Follow-ups offen</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></CardContent></Card>
       </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm">Audit-zu-PDCA-Verzahnung</CardTitle>
+          <CardDescription>Nachverfolgung von Audit-Feststellungen über PDCA-Zyklen und offene To-dos</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div><p className="text-xs text-muted-foreground">Audit-Follow-up-Zyklen</p><p className="text-2xl font-bold">{auditFollowUps.length}</p></div>
+          <div><p className="text-xs text-muted-foreground">Offene Follow-ups</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></div>
+          <div><p className="text-xs text-muted-foreground">Audit-To-dos ohne Abschluss</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></div>
+        </CardContent>
+      </Card>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine Audits dokumentiert.</CardContent></Card>}
           {data.map((item: any) => {
             const abweichungen = String(item.abweichungen || "").split("\n").filter((line: string) => line.trim());
             const todos = String(item.empfehlungen || "").split("\n").filter((line: string) => line.trim());
+            const linkedPdcaIds = (() => {
+              try { return JSON.parse(item.verknuepftePdcaIds || "[]"); } catch { return []; }
+            })();
+            const linkedPdca = pdca.filter((entry: any) => linkedPdcaIds.includes(entry.id));
             return (
               <Card key={item.id} className="group hover:border-border/80 transition-colors">
                 <CardContent className="p-4 space-y-3">
@@ -2772,10 +2797,14 @@ function AuditsPage() {
                       <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Scope</p><p className="text-muted-foreground whitespace-pre-wrap">{item.scope || "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Abweichungen</p><p className="text-muted-foreground whitespace-pre-wrap">{abweichungen.length ? abweichungen.join("\n") : "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Audit-To-dos</p><p className="text-muted-foreground whitespace-pre-wrap">{todos.length ? todos.join("\n") : "—"}</p></div>
+                    <div className="rounded-lg border p-3"><p className="font-medium mb-1">PDCA-Follow-ups</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedPdca.length ? linkedPdca.map((pd: any) => `${pd.titel} (${pd.status})`).join("\n") : auditFollowUps.filter((pd: any) => {
+                      const haystack = [pd.titel, pd.beschreibung, pd.planMassnahmen, pd.checkFeststellungen, pd.actFolgemassnahmen].join(" \n ").toLowerCase();
+                      return haystack.includes(String(item.titel || "").toLowerCase());
+                    }).map((pd: any) => `${pd.titel} (${pd.status})`).join("\n") || "—"}</p></div>
                   </div>
                   {(item.feststellungen || item.positiveAspekte) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -2850,6 +2879,7 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
 }
 
 function PdcaForm({ initial, onSave, onCancel }: any) {
+  const { data: audits = [] } = useModuleData("audits");
   const [form, setForm] = useState({
     titel: "",
     beschreibung: "",
@@ -2879,6 +2909,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
     actVerbesserungen: "",
     actEntscheidungen: "",
     actFolgemassnahmen: "",
+    verknuepftesAuditId: "none",
     actNaechsterZyklus: "",
     tags: "[]",
     ...initial,
@@ -2897,6 +2928,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Zeitraum bis</Label><Input type="date" value={form.zeitraumBis || ""} onChange={e => set("zeitraumBis", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.naechstePruefungAm || ""} onChange={e => set("naechstePruefungAm", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Fortschritt (%)</Label><Input type="number" min="0" max="100" value={form.doFortschritt ?? 0} onChange={e => set("doFortschritt", Number(e.target.value))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">Verknüpftes Audit</Label><Select value={String(form.verknuepftesAuditId ?? "none")} onValueChange={v => set("verknuepftesAuditId", v === "none" ? null : Number(v))}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Kein Audit verknüpft</SelectItem>{audits.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>#{item.id} {item.titel}</SelectItem>)}</SelectContent></Select></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Tags (JSON-Array oder Freitext)</Label><Input value={form.tags || ""} onChange={e => set("tags", e.target.value)} className="h-8 text-sm" placeholder='z. B. ["DSMS","Review"]' /></div>
         <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1"><Label className="text-xs">PLAN – Ziele</Label><Textarea value={form.planZiele || ""} onChange={e => set("planZiele", e.target.value)} className="text-sm min-h-20" /></div>
@@ -5165,6 +5197,10 @@ function ExportPage() {
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then((r) => r.json()),
   });
+  const { data: mandanten = [] } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then((r) => r.json()),
+  });
   const { data: audits = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/audits`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/audits`).then((r) => r.json()) : [],
@@ -5205,6 +5241,8 @@ function ExportPage() {
   const auditDeviationCount = audits.reduce((sum: number, item: any) => sum + String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length, 0);
   const pdcaReviewFaellig = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
   const pdcaOffen = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
+  const auditFollowUps = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
+  const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const managementSummary = {
     score: mandant?.verantwortlicherName ? 75 : 40,
     ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
@@ -5215,6 +5253,8 @@ function ExportPage() {
     pdca: pdca.length,
     pdcaOpen: pdcaOffen.length,
     pdcaReviewFaellig: pdcaReviewFaellig.length,
+    auditFollowUps: auditFollowUps.length,
+    auditFollowUpsOffen: auditFollowUpsOffen.length,
     fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
   };
 
@@ -5233,9 +5273,11 @@ function ExportPage() {
       mandantName: mandant?.name ?? "Unbekannter Mandant",
       mandantInfo: mandant,
       gruppeInfo: gruppen.find((g: any) => g.id === mandant?.gruppeId) || null,
+      gruppenMitglieder: mandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === mandant.gruppeId) : [],
       logs,
       audits,
       auditTodos,
+      pdca,
       managementSummary,
       interneNotizen: exportierbareInterneNotizen,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),

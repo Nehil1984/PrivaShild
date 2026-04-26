@@ -908,9 +908,18 @@ function buildLogsBox(logs) {
     </div>`;
 }
 
-function buildAuditSummary(audits, auditTodos) {
-  if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0)) return "";
+function buildAuditSummary(audits, auditTodos, pdcaRows) {
+  if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0) && (!pdcaRows || pdcaRows.length === 0)) return "";
   const deviations = (audits || []).flatMap(a => String(a.abweichungen || "").split("\n").filter(line => line.trim()));
+  const auditFollowUps = (pdcaRows || []).filter(row => String(row.zyklusTyp || "") === "audit_follow_up");
+  const auditFollowUpsOffen = auditFollowUps.filter(row => String(row.status || "") !== "abgeschlossen");
+  const explicitLinked = (audits || []).reduce((sum, audit) => {
+    try {
+      return sum + JSON.parse(audit.verknuepftePdcaIds || "[]").length;
+    } catch {
+      return sum;
+    }
+  }, 0);
   return `
     <div class="module-section">
       <div class="module-header">
@@ -918,9 +927,9 @@ function buildAuditSummary(audits, auditTodos) {
         <span class="badge">${fmt((audits || []).length)} Audits</span>
       </div>
       <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
-        <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p></div>
+        <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p><p><strong>PDCA Audit-Follow-ups offen:</strong> ${fmt(auditFollowUpsOffen.length)}</p><p><strong>Explizite Audit↔PDCA-Verknüpfungen:</strong> ${fmt(explicitLinked)}</p></div>
         <div class="info-card"><h3>Wesentliche Abweichungen</h3><p>${deviations.length ? deviations.slice(0, 8).map(d => `• ${d}`).join("<br>") : "Keine dokumentierten Abweichungen"}</p></div>
-        <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p></div>
+        <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p><p style="margin-top:8px;">${auditFollowUps.length ? `PDCA-Follow-ups gesamt: ${fmt(auditFollowUps.length)}` : "Keine auditbezogenen PDCA-Follow-ups dokumentiert"}</p></div>
       </div>
     </div>`;
 }
@@ -978,22 +987,23 @@ function buildGroupExecutiveSummary(gruppe, members) {
   const withDsb = members.filter(m => m.dsb || m.dsbEmail || m.dsb_email).length;
   const withDatenschutzmanager = members.filter(m => m.datenschutzmanagerName).length;
   const withIt = members.filter(m => m.itVerantwortlicherName).length;
+  const withIsb = members.filter(m => m.isbName || m.hatIsb).length;
+  const withWebsite = members.filter(m => m.webseitenbetreuerName).length;
   const structured = members.filter(m => m.verantwortlicherName && (m.dsb || m.dsbEmail || m.dsb_email) && m.datenschutzmanagerName).length;
   const scoreBase = total === 0 ? 0 : Math.round(((withVerantwortlicher + withDsb + withDatenschutzmanager + withIt) / (total * 4)) * 100);
   const ampel = groupAmpelLabel(scoreBase);
 
   return `
-    <div class="info-card" style="margin-bottom:24px;">
-      <h3>Konzernweite Management Summary</h3>
-      <p><strong>Gruppe:</strong> ${fmt(gruppe.name)}</p>
-      <p><strong>Mandanten gesamt:</strong> ${fmt(total)}</p>
-      <p><strong>Governance-Score:</strong> ${fmt(scoreBase)}%</p>
-      <p><strong>Ampel:</strong> ${fmt(ampel)}</p>
-      <p><strong>Mandanten mit verantwortlicher Stelle:</strong> ${fmt(withVerantwortlicher)}</p>
-      <p><strong>Mandanten mit DSB-Bezug:</strong> ${fmt(withDsb)}</p>
-      <p><strong>Mandanten mit Datenschutzmanager:</strong> ${fmt(withDatenschutzmanager)}</p>
-      <p><strong>Mandanten mit IT-Verantwortlichem:</strong> ${fmt(withIt)}</p>
-      <p><strong>Strukturiert aufgestellte Mandanten:</strong> ${fmt(structured)}</p>
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Mandantengruppe / Verbundsicht</h2>
+        <span class="badge">${fmt(total)} Mandanten</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>Governance-Abdeckung</h3><p><strong>Gruppe:</strong> ${fmt(gruppe?.name)}</p><p><strong>Governance-Score:</strong> ${fmt(scoreBase)}%</p><p><strong>Ampel:</strong> ${fmt(ampel)}</p><p><strong>Strukturiert aufgestellte Mandanten:</strong> ${fmt(structured)}</p></div>
+        <div class="info-card"><h3>Rollenabdeckung</h3><p><strong>Verantwortliche benannt:</strong> ${fmt(withVerantwortlicher)}/${fmt(total)}</p><p><strong>DSB-Bezug:</strong> ${fmt(withDsb)}/${fmt(total)}</p><p><strong>Datenschutzmanager:</strong> ${fmt(withDatenschutzmanager)}/${fmt(total)}</p><p><strong>IT-Verantwortliche:</strong> ${fmt(withIt)}/${fmt(total)}</p></div>
+        <div class="info-card"><h3>Erweiterte Abdeckung</h3><p><strong>ISB-Bezug:</strong> ${fmt(withIsb)}/${fmt(total)}</p><p><strong>Webseitenbetreuer:</strong> ${fmt(withWebsite)}/${fmt(total)}</p><p>Diese Verbundsicht unterstützt gruppenweite Managementbewertung, Harmonisierung und Priorisierung.</p></div>
+      </div>
     </div>`;
 }
 
@@ -1362,7 +1372,22 @@ async function render() {
     if ((config.managementSummary?.governanceFindings || []).length) {
       html += `<div class="module-section"><div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p></div><div class="info-card" style="grid-column: span 2"><h3>Offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• ${fmt(item)}`).join("<br>")}</p></div></div></div>`;
     }
-    html += buildAuditSummary(config.audits || [], config.auditTodos || []);
+    html += buildAuditSummary(config.audits || [], config.auditTodos || [], dataMap.pdca || []);
+    if (config.gruppeInfo && Array.isArray(config.gruppenMitglieder) && config.gruppenMitglieder.length) {
+      html += buildGroupExecutiveSummary(config.gruppeInfo, config.gruppenMitglieder);
+      html += buildGroupGovernanceCards(config.gruppenMitglieder);
+      html += buildGroupRiskRollup(config.gruppenMitglieder);
+      html += buildGroupMaturityReport(config.gruppenMitglieder);
+      html += buildGroupAmpelMatrix(config.gruppenMitglieder);
+      html += buildGroupTopActions(config.gruppenMitglieder);
+      html += buildHighRiskCompanies(config.gruppenMitglieder);
+      html += buildAmpelRecommendations(config.gruppenMitglieder);
+      html += buildImmediateDecisionBlock(config.gruppenMitglieder);
+      html += buildMeasurePackages();
+      html += buildReportingRecommendation();
+      html += buildImplementationRoadmap(config.gruppenMitglieder);
+      html += buildGroupMembersTable(config.gruppenMitglieder);
+    }
     html += buildPdcaSummary(dataMap.pdca || []);
     html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
     html += buildLogsBox(config.logs || []);
