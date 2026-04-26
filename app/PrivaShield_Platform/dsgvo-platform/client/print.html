@@ -1338,6 +1338,8 @@ async function render() {
         <p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p>
         <p><strong>PDCA offen / laufend:</strong> ${fmt(config.managementSummary?.pdcaOpen)}</p>
         <p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p>
+        <p><strong>PDCA mit Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaMitAuditBezug)}</p>
+        <p><strong>PDCA ohne Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaOhneAuditBezug)}</p>
         <p><strong>Löschkonzept-Einträge:</strong> ${fmt((dataMap.loeschkonzept || []).length)}</p>
         <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
         <p><strong>Interne Notizen (freigegeben):</strong> ${fmt((dataMap.interne_notizen || []).filter(n => n.exportieren).length)}</p>
@@ -1345,7 +1347,7 @@ async function render() {
         <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
       </div>
       <div class="info-grid">
-        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p><p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p></div>
+        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p><p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p><p><strong>Explizite Audit↔PDCA-Links:</strong> ${fmt(config.managementSummary?.explicitAuditLinks)}</p></div>
         <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
       </div>
       ${buildCopilotSummary(dataMap)}

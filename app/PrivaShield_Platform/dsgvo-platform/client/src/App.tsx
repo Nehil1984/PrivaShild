@@ -2908,6 +2908,7 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
 
 function PdcaForm({ initial, onSave, onCancel }: any) {
   const { data: audits = [] } = useModuleData("audits");
+  const selectedAudit = audits.find((item: any) => item.id === form?.verknuepftesAuditId);
   const [form, setForm] = useState({
     titel: "",
     beschreibung: "",
@@ -2957,6 +2958,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.naechstePruefungAm || ""} onChange={e => set("naechstePruefungAm", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Fortschritt (%)</Label><Input type="number" min="0" max="100" value={form.doFortschritt ?? 0} onChange={e => set("doFortschritt", Number(e.target.value))} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Verknüpftes Audit</Label><Select value={String(form.verknuepftesAuditId ?? "none")} onValueChange={v => set("verknuepftesAuditId", v === "none" ? null : Number(v))}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Kein Audit verknüpft</SelectItem>{audits.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>#{item.id} {item.titel}</SelectItem>)}</SelectContent></Select></div>
+        <div className="space-y-1 rounded-lg border p-3 text-xs"><p className="font-medium mb-1">Audit-Bezug</p><p className="text-muted-foreground whitespace-pre-wrap">{selectedAudit ? `${selectedAudit.titel}\n${selectedAudit.pruefbereich || "Allgemeiner Prüfbereich"}\nStatus: ${selectedAudit.status || "—"}` : "Kein Audit zugeordnet."}</p></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Tags (JSON-Array oder Freitext)</Label><Input value={form.tags || ""} onChange={e => set("tags", e.target.value)} className="h-8 text-sm" placeholder='z. B. ["DSMS","Review"]' /></div>
         <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1"><Label className="text-xs">PLAN – Ziele</Label><Textarea value={form.planZiele || ""} onChange={e => set("planZiele", e.target.value)} className="text-sm min-h-20" /></div>
@@ -3023,6 +3025,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
 
 function PdcaPage() {
   const { data, isLoading, create, update, remove } = useModuleData("pdca");
+  const { data: audits = [] } = useModuleData("audits");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
@@ -3034,16 +3037,30 @@ function PdcaPage() {
   const filtered = data.filter((item: any) => filter === "alle" ? true : item.status === filter);
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
   const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen");
+  const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
+  const ohneAuditBezug = data.filter((item: any) => !item.verknuepftesAuditId);
   return (
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Review fällig</p><p className="text-2xl font-bold">{reviewFaellig.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Mit Audit-Bezug</p><p className="text-2xl font-bold">{mitAuditBezug.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Ø Fortschritt</p><p className="text-2xl font-bold">{data.length ? Math.round(data.reduce((sum: number, item: any) => sum + Number(item.doFortschritt || 0), 0) / data.length) : 0}%</p></CardContent></Card>
       </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm">PDCA-zu-Audit-Verzahnung</CardTitle>
+          <CardDescription>Transparenz über auditbezogene und freie Verbesserungszyklen</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div><p className="text-xs text-muted-foreground">PDCA mit Audit-Bezug</p><p className="text-2xl font-bold">{mitAuditBezug.length}</p></div>
+          <div><p className="text-xs text-muted-foreground">PDCA ohne Audit-Bezug</p><p className="text-2xl font-bold">{ohneAuditBezug.length}</p></div>
+          <div><p className="text-xs text-muted-foreground">Verknüpfte Audits</p><p className="text-2xl font-bold">{new Set(mitAuditBezug.map((item: any) => item.verknuepftesAuditId)).size}</p></div>
+        </CardContent>
+      </Card>
       <div className="flex gap-2 mb-4 flex-wrap">
         {[
           ["alle", "Alle"],
@@ -5271,6 +5288,11 @@ function ExportPage() {
   const pdcaOffen = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const auditFollowUps = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
   const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
+  const pdcaMitAuditBezug = pdca.filter((item: any) => !!item.verknuepftesAuditId);
+  const pdcaOhneAuditBezug = pdca.filter((item: any) => !item.verknuepftesAuditId);
+  const explicitAuditLinks = audits.reduce((sum: number, item: any) => {
+    try { return sum + JSON.parse(item.verknuepftePdcaIds || "[]").length; } catch { return sum; }
+  }, 0);
   const managementSummary = {
     score: mandant?.verantwortlicherName ? 75 : 40,
     ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
@@ -5283,6 +5305,9 @@ function ExportPage() {
     pdcaReviewFaellig: pdcaReviewFaellig.length,
     auditFollowUps: auditFollowUps.length,
     auditFollowUpsOffen: auditFollowUpsOffen.length,
+    pdcaMitAuditBezug: pdcaMitAuditBezug.length,
+    pdcaOhneAuditBezug: pdcaOhneAuditBezug.length,
+    explicitAuditLinks,
     fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
   };
 
