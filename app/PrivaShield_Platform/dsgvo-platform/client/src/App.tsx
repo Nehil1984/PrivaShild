@@ -2520,7 +2520,7 @@ const auditTemplates: Record<string, any> = {
 function AuditForm({ initial, onSave, onCancel }: any) {
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const { data: pdca = [] } = useModuleData("pdca");
-  const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", verknuepftePdcaIds: "[]", followUpDatum: "", naechstesAuditAm: "", ...initial });
+  const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", verknuepftePdcaIds: "[]", followUpDatum: "", naechstesAuditAm: "", createPdcaFollowUp: false, createAuditTasks: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const selectedPdcaIds = (() => {
     try { return JSON.parse(form.verknuepftePdcaIds || "[]"); } catch { return []; }
@@ -2598,6 +2598,8 @@ function AuditForm({ initial, onSave, onCancel }: any) {
         </div>
         <div className="space-y-1"><Label className="text-xs">Follow-up am</Label><Input type="date" value={form.followUpDatum || ""} onChange={e => set("followUpDatum", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Nächstes Audit am</Label><Input type="date" value={form.naechstesAuditAm || ""} onChange={e => set("naechstesAuditAm", e.target.value)} className="h-8 text-sm" /></div>
+        <label className="col-span-2 flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30 text-xs"><input type="checkbox" checked={!!form.createPdcaFollowUp} onChange={e => set("createPdcaFollowUp", e.target.checked)} /><span>Beim Speichern automatisch Audit-Follow-up-PDCA anlegen</span></label>
+        <label className="col-span-2 flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30 text-xs"><input type="checkbox" checked={!!form.createAuditTasks} onChange={e => set("createAuditTasks", e.target.checked)} /><span>Empfehlungen zusätzlich direkt als Aufgaben vorbereiten</span></label>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
         <DialogFooter>
@@ -2762,42 +2764,93 @@ function LoeschkonzeptPage() {
 
 function AuditsPage() {
   const { t } = useI18n();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("audits");
   const { data: aufgaben = [] } = useModuleData("aufgaben");
   const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
-  const save = (form: any) => {
-    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  const save = async (form: any) => {
+    try {
+      const auditItem = modal === "new" ? await create.mutateAsync(form) : await update.mutateAsync({ id: modal.id, ...form });
+      if (modal === "new" && activeMandantId && form.createPdcaFollowUp) {
+        const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+          titel: `Audit-Follow-up: ${auditItem.titel}`,
+          beschreibung: form.feststellungen || form.abweichungen || form.empfehlungen || "",
+          zyklusTyp: "audit_follow_up",
+          status: "geplant",
+          prioritaet: form.ergebnis === "kritisch" ? "kritisch" : "hoch",
+          verantwortlicher: form.auditor || "",
+          naechstePruefungAm: form.followUpDatum || form.naechstesAuditAm || "",
+          planZiele: form.empfehlungen || "",
+          checkFeststellungen: form.feststellungen || form.abweichungen || "",
+          actFolgemassnahmen: form.empfehlungen || "",
+          verknuepftesAuditId: auditItem.id,
+          tags: JSON.stringify(["Audit", "Follow-up"]),
+        }).then(r => r.json());
+        const currentIds = (() => {
+          try { return JSON.parse(auditItem.verknuepftePdcaIds || "[]"); } catch { return []; }
+        })();
+        const mergedIds = Array.from(new Set([...currentIds, pdcaItem.id]));
+        await update.mutateAsync({ id: auditItem.id, verknuepftePdcaIds: JSON.stringify(mergedIds) });
+        if (form.createAuditTasks) {
+          const lines = Array.from(new Set(String(form.empfehlungen || "").split("\n").map((line: string) => line.trim()).filter(Boolean)));
+          for (const line of lines) {
+            await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+              titel: `Audit-Maßnahme: ${line}`,
+              beschreibung: `Aus Audit: ${auditItem.titel}${form.abweichungen ? `\n\nAbweichungen:\n${form.abweichungen}` : ""}`,
+              typ: "task",
+              prioritaet: form.ergebnis === "kritisch" ? "kritisch" : "hoch",
+              status: "offen",
+              fortschritt: 0,
+              verantwortlicher: form.auditor || "",
+              faelligAm: form.followUpDatum || form.naechstesAuditAm || null,
+              kategorie: "audit",
+              referenzId: pdcaItem.id,
+              vorlagenBezug: "pdca_follow_up",
+            });
+          }
+        }
+        await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+        await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+      }
+      setModal(null);
+      toast({ title: "Gespeichert" });
+    } catch {
+      toast({ title: "Fehler", variant: "destructive" });
+    }
   };
   const offeneAuditAufgaben = aufgaben.filter((a: any) => (a.kategorie === "audit" || String(a.titel || "").toLowerCase().includes("audit")) && a.status !== "erledigt");
   const auditFollowUps = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
   const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
+  const offeneAuditFolgeaufgaben = aufgaben.filter((a: any) => String(a.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt");
   const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + (String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length || 0), 0);
   return (
     <MandantGuard>
       <PageHeader title={t("auditsTitle")} desc={t("auditsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Audit</Button>} />
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Audits gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Abweichungen gesamt</p><p className="text-2xl font-bold">{gesamtAbweichungen}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Audit-To-dos</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">PDCA Audit-Follow-ups offen</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Folgeaufgaben</p><p className="text-2xl font-bold">{offeneAuditFolgeaufgaben.length}</p></CardContent></Card>
       </div>
       <Card className="mb-4">
         <CardHeader>
           <CardTitle className="text-sm">Audit-zu-PDCA-Verzahnung</CardTitle>
           <CardDescription>Nachverfolgung von Audit-Feststellungen über PDCA-Zyklen und offene To-dos</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
           <div><p className="text-xs text-muted-foreground">Audit-Follow-up-Zyklen</p><p className="text-2xl font-bold">{auditFollowUps.length}</p></div>
           <div><p className="text-xs text-muted-foreground">Offene Follow-ups</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></div>
           <div><p className="text-xs text-muted-foreground">Audit-To-dos ohne Abschluss</p><p className="text-2xl font-bold">{offeneAuditAufgaben.length}</p></div>
           <div><p className="text-xs text-muted-foreground">Explizit verknüpfte Audits</p><p className="text-2xl font-bold">{data.filter((item: any) => {
             try { return JSON.parse(item.verknuepftePdcaIds || "[]").length > 0; } catch { return false; }
           }).length}</p></div>
+          <div><p className="text-xs text-muted-foreground">Offene Folgeaufgaben</p><p className="text-2xl font-bold">{offeneAuditFolgeaufgaben.length}</p></div>
         </CardContent>
       </Card>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
@@ -2810,6 +2863,8 @@ function AuditsPage() {
               try { return JSON.parse(item.verknuepftePdcaIds || "[]"); } catch { return []; }
             })();
             const linkedPdca = pdca.filter((entry: any) => linkedPdcaIds.includes(entry.id));
+            const linkedTasks = aufgaben.filter((task: any) => String(task.vorlagenBezug || "") === "pdca_follow_up" && linkedPdca.some((entry: any) => Number(entry.id) === Number(task.referenzId)));
+            const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
             return (
               <Card key={item.id} className="group hover:border-border/80 transition-colors">
                 <CardContent className="p-4 space-y-3">
@@ -2825,7 +2880,7 @@ function AuditsPage() {
                       <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Scope</p><p className="text-muted-foreground whitespace-pre-wrap">{item.scope || "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Abweichungen</p><p className="text-muted-foreground whitespace-pre-wrap">{abweichungen.length ? abweichungen.join("\n") : "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Audit-To-dos</p><p className="text-muted-foreground whitespace-pre-wrap">{todos.length ? todos.join("\n") : "—"}</p></div>
@@ -2833,6 +2888,7 @@ function AuditsPage() {
                       const haystack = [pd.titel, pd.beschreibung, pd.planMassnahmen, pd.checkFeststellungen, pd.actFolgemassnahmen].join(" \n ").toLowerCase();
                       return haystack.includes(String(item.titel || "").toLowerCase());
                     }).map((pd: any) => `${pd.titel} (${pd.status})`).join("\n") || "—"}</p></div>
+                    <div className="rounded-lg border p-3"><p className="font-medium mb-1">Folgeaufgaben</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedTasks.length ? linkedTasks.map((task: any) => `${task.titel} (${task.status}, ${Number(task.fortschritt || 0)}%)`).join("\n") : "—"}{offeneLinkedTasks.length ? `\n\nOffen: ${offeneLinkedTasks.length}` : ""}</p></div>
                   </div>
                   {(item.feststellungen || item.positiveAspekte) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -2859,6 +2915,8 @@ function AuditsPage() {
 
 // ─── AUFGABEN PAGE ─────────────────────────────────────────────────────────
 function AufgabeForm({ initial, onSave, onCancel }: any) {
+  const { data: pdca = [] } = useModuleData("pdca");
+  const linkedPdca = pdca.find((item: any) => Number(item.id) === Number(initial?.referenzId));
   const [form, setForm] = useState({ titel: "", beschreibung: "", typ: "task", prioritaet: "mittel", status: "offen", fortschritt: 0, verantwortlicher: "", startDatum: "", faelligAm: "", abgeschlossenAm: "", kategorie: "sonstige", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
@@ -2891,9 +2949,10 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Kategorie</Label>
           <Select value={form.kategorie} onValueChange={v => set("kategorie", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="vvt">VVT</SelectItem><SelectItem value="avv">AVV</SelectItem><SelectItem value="dsfa">DSFA</SelectItem><SelectItem value="datenpanne">Datenpanne</SelectItem><SelectItem value="dsr">DSR</SelectItem><SelectItem value="tom">TOM</SelectItem><SelectItem value="sonstige">Sonstige</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="vvt">VVT</SelectItem><SelectItem value="avv">AVV</SelectItem><SelectItem value="dsfa">DSFA</SelectItem><SelectItem value="datenpanne">Datenpanne</SelectItem><SelectItem value="dsr">DSR</SelectItem><SelectItem value="tom">TOM</SelectItem><SelectItem value="audit">Audit</SelectItem><SelectItem value="sonstige">Sonstige</SelectItem></SelectContent>
           </Select>
         </div>
+        {linkedPdca && <div className="col-span-2 rounded-lg border p-3 text-xs"><p className="font-medium mb-1">Verknüpfter PDCA-Zyklus</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedPdca.titel}\nStatus: {linkedPdca.status || "—"}\nFortschritt: {linkedPdca.doFortschritt ?? 0}%</p></div>}
         <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
@@ -2941,6 +3000,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
     verknuepftesAuditId: "none",
     actNaechsterZyklus: "",
     tags: "[]",
+    createFollowUpTask: false,
     ...initial,
   });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -2959,6 +3019,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Fortschritt (%)</Label><Input type="number" min="0" max="100" value={form.doFortschritt ?? 0} onChange={e => set("doFortschritt", Number(e.target.value))} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Verknüpftes Audit</Label><Select value={String(form.verknuepftesAuditId ?? "none")} onValueChange={v => set("verknuepftesAuditId", v === "none" ? null : Number(v))}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Kein Audit verknüpft</SelectItem>{audits.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>#{item.id} {item.titel}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-1 rounded-lg border p-3 text-xs"><p className="font-medium mb-1">Audit-Bezug</p><p className="text-muted-foreground whitespace-pre-wrap">{selectedAudit ? `${selectedAudit.titel}\n${selectedAudit.pruefbereich || "Allgemeiner Prüfbereich"}\nStatus: ${selectedAudit.status || "—"}` : "Kein Audit zugeordnet."}</p></div>
+        <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30 text-xs"><input type="checkbox" checked={!!form.createFollowUpTask} onChange={e => set("createFollowUpTask", e.target.checked)} /><span>Beim Speichern automatisch Folgeaufgabe anlegen</span></label>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Tags (JSON-Array oder Freitext)</Label><Input value={form.tags || ""} onChange={e => set("tags", e.target.value)} className="h-8 text-sm" placeholder='z. B. ["DSMS","Review"]' /></div>
         <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1"><Label className="text-xs">PLAN – Ziele</Label><Textarea value={form.planZiele || ""} onChange={e => set("planZiele", e.target.value)} className="text-sm min-h-20" /></div>
@@ -3026,29 +3087,56 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
 function PdcaPage() {
   const { data, isLoading, create, update, remove } = useModuleData("pdca");
   const { data: audits = [] } = useModuleData("audits");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
   const { toast } = useToast();
-  const save = (form: any) => {
-    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  const save = async (form: any) => {
+    try {
+      const pdcaItem = modal === "new" ? await create.mutateAsync(form) : await update.mutateAsync({ id: modal.id, ...form });
+      if (form.createFollowUpTask && modal === "new" && pdcaItem?.mandantId) {
+        await apiRequest("POST", `/api/mandanten/${pdcaItem.mandantId}/aufgaben`, {
+          titel: `PDCA-Folgemaßnahme: ${pdcaItem.titel}`,
+          beschreibung: [
+            form.actFolgemassnahmen ? `Folgemaßnahmen:\n${form.actFolgemassnahmen}` : "",
+            form.checkFeststellungen ? `Feststellungen:\n${form.checkFeststellungen}` : "",
+            form.verknuepftesAuditId ? `Verknüpftes Audit: #${form.verknuepftesAuditId}` : "",
+          ].filter(Boolean).join("\n\n"),
+          typ: "task",
+          prioritaet: form.prioritaet || "mittel",
+          status: "offen",
+          fortschritt: 0,
+          verantwortlicher: form.verantwortlicher || "",
+          faelligAm: form.naechstePruefungAm || null,
+          kategorie: form.verknuepftesAuditId ? "audit" : "sonstige",
+          referenzId: pdcaItem.id,
+          vorlagenBezug: "pdca_follow_up",
+        });
+      }
+      setModal(null);
+      toast({ title: "Gespeichert" });
+    } catch {
+      toast({ title: "Fehler", variant: "destructive" });
+    }
   };
   const filtered = data.filter((item: any) => filter === "alle" ? true : item.status === filter);
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
   const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen");
   const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
   const ohneAuditBezug = data.filter((item: any) => !item.verknuepftesAuditId);
+  const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
   return (
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Review fällig</p><p className="text-2xl font-bold">{reviewFaellig.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Mit Audit-Bezug</p><p className="text-2xl font-bold">{mitAuditBezug.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Ø Fortschritt</p><p className="text-2xl font-bold">{data.length ? Math.round(data.reduce((sum: number, item: any) => sum + Number(item.doFortschritt || 0), 0) / data.length) : 0}%</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">PDCA-Folgemaßnahmen</p><p className="text-2xl font-bold">{pdcaAufgaben.length}</p></CardContent></Card>
       </div>
       <Card className="mb-4">
         <CardHeader>
@@ -3094,11 +3182,12 @@ function PdcaPage() {
                 <div className="h-2 w-full rounded bg-secondary overflow-hidden">
                   <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, Number(item.doFortschritt || 0)))}%` }} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 text-xs">
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">PLAN</p><p className="text-muted-foreground whitespace-pre-wrap">{item.planZiele || item.planMassnahmen || item.planRisiken || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">DO</p><p className="text-muted-foreground whitespace-pre-wrap">{item.doUmsetzung || item.doNachweise || item.doAbweichungen || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">CHECK</p><p className="text-muted-foreground whitespace-pre-wrap">{item.checkErgebnisse || item.checkFeststellungen || item.checkSollIst || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">ACT</p><p className="text-muted-foreground whitespace-pre-wrap">{item.actKorrekturen || item.actVerbesserungen || item.actFolgemassnahmen || "—"}</p></div>
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">Workflow</p><p className="text-muted-foreground whitespace-pre-wrap">{item.verknuepftesAuditId ? `Audit #${item.verknuepftesAuditId}` : "Ohne Audit-Bezug"}{(() => { const linked = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id)); return linked.length ? `\n${linked.length} verknüpfte Aufgabe(n)` : "\nKeine verknüpfte Aufgabe"; })()}</p></div>
                 </div>
               </CardContent>
             </Card>
@@ -3119,7 +3208,10 @@ function PdcaPage() {
 function AufgabenPage() {
   const { t } = useI18n();
   const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
@@ -3132,9 +3224,40 @@ function AufgabenPage() {
       setTypFilter("alle");
     }
   }, [location]);
-  const save = (form: any) => {
-    const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+  const syncPdcaFromTask = async (task: any) => {
+    if (!task?.referenzId) return;
+    const linkedTaskList = data.filter((entry: any) => Number(entry.referenzId) === Number(task.referenzId) || Number(entry.id) === Number(task.id));
+    const relatedTasks = linkedTaskList.map((entry: any) => Number(entry.id) === Number(task.id) ? { ...entry, ...task } : entry);
+    const targetPdca = pdca.find((entry: any) => Number(entry.id) === Number(task.referenzId));
+    if (!targetPdca || !activeMandantId) return;
+    const fortschritt = relatedTasks.length ? Math.round(relatedTasks.reduce((sum: number, entry: any) => sum + Number(entry.fortschritt || 0), 0) / relatedTasks.length) : Number(targetPdca.doFortschritt || 0);
+    const offene = relatedTasks.filter((entry: any) => entry.status !== "erledigt");
+    const nextStatus = relatedTasks.length === 0
+      ? targetPdca.status
+      : offene.length === 0
+        ? "überprüfung"
+        : offene.some((entry: any) => entry.status === "in_bearbeitung") || fortschritt > 0
+          ? "in_bearbeitung"
+          : "geplant";
+    const summary = relatedTasks.map((entry: any) => `- ${entry.titel}: ${entry.status || "offen"} (${Number(entry.fortschritt || 0)}%)`).join("\n");
+    const existingBlock = String(targetPdca.doNachweise || "").split("\n\nPDCA-Folgeaufgaben:\n")[0];
+    await apiRequest("PUT", `/api/pdca/${targetPdca.id}`, {
+      ...targetPdca,
+      status: nextStatus,
+      doFortschritt: fortschritt,
+      doNachweise: `${existingBlock}${relatedTasks.length ? `\n\nPDCA-Folgeaufgaben:\n${summary}` : ""}`.trim(),
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+  };
+  const save = async (form: any) => {
+    try {
+      const task = modal === "new" ? await create.mutateAsync(form) : await update.mutateAsync({ id: modal.id, ...form });
+      await syncPdcaFromTask(task);
+      setModal(null);
+      toast({ title: "Gespeichert" });
+    } catch {
+      toast({ title: "Fehler", variant: "destructive" });
+    }
   };
   const today = new Date().toISOString().split("T")[0];
   const filtered = data.filter((a: any) => {
@@ -3186,7 +3309,11 @@ function AufgabenPage() {
               <Card key={item.id} className={`group hover:border-border/80 transition-colors ${ueberfaellig ? "border-orange-500/30" : ""}`}>
                 <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <button onClick={() => update.mutate({ id: item.id, status: item.status === "erledigt" ? "offen" : "erledigt" })}
+                    <button onClick={async () => {
+                      const nextTask = { ...item, status: item.status === "erledigt" ? "offen" : "erledigt", abgeschlossenAm: item.status === "erledigt" ? null : new Date().toISOString().split("T")[0] };
+                      const updated = await update.mutateAsync({ id: item.id, status: nextTask.status, abgeschlossenAm: nextTask.abgeschlossenAm });
+                      await syncPdcaFromTask(updated);
+                    }}
                       className={`shrink-0 w-4 h-4 rounded border transition-colors ${item.status === "erledigt" ? "bg-emerald-500 border-emerald-500" : "border-border hover:border-primary"}`}>
                       {item.status === "erledigt" && <CheckCircle2 className="w-4 h-4 text-white" />}
                     </button>
@@ -3199,9 +3326,19 @@ function AufgabenPage() {
                     </div>
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                    <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) - 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">-10%</button>
-                    <button onClick={() => update.mutate({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) + 10)) })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">+10%</button>
-                    <button onClick={() => update.mutate({ id: item.id, status: item.status === "offen" ? "in_bearbeitung" : item.status === "in_bearbeitung" ? "erledigt" : "offen" })} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">Status</button>
+                    <button onClick={async () => {
+                      const updated = await update.mutateAsync({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) - 10)) });
+                      await syncPdcaFromTask(updated);
+                    }} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">-10%</button>
+                    <button onClick={async () => {
+                      const updated = await update.mutateAsync({ id: item.id, fortschritt: Math.max(0, Math.min(100, (item.fortschritt || 0) + 10)) });
+                      await syncPdcaFromTask(updated);
+                    }} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">+10%</button>
+                    <button onClick={async () => {
+                      const nextStatus = item.status === "offen" ? "in_bearbeitung" : item.status === "in_bearbeitung" ? "erledigt" : "offen";
+                      const updated = await update.mutateAsync({ id: item.id, status: nextStatus, abgeschlossenAm: nextStatus === "erledigt" ? new Date().toISOString().split("T")[0] : null });
+                      await syncPdcaFromTask(updated);
+                    }} className="px-2 py-1 rounded text-xs bg-secondary text-muted-foreground hover:text-foreground">Status</button>
                     <StatusBadge value={item.prioritaet} />
                     <StatusBadge value={item.status} />
                     <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
