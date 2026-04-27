@@ -908,11 +908,12 @@ function buildLogsBox(logs) {
     </div>`;
 }
 
-function buildAuditSummary(audits, auditTodos, pdcaRows) {
-  if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0) && (!pdcaRows || pdcaRows.length === 0)) return "";
+function buildAuditSummary(audits, auditTodos, pdcaRows, pdcaTasks) {
+  if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0) && (!pdcaRows || pdcaRows.length === 0) && (!pdcaTasks || pdcaTasks.length === 0)) return "";
   const deviations = (audits || []).flatMap(a => String(a.abweichungen || "").split("\n").filter(line => line.trim()));
   const auditFollowUps = (pdcaRows || []).filter(row => String(row.zyklusTyp || "") === "audit_follow_up");
   const auditFollowUpsOffen = auditFollowUps.filter(row => String(row.status || "") !== "abgeschlossen");
+  const offenePdcaTasks = (pdcaTasks || []).filter(task => String(task.status || "") !== "erledigt");
   const explicitLinked = (audits || []).reduce((sum, audit) => {
     try {
       return sum + JSON.parse(audit.verknuepftePdcaIds || "[]").length;
@@ -927,29 +928,31 @@ function buildAuditSummary(audits, auditTodos, pdcaRows) {
         <span class="badge">${fmt((audits || []).length)} Audits</span>
       </div>
       <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
-        <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p><p><strong>PDCA Audit-Follow-ups offen:</strong> ${fmt(auditFollowUpsOffen.length)}</p><p><strong>Explizite Audit↔PDCA-Verknüpfungen:</strong> ${fmt(explicitLinked)}</p></div>
+        <div class="info-card"><h3>Audit-Übersicht</h3><p><strong>Audits:</strong> ${fmt((audits || []).length)}</p><p><strong>Abweichungen:</strong> ${fmt(deviations.length)}</p><p><strong>Offene Audit-To-dos:</strong> ${fmt((auditTodos || []).length)}</p><p><strong>PDCA Audit-Follow-ups offen:</strong> ${fmt(auditFollowUpsOffen.length)}</p><p><strong>Offene Folgeaufgaben:</strong> ${fmt(offenePdcaTasks.length)}</p><p><strong>Explizite Audit↔PDCA-Verknüpfungen:</strong> ${fmt(explicitLinked)}</p></div>
         <div class="info-card"><h3>Wesentliche Abweichungen</h3><p>${deviations.length ? deviations.slice(0, 8).map(d => `• ${d}`).join("<br>") : "Keine dokumentierten Abweichungen"}</p></div>
-        <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p><p style="margin-top:8px;">${auditFollowUps.length ? `PDCA-Follow-ups gesamt: ${fmt(auditFollowUps.length)}` : "Keine auditbezogenen PDCA-Follow-ups dokumentiert"}</p></div>
+        <div class="info-card"><h3>To-do-Überblick</h3><p>${(auditTodos || []).length ? auditTodos.slice(0, 8).map(t => `• ${fmt(t.titel)} (${fmt(t.status)})`).join("<br>") : "Keine offenen Audit-Aufgaben"}</p><p style="margin-top:8px;">${auditFollowUps.length ? `PDCA-Follow-ups gesamt: ${fmt(auditFollowUps.length)}` : "Keine auditbezogenen PDCA-Follow-ups dokumentiert"}</p><p style="margin-top:8px;">${offenePdcaTasks.length ? offenePdcaTasks.slice(0, 6).map(t => `• ${fmt(t.titel)} (${fmt(t.status)}, ${fmt(t.fortschritt || 0)}%)`).join("<br>") : "Keine offenen Folgeaufgaben"}</p></div>
       </div>
     </div>`;
 }
 
-function buildPdcaSummary(rows) {
-  if (!rows || rows.length === 0) return "";
-  const offene = rows.filter(r => String(r.status || "") !== "abgeschlossen").length;
-  const reviewFaellig = rows.filter(r => r.naechstePruefungAm && new Date(r.naechstePruefungAm).getTime() < Date.now() && String(r.status || "") !== "abgeschlossen").length;
-  const kritisch = rows.filter(r => String(r.prioritaet || "").toLowerCase() === "kritisch" && String(r.status || "") !== "abgeschlossen").length;
-  const statusSet = Array.from(new Set(rows.map(r => r.status).filter(Boolean)));
+function buildPdcaSummary(rows, pdcaTasks) {
+  if ((!rows || rows.length === 0) && (!pdcaTasks || pdcaTasks.length === 0)) return "";
+  const offene = (rows || []).filter(r => String(r.status || "") !== "abgeschlossen").length;
+  const reviewFaellig = (rows || []).filter(r => r.naechstePruefungAm && new Date(r.naechstePruefungAm).getTime() < Date.now() && String(r.status || "") !== "abgeschlossen").length;
+  const kritisch = (rows || []).filter(r => String(r.prioritaet || "").toLowerCase() === "kritisch" && String(r.status || "") !== "abgeschlossen").length;
+  const statusSet = Array.from(new Set((rows || []).map(r => r.status).filter(Boolean)));
+  const offeneTasks = (pdcaTasks || []).filter(task => String(task.status || "") !== "erledigt");
   return `
     <div class="module-section">
       <div class="module-header">
         <h2>PDCA-Steuerung und Reviewstatus</h2>
-        <span class="badge">${fmt(rows.length)} Zyklen</span>
+        <span class="badge">${fmt((rows || []).length)} Zyklen</span>
       </div>
       <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
-        <div class="info-card"><h3>Übersicht</h3><p><strong>Zyklen gesamt:</strong> ${fmt(rows.length)}</p><p><strong>Offen / laufend:</strong> ${fmt(offene)}</p><p><strong>Review fällig:</strong> ${fmt(reviewFaellig)}</p><p><strong>Kritische Zyklen:</strong> ${fmt(kritisch)}</p></div>
+        <div class="info-card"><h3>Übersicht</h3><p><strong>Zyklen gesamt:</strong> ${fmt((rows || []).length)}</p><p><strong>Offen / laufend:</strong> ${fmt(offene)}</p><p><strong>Review fällig:</strong> ${fmt(reviewFaellig)}</p><p><strong>Kritische Zyklen:</strong> ${fmt(kritisch)}</p><p><strong>Folgeaufgaben offen:</strong> ${fmt(offeneTasks.length)}</p></div>
         <div class="info-card"><h3>Statusbild</h3><p>${statusSet.length ? statusSet.map(s => `• ${fmt(s)}`).join("<br>") : "Keine Statuswerte dokumentiert"}</p></div>
         <div class="info-card"><h3>Prüfhinweis</h3><p>${reviewFaellig > 0 ? "Es bestehen PDCA-Zyklen mit fälliger Review- oder Nachsteuerungslogik." : "Aktuell keine unmittelbar fälligen PDCA-Reviews im Exportkontext erkennbar."}</p><p style="margin-top:8px;">Der PDCA-Block unterstützt Managementbewertung, Maßnahmenverfolgung und Nachweisführung zur kontinuierlichen Verbesserung.</p></div>
+        <div class="info-card"><h3>Maßnahmen-Traceability</h3><p>${offeneTasks.length ? offeneTasks.slice(0, 8).map(task => `• ${fmt(task.titel)} (${fmt(task.status)}, ${fmt(task.fortschritt || 0)}%)`).join("<br>") : "Keine offenen PDCA-Folgeaufgaben im Exportkontext."}</p></div>
       </div>
     </div>`;
 }
@@ -1374,7 +1377,7 @@ async function render() {
     if ((config.managementSummary?.governanceFindings || []).length) {
       html += `<div class="module-section"><div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p></div><div class="info-card" style="grid-column: span 2"><h3>Offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• ${fmt(item)}`).join("<br>")}</p></div></div></div>`;
     }
-    html += buildAuditSummary(config.audits || [], config.auditTodos || [], dataMap.pdca || []);
+    html += buildAuditSummary(config.audits || [], config.auditTodos || [], dataMap.pdca || [], config.pdcaFollowUpTasks || []);
     if (config.gruppeInfo && Array.isArray(config.gruppenMitglieder) && config.gruppenMitglieder.length) {
       html += buildGroupExecutiveSummary(config.gruppeInfo, config.gruppenMitglieder);
       html += buildGroupGovernanceCards(config.gruppenMitglieder);
@@ -1390,7 +1393,7 @@ async function render() {
       html += buildImplementationRoadmap(config.gruppenMitglieder);
       html += buildGroupMembersTable(config.gruppenMitglieder);
     }
-    html += buildPdcaSummary(dataMap.pdca || []);
+    html += buildPdcaSummary(dataMap.pdca || [], config.pdcaFollowUpTasks || []);
     html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
     html += buildLogsBox(config.logs || []);
 

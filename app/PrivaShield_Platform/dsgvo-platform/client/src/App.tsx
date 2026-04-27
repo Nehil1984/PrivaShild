@@ -5429,6 +5429,8 @@ function ExportPage() {
   const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const pdcaMitAuditBezug = pdca.filter((item: any) => !!item.verknuepftesAuditId);
   const pdcaOhneAuditBezug = pdca.filter((item: any) => !item.verknuepftesAuditId);
+  const pdcaFollowUpTasks = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
+  const pdcaFollowUpTasksOffen = pdcaFollowUpTasks.filter((item: any) => String(item.status || "") !== "erledigt");
   const explicitAuditLinks = audits.reduce((sum: number, item: any) => {
     try { return sum + JSON.parse(item.verknuepftePdcaIds || "[]").length; } catch { return sum; }
   }, 0);
@@ -5446,6 +5448,8 @@ function ExportPage() {
     auditFollowUpsOffen: auditFollowUpsOffen.length,
     pdcaMitAuditBezug: pdcaMitAuditBezug.length,
     pdcaOhneAuditBezug: pdcaOhneAuditBezug.length,
+    pdcaFollowUpTasks: pdcaFollowUpTasks.length,
+    pdcaFollowUpTasksOffen: pdcaFollowUpTasksOffen.length,
     explicitAuditLinks,
     fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
   };
@@ -5470,6 +5474,7 @@ function ExportPage() {
       audits,
       auditTodos,
       pdca,
+      pdcaFollowUpTasks,
       managementSummary,
       interneNotizen: exportierbareInterneNotizen,
       modules: EXPORT_MODULES.filter((m) => selected.has(m.key)).map((m) => m.key),
