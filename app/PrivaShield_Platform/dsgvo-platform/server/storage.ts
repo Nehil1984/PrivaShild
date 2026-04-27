@@ -167,22 +167,21 @@ export interface IStorage {
 import { readDbBackend } from "./db-config.js";
 import { LowdbStorage } from "./storage-lowdb.js";
 
-function createStorage(): IStorage {
+async function createStorage(): Promise<IStorage> {
   const backend = readDbBackend();
   if (backend === "sqlite") {
     console.log("[DB] Backend: SQLite (better-sqlite3)");
-    // Lazy import: db.ts wird NUR geladen, wenn SQLite gewählt ist
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { DatabaseStorage } = require("./storage-sqlite.js");
-    return new DatabaseStorage();
+    const mod = await import("./storage-sqlite.js").catch(() => import("./storage-sqlite.ts"));
+    return new mod.DatabaseStorage();
   }
   console.log("[DB] Backend: lowdb (JSON-Datei)");
   return new LowdbStorage();
 }
 
-export let storage: IStorage = createStorage();
+export let storage: IStorage;
+void createStorage().then((instance) => { storage = instance; });
 
 /** Wird vom Admin-API-Endpunkt aufgerufen, um das Backend zur Laufzeit zu wechseln */
-export function reloadStorage(): void {
-  storage = createStorage();
+export async function reloadStorage(): Promise<void> {
+  storage = await createStorage();
 }

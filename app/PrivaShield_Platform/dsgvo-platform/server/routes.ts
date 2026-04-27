@@ -1152,7 +1152,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/admin/backups/restore", authMiddleware, adminOnly, validateBody(requestBackupRestoreSchema as ZodTypeAny), async (req: any, res) => {
     try {
-      const result = restoreBackup(req.body?.fileName, req.body?.password);
+      const result = await restoreBackup(req.body?.fileName, req.body?.password);
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error?.message || "Backup konnte nicht wiederhergestellt werden" });
@@ -1165,20 +1165,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const password = typeof req.query.password === "string" ? req.query.password : undefined;
       if (!fileName) return res.status(400).json({ message: "Dateiname fehlt" });
       if (!req.body || !Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ message: "Keine Backup-Datei hochgeladen" });
-      const result = restoreUploadedBackup(fileName, req.body, password);
+      const result = await restoreUploadedBackup(fileName, req.body, password);
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error?.message || "Hochgeladenes Backup konnte nicht wiederhergestellt werden" });
     }
   });
 
-  app.post("/api/admin/db-config", authMiddleware, adminOnly, (req: any, res) => {
+  app.post("/api/admin/db-config", authMiddleware, adminOnly, async (req: any, res) => {
     const { backend } = req.body;
     if (backend !== "lowdb" && backend !== "sqlite") {
       return res.status(400).json({ message: "Ungültiges Backend. Erlaubt: lowdb | sqlite" });
     }
     writeDbBackend(backend);
-    reloadStorage();
+    await reloadStorage();
     res.json({ ok: true, backend, message: `Backend auf '${backend}' umgestellt. Änderungen sofort aktiv.` });
   });
 

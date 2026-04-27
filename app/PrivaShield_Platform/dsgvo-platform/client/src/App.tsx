@@ -3532,8 +3532,8 @@ function BackupsPage() {
       fileName: payload.fileName,
       password: payload.encrypted ? (restorePassword || undefined) : undefined,
     }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.message); return data; }),
-    onSuccess: () => {
-      toast({ title: t("restoreBackupSuccess") });
+    onSuccess: (data: any) => {
+      toast({ title: t("restoreBackupSuccess"), description: data?.migrated ? "Lowdb-Backup wurde automatisch in SQLite migriert." : undefined });
       setRestorePassword("");
       configQuery.refetch();
       backupsQuery.refetch();
@@ -3552,8 +3552,8 @@ function BackupsPage() {
         return data;
       });
     },
-    onSuccess: () => {
-      toast({ title: t("uploadBackupSuccess") });
+    onSuccess: (data: any) => {
+      toast({ title: t("uploadBackupSuccess"), description: data?.migrated ? "Lowdb-Backup wurde automatisch in SQLite migriert." : undefined });
       setUploadFile(null);
       setUploadPassword("");
       configQuery.refetch();
@@ -3638,11 +3638,13 @@ function BackupsPage() {
             <Button size="sm" variant="outline" onClick={() => uploadRestoreMutation.mutate()} disabled={uploadRestoreMutation.isPending || !uploadFile}>{t("restoreBackupNow")}</Button>
           </div>
           {(backupsQuery.data || []).map((item: any) => (
-            <div key={item.fileName} className="rounded-lg border p-3 flex flex-col gap-3">
+            <div key={item.fileName} className={`rounded-lg border p-3 flex flex-col gap-3 ${item.backendMismatch ? "border-amber-300 bg-amber-50/60" : ""}`}>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                 <div>
                   <div className="font-medium text-foreground">{item.fileName}</div>
                   <div className="text-xs text-muted-foreground">{slotLabel(item.slot)} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
+                  <div className="text-xs text-muted-foreground">Backend im Backup: <span className="font-medium text-foreground">{item.backend || "Unbekannt / Altformat"}</span></div>
+                  {item.backendMismatch && <div className="text-xs text-amber-900 font-medium">Dieses Backup passt nicht 1:1 zum aktuell aktiven Backend. Lowdb → SQLite wird beim Restore jetzt automatisch migriert; andere Mismatches werden weiter blockiert.</div>}
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge value={item.encrypted ? t("backupEncrypted") : t("backupUnencrypted")} className="capitalize" />
@@ -3659,7 +3661,7 @@ function BackupsPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => restoreMutation.mutate({ fileName: item.fileName, encrypted: !!item.encrypted })}
-                  disabled={restoreMutation.isPending || (item.encrypted && !restorePassword)}
+                  disabled={restoreMutation.isPending || (item.encrypted && !restorePassword) || (item.backendMismatch && item.backend !== "lowdb")}
                 >
                   {t("restoreBackupNow")}
                 </Button>

@@ -16,7 +16,7 @@ import { db } from "./db.js";
 import { eq, and, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
-  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, users, vvt, avv, dsfa, datenpannen, dsr, tom, loeschkonzept, audits, pdca, aufgaben, dokumente, interneNotizen,
+  mandanten, mandantenGruppen, vorlagenpakete, mandantenLogs, vorlagenpaketHistorie, users, vvt, avv, dsfa, datenpannen, dsr, tom, loeschkonzept, audits, pdca, aufgaben, dokumente, interneNotizen,
   type Mandant, type InsertMandant,
   type MandantenGruppe, type InsertMandantenGruppe,
   type Vorlagenpaket, type InsertVorlagenpaket,
@@ -300,8 +300,8 @@ export class DatabaseStorage implements IStorage {
   // Mandanten-Logs
   async getMandantenLogs(mandantId: number) { return db.select().from(mandantenLogs).where(eq(mandantenLogs.mandantId, mandantId)).orderBy(desc(mandantenLogs.zeitpunkt)).all(); }
   async createMandantenLog(data: InsertMandantenLog) { return db.insert(mandantenLogs).values({ ...data, zeitpunkt: new Date().toISOString() }).returning().get(); }
-  async getVorlagenpaketHistorie(_mandantId: number) { return [] as VorlagenpaketHistorie[]; }
-  async createVorlagenpaketHistorie(_data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie> { throw new Error("Vorlagenpaket-Historie für SQLite noch nicht implementiert"); }
+  async getVorlagenpaketHistorie(mandantId: number) { return db.select().from(vorlagenpaketHistorie).where(eq(vorlagenpaketHistorie.mandantId, mandantId)).orderBy(desc(vorlagenpaketHistorie.angewendetAm)).all(); }
+  async createVorlagenpaketHistorie(data: InsertVorlagenpaketHistorie): Promise<VorlagenpaketHistorie> { return db.insert(vorlagenpaketHistorie).values({ ...data, angewendetAm: new Date().toISOString() }).returning().get(); }
 
   // VVT
   async getVvtByMandant(mandantId: number) { return db.select().from(vvt).where(eq(vvt.mandantId, mandantId)).orderBy(desc(vvt.createdAt)).all(); }

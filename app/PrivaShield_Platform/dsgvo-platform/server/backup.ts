@@ -9,7 +9,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { readDbBackend } from "./db-config";
+import { readDbBackend, writeDbBackend, type DbBackend } from "./db-config";
+import { reloadStorage } from "./storage";
 
 export type BackupRetentionConfig = {
   hourly: number;
@@ -40,6 +41,38 @@ export type BackupRecord = {
   encrypted: boolean;
   slot: "hourly" | "daily" | "weekly" | "monthly" | "yearly";
   label: string;
+  backend: DbBackend | null;
+  backendMismatch: boolean;
+};
+
+const BACKUP_META_PREFIX = "PSMETA1\n";
+
+type BackupMeta = {
+  backend: DbBackend;
+  createdAt: string;
+  sourceFile: string;
+};
+
+type LowdbPayload = {
+  meta?: { nextId?: Record<string, number> };
+  mandanten?: any[];
+  mandantenGruppen?: any[];
+  vorlagenpakete?: any[];
+  mandantenLogs?: any[];
+  vorlagenpaketHistorie?: any[];
+  users?: any[];
+  vvt?: any[];
+  avv?: any[];
+  dsfa?: any[];
+  datenpannen?: any[];
+  dsr?: any[];
+  tom?: any[];
+  aufgaben?: any[];
+  dokumente?: any[];
+  loeschkonzept?: any[];
+  audits?: any[];
+  pdca?: any[];
+  interneNotizen?: any[];
 };
 
 const defaultRetention: BackupRetentionConfig = {
@@ -219,19 +252,68 @@ function decryptBuffer(buffer: Buffer, password: string) {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
 
+function parseBackupMeta(raw: Buffer, encrypted: boolean, passwordOverride?: string): BackupMeta | null {
+  let decoded = raw;
+  if (encrypted) {
+    const password = passwordOverride || process.env.PRIVASHIELD_BACKUP_PASSWORD;
+    if (!password) return null;
+    try {
+      decoded = decryptBuffer(raw, password);
+    } catch {
+      return null;
+    }
+  }
+  const text = decoded.toString("utf8");
+  if (!text.startsWith(BACKUP_META_PREFIX)) return null;
+  const end = text.indexOf("\n", BACKUP_META_PREFIX.length);
+  if (end === -1) return null;
+  try {
+    const meta = JSON.parse(text.slice(BACKUP_META_PREFIX.length, end));
+    if (meta?.backend === "lowdb" || meta?.backend === "sqlite") {
+      return meta as BackupMeta;
+    }
+  } catch {}
+  return null;
+}
+
+function splitBackupPayload(raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+  const meta = parseBackupMeta(raw, encrypted, passwordOverride);
+  if (!meta) return { meta: null, payload: raw };
+
+  let decoded = raw;
+  if (encrypted) {
+    const password = passwordOverride || process.env.PRIVASHIELD_BACKUP_PASSWORD;
+    if (!password) throw new Error("Für verschlüsselte Wiederherstellung wurde kein Kennwort übergeben");
+    try {
+      decoded = decryptBuffer(raw, password);
+    } catch {
+      throw new Error("Backup-Kennwort ist ungültig oder Backup-Datei beschädigt");
+    }
+  }
+
+  const firstNewline = decoded.indexOf(0x0a, BACKUP_META_PREFIX.length);
+  if (firstNewline === -1) return { meta, payload: decoded };
+  return { meta, payload: decoded.subarray(firstNewline + 1) };
+}
+
 function parseFile(filePath: string): BackupRecord | null {
   const name = path.basename(filePath);
   const match = /^backup-(hourly|daily|weekly|monthly|yearly)-([^.]+)\.(bak|enc)$/.exec(name);
   if (!match) return null;
   const stat = fs.statSync(filePath);
+  const encrypted = match[3] === "enc";
+  const meta = parseBackupMeta(fs.readFileSync(filePath), encrypted);
+  const currentBackend = readDbBackend();
   return {
     fileName: name,
     filePath,
     createdAt: stat.mtime.toISOString(),
     size: stat.size,
-    encrypted: match[3] === "enc",
+    encrypted,
     slot: match[1] as any,
     label: match[2],
+    backend: meta?.backend || null,
+    backendMismatch: !!meta?.backend && meta.backend !== currentBackend,
   };
 }
 
@@ -265,10 +347,13 @@ export function runBackupNow(passwordOverride?: string) {
   try {
     const cfg = readBackupConfig();
     const source = getSourceFile();
+    const backend = readDbBackend();
     if (!fs.existsSync(source)) throw new Error(`Quelldatei nicht gefunden: ${source}`);
     fs.mkdirSync(cfg.backupDir, { recursive: true });
     const now = new Date();
-    const buffer = fs.readFileSync(source);
+    const sourceBuffer = fs.readFileSync(source);
+    const metaBuffer = Buffer.from(`${BACKUP_META_PREFIX}${JSON.stringify({ backend, createdAt: now.toISOString(), sourceFile: source })}\n`, "utf8");
+    const buffer = Buffer.concat([metaBuffer, sourceBuffer]);
     const useEncryption = cfg.encrypt;
     const password = passwordOverride || undefined;
     if (useEncryption && !password) throw new Error("Verschlüsselung aktiv, aber kein Kennwort übergeben.");
@@ -285,7 +370,7 @@ export function runBackupNow(passwordOverride?: string) {
       const filePath = path.join(cfg.backupDir, fileName);
       fs.writeFileSync(filePath, payload);
       const stat = fs.statSync(filePath);
-      created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label });
+      created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label, backend, backendMismatch: false });
     }
 
     pruneSlot("hourly", cfg.retention.hourly);
@@ -303,7 +388,7 @@ export function runBackupNow(passwordOverride?: string) {
 
     return {
       source,
-      backend: readDbBackend(),
+      backend,
       encrypted: useEncryption,
       created,
       retention: cfg.retention,
@@ -319,22 +404,90 @@ export function runBackupNow(passwordOverride?: string) {
   }
 }
 
-function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+function normalizeArray<T>(rows: T[] | undefined | null) {
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function migrateLowdbPayloadToSqlite(payload: Buffer) {
+  const json = JSON.parse(payload.toString("utf8")) as LowdbPayload;
   const targetFile = getSourceFile();
   fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+  if (fs.existsSync(targetFile)) fs.unlinkSync(targetFile);
 
-  let output = raw;
-  if (encrypted) {
-    const password = passwordOverride || process.env.PRIVASHIELD_BACKUP_PASSWORD;
-    if (!password) throw new Error("Für verschlüsselte Wiederherstellung wurde kein Kennwort übergeben");
-    try {
-      output = decryptBuffer(raw, password);
-    } catch {
-      throw new Error("Backup-Kennwort ist ungültig oder Backup-Datei beschädigt");
-    }
+  writeDbBackend("sqlite");
+  await reloadStorage();
+
+  const targetPath = process.env.DATABASE_PATH || path.resolve("data.db");
+  const { db } = await import("./db.js");
+
+  const insertMany = (table: any, rows: any[]) => {
+    if (!rows.length) return;
+    db.insert(table).values(rows).run();
+  };
+
+  insertMany((await import("@shared/schema")).mandantenGruppen, normalizeArray(json.mandantenGruppen));
+  insertMany((await import("@shared/schema")).mandanten, normalizeArray(json.mandanten));
+  insertMany((await import("@shared/schema")).vorlagenpakete, normalizeArray(json.vorlagenpakete));
+  insertMany((await import("@shared/schema")).users, normalizeArray(json.users).map((row: any) => ({
+    id: row.id,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    name: row.name,
+    role: row.role,
+    mandantIds: row.mandantIds,
+    aktiv: row.aktiv,
+    failedLoginAttempts: row.failedLoginAttempts ?? 0,
+    temporaryLockUntil: row.temporaryLockUntil ?? null,
+    adminLocked: row.adminLocked ?? false,
+    adminLockedAt: row.adminLockedAt ?? null,
+    lastFailedLoginAt: row.lastFailedLoginAt ?? null,
+    createdAt: row.createdAt,
+  })));
+  insertMany((await import("@shared/schema")).vvt, normalizeArray(json.vvt));
+  insertMany((await import("@shared/schema")).avv, normalizeArray(json.avv));
+  insertMany((await import("@shared/schema")).dsfa, normalizeArray(json.dsfa));
+  insertMany((await import("@shared/schema")).datenpannen, normalizeArray(json.datenpannen));
+  insertMany((await import("@shared/schema")).dsr, normalizeArray(json.dsr));
+  insertMany((await import("@shared/schema")).tom, normalizeArray(json.tom));
+  insertMany((await import("@shared/schema")).audits, normalizeArray(json.audits));
+  insertMany((await import("@shared/schema")).pdca, normalizeArray(json.pdca));
+  insertMany((await import("@shared/schema")).loeschkonzept, normalizeArray(json.loeschkonzept));
+  insertMany((await import("@shared/schema")).aufgaben, normalizeArray(json.aufgaben));
+  insertMany((await import("@shared/schema")).dokumente, normalizeArray(json.dokumente));
+  insertMany((await import("@shared/schema")).interneNotizen, normalizeArray(json.interneNotizen));
+  insertMany((await import("@shared/schema")).mandantenLogs, normalizeArray(json.mandantenLogs));
+  insertMany((await import("@shared/schema")).vorlagenpaketHistorie, normalizeArray(json.vorlagenpaketHistorie));
+
+  return { targetFile: targetPath, migratedFrom: "lowdb", migratedTo: "sqlite" };
+}
+
+async function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+  const currentBackend = readDbBackend();
+  const { meta, payload } = splitBackupPayload(raw, encrypted, passwordOverride);
+
+  if (meta?.backend === "lowdb" && currentBackend === "sqlite") {
+    const migration = await migrateLowdbPayloadToSqlite(payload);
+    updateBackupStatus({ lastErrorAt: undefined, lastErrorMessage: undefined });
+    return {
+      ok: true,
+      restoredFrom: fileName,
+      restoredAt: new Date().toISOString(),
+      targetFile: migration.targetFile,
+      backend: "sqlite",
+      backendMismatch: false,
+      migrated: true,
+      migratedFrom: "lowdb",
+      migratedTo: "sqlite",
+    };
   }
 
-  fs.writeFileSync(targetFile, output);
+  if (meta?.backend && meta.backend !== currentBackend) {
+    throw new Error(`Backup-Backend '${meta.backend}' passt nicht zum aktuell aktiven Backend '${currentBackend}'. Bitte Zielsystem umstellen oder eine Migration durchführen.`);
+  }
+
+  const targetFile = getSourceFile();
+  fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+  fs.writeFileSync(targetFile, payload);
   updateBackupStatus({
     lastErrorAt: undefined,
     lastErrorMessage: undefined,
@@ -345,17 +498,19 @@ function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, 
     restoredFrom: fileName,
     restoredAt: new Date().toISOString(),
     targetFile,
+    backend: meta?.backend || currentBackend,
+    backendMismatch: !!meta?.backend && meta.backend !== currentBackend,
   };
 }
 
-export function restoreBackup(fileName: string, passwordOverride?: string) {
+export async function restoreBackup(fileName: string, passwordOverride?: string) {
   const backup = listBackups().find((row) => row.fileName === fileName);
   if (!backup) throw new Error("Backup nicht gefunden");
   if (!fs.existsSync(backup.filePath)) throw new Error("Backup-Datei nicht gefunden");
   return restoreBackupBuffer(backup.fileName, fs.readFileSync(backup.filePath), backup.encrypted, passwordOverride);
 }
 
-export function restoreUploadedBackup(fileName: string, raw: Buffer, passwordOverride?: string) {
+export async function restoreUploadedBackup(fileName: string, raw: Buffer, passwordOverride?: string) {
   const ext = path.extname(fileName).toLowerCase();
   if (ext !== ".bak" && ext !== ".enc") throw new Error("Nur Backup-Dateien mit .bak oder .enc sind erlaubt");
   return restoreBackupBuffer(fileName, raw, ext === ".enc", passwordOverride);
