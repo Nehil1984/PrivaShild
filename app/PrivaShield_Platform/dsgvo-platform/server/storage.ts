@@ -167,21 +167,19 @@ export interface IStorage {
 import { readDbBackend } from "./db-config.js";
 import { LowdbStorage } from "./storage-lowdb.js";
 
-async function createStorage(): Promise<IStorage> {
+function createStorage(): IStorage {
   const backend = readDbBackend();
   if (backend === "sqlite") {
     console.log("[DB] Backend: SQLite (better-sqlite3)");
-    const mod = await import("./storage-sqlite.js").catch(() => import("./storage-sqlite.ts"));
-    return new mod.DatabaseStorage();
+    throw new Error("SQLite backend bootstrap requires built server artifacts in this runtime. Use lowdb at startup or switch backend via the admin API after boot.");
   }
   console.log("[DB] Backend: lowdb (JSON-Datei)");
   return new LowdbStorage();
 }
 
-export let storage: IStorage;
-void createStorage().then((instance) => { storage = instance; });
+export let storage: IStorage = createStorage();
 
 /** Wird vom Admin-API-Endpunkt aufgerufen, um das Backend zur Laufzeit zu wechseln */
 export async function reloadStorage(): Promise<void> {
-  storage = await createStorage();
+  storage = createStorage();
 }
