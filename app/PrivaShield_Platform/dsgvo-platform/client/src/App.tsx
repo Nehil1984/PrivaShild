@@ -2887,7 +2887,7 @@ function AuditsPage() {
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">PDCA-Follow-ups</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedPdca.length ? linkedPdca.map((pd: any) => `${pd.titel} (${pd.status})`).join("\n") : auditFollowUps.filter((pd: any) => {
                       const haystack = [pd.titel, pd.beschreibung, pd.planMassnahmen, pd.checkFeststellungen, pd.actFolgemassnahmen].join(" \n ").toLowerCase();
                       return haystack.includes(String(item.titel || "").toLowerCase());
-                    }).map((pd: any) => `${pd.titel} (${pd.status})`).join("\n") || "—"}</p></div>
+                    }).map((fallbackPdca: any) => `${fallbackPdca.titel} (${fallbackPdca.status})`).join("\n") || "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Folgeaufgaben</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedTasks.length ? linkedTasks.map((task: any) => `${task.titel} (${task.status}, ${Number(task.fortschritt || 0)}%)`).join("\n") : "—"}{offeneLinkedTasks.length ? `\n\nOffen: ${offeneLinkedTasks.length}` : ""}</p></div>
                   </div>
                   {(item.feststellungen || item.positiveAspekte) && (
