@@ -5487,13 +5487,14 @@ function ExportPage() {
   }, 0);
   const auditFollowUpsOhneAuditBezug = auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length;
   const fehlendeLoeschBezuge = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const governanceFindings = [
-    auditTodos.length > 0 ? `${auditTodos.length} offene Audit-To-dos` : "",
-    pdcaReviewFaellig.length > 0 ? `${pdcaReviewFaellig.length} PDCA-Reviews fällig oder überfällig` : "",
-    pdcaFollowUpTasksOffen.length > 0 ? `${pdcaFollowUpTasksOffen.length} offene PDCA-Folgeaufgaben` : "",
-    auditFollowUpsOhneAuditBezug > 0 ? `${auditFollowUpsOhneAuditBezug} Audit-Follow-ups ohne Audit-Bezug` : "",
-    fehlendeLoeschBezuge > 0 ? `${fehlendeLoeschBezuge} VVT ohne Löschkonzept-Bezug` : "",
-  ].filter(Boolean);
+    auditTodos.length > 0 ? { severity: auditTodos.length >= 5 ? "hoch" : "mittel", title: `${auditTodos.length} offene Audit-To-dos`, recommendation: "Audit-Maßnahmen priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen." } : null,
+    pdcaReviewFaellig.length > 0 ? { severity: pdcaReviewFaellig.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaellig.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig durchführen und Status der Wirksamkeitsprüfung aktualisieren." } : null,
+    pdcaFollowUpTasksOffen.length > 0 ? { severity: pdcaFollowUpTasksOffen.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffen.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln, priorisieren und gegen bestehende PDCA-Zyklen abgleichen." } : null,
+    auditFollowUpsOhneAuditBezug > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditBezug} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Fehlende Audit-Verknüpfungen ergänzen, damit Nachverfolgung und Export belastbar bleiben." } : null,
+    fehlendeLoeschBezuge > 0 ? { severity: fehlendeLoeschBezuge >= 3 ? "mittel" : "niedrig", title: `${fehlendeLoeschBezuge} VVT ohne Löschkonzept-Bezug`, recommendation: "Löschkonzept-Einträge mit den betroffenen Verarbeitungstätigkeiten verknüpfen oder fachlich begründen." } : null,
+  ].filter(Boolean).sort((a: any, b: any) => (governanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (governanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const managementScoreRaw = 100
     - (auditTodos.length * 6)
     - (pdcaReviewFaellig.length * 8)
