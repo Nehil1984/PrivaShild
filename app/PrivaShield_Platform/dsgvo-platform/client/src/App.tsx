@@ -2044,7 +2044,7 @@ function DsfaPage() {
             <Button type="button" size="sm" variant={dsfaSort === "review" ? "default" : "outline"} onClick={() => setDsfaSort("review")}>Review zuerst</Button>
             <Button type="button" size="sm" variant={dsfaSort === "risk" ? "default" : "outline"} onClick={() => setDsfaSort("risk")}>Hohes Risiko zuerst</Button>
           </div>
-          {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSFAs für den aktuellen Filter bei <span className="font-medium text-foreground">{activeMandantName}</span>.</CardContent></Card>}
+          {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{dsfaFilterHint ? `Für den aktiven Governance-Filter wurden bei ${activeMandantName} aktuell keine DSFA-Treffer gefunden.` : <>Keine DSFAs für den aktuellen Filter bei <span className="font-medium text-foreground">{activeMandantName}</span>.</>}</CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für <span className="font-medium text-foreground">{activeMandantName}</span> sind aktuell keine DSFAs vorhanden.</CardContent></Card>}
           {filteredDsfa.map((item: any) => {
             const risks = getRisks(item);
@@ -3282,7 +3282,7 @@ function PdcaPage() {
       </div>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
-          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine PDCA-Zyklen in dieser Ansicht.</CardContent></Card>}
+          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{pdcaFilterHint || "Keine PDCA-Zyklen in dieser Ansicht."}{pdcaFilterHint ? " Aktuell gibt es dafür keine Treffer." : ""}</CardContent></Card>}
           {filtered.map((item: any) => {
             const linkedTasks = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id));
             const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
@@ -3463,7 +3463,7 @@ function AufgabenPage() {
       </div>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
-          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Aufgaben in dieser Ansicht.</CardContent></Card>}
+          {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{taskFilterHint || "Keine Aufgaben in dieser Ansicht."}{taskFilterHint ? " Aktuell gibt es dafür keine Treffer." : ""}</CardContent></Card>}
           {filtered.map((item: any) => {
             const ueberfaellig = item.faelligAm && item.faelligAm < today && item.status !== "erledigt";
             return (
