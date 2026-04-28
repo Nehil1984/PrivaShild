@@ -610,11 +610,19 @@ function Dashboard() {
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
-  const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3);
+  const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3).map((item: any) => {
+    const title = String(item?.title || "").toLowerCase();
+    const derivedStatus = title.includes("kritische offene aufgaben") || title.includes("ohne audit-bezug") || title.includes("art.-36")
+      ? "heute erledigen"
+      : title.includes("review") || title.includes("restrisiko")
+        ? "in Bearbeitung"
+        : "neu";
+    return { ...item, derivedStatus };
+  });
   const dashboardTodayProgress = {
-    neu: dashboardTodayFirst.filter((item: any) => item.severity === "hoch").length,
-    inBearbeitung: dashboardTodayFirst.filter((item: any) => item.severity === "mittel").length,
-    heuteErledigen: dashboardTodayFirst.filter((item: any) => item.severity === "hoch" || item.severity === "mittel").length,
+    neu: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "neu").length,
+    inBearbeitung: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "in Bearbeitung").length,
+    heuteErledigen: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "heute erledigen").length,
   };
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
@@ -817,7 +825,7 @@ function Dashboard() {
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                       </div>
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Status: {item.severity === "hoch" ? "neu" : item.severity === "mittel" ? "in Bearbeitung" : "beobachten"}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus}</p>
                     </div>
                   ))}
                 </CardContent>
