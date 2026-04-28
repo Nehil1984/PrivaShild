@@ -641,26 +641,29 @@ function Dashboard() {
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
   const avvVorhanden = (stats?.avv ?? 0) > 0;
-  const governanceChecks = [
-    leitlinienCount >= 2,
-    prozessDokCount >= 2,
-    (stats?.vvt ?? 0) >= 3,
-    dsfaMitDsbCheck,
-    dsfaOhneVvt === 0,
-    dsfaMitArt36 === 0,
-    dsfaReviewFaellig === 0,
-    dsfaMitHohemRestrisiko === 0,
-    vvtOhneLoeschkonzept === 0,
-    auditsVorhanden,
-    tomUmfangreich,
-    avvVorhanden,
-    kritischeOderNotwendigeAufgaben === 0,
-    !!webDatenschutzCheck,
-    !!datenschutzhinweiseCheck,
-    !!beschaeftigtenDok,
-    dokumenteCount >= 6,
+  const dashboardAuditCount = stats?.audits ?? 0;
+  const dashboardAuditTodoCount = 0;
+  const maturityCriteria = [
+    { label: "Leitlinienbasis", weight: 6, score: leitlinienCount >= 2 ? 6 : leitlinienCount === 1 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: prozessDokCount >= 2 ? 5 : prozessDokCount === 1 ? 2 : 0 },
+    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
+    { label: "DSFA-Struktur", weight: 8, score: dsfaMitDsbCheck && dsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
+    { label: "DSFA-Risikosteuerung", weight: 10, score: dsfaMitArt36 === 0 && dsfaMitHohemRestrisiko === 0 && dsfaReviewFaellig === 0 ? 10 : dsfaMitArt36 + dsfaMitHohemRestrisiko + dsfaReviewFaellig <= 2 ? 5 : 0 },
+    { label: "Löschkonzept-Verknüpfung", weight: 6, score: vvtOhneLoeschkonzept === 0 ? 6 : vvtOhneLoeschkonzept <= 2 ? 3 : 0 },
+    { label: "Audit-Struktur", weight: 12, score: dashboardAuditCount > 0 ? (auditFollowUpsOhneAuditDashboard.length === 0 && dashboardAuditTodoCount <= 2 ? 12 : dashboardAuditTodoCount <= 5 ? 6 : 2) : 0 },
+    { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaelligItems.length === 0 && pdcaFollowUpTasksOffenDashboard.length <= 2 ? 14 : pdcaReviewFaelligItems.length <= 2 && pdcaFollowUpTasksOffenDashboard.length <= 5 ? 7 : 2) : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: tomUmfangreich ? 5 : (stats?.tom ?? 0) > 0 ? 2 : 0 },
+    { label: "AVV-Abdeckung", weight: 4, score: avvVorhanden ? 4 : 0 },
+    { label: "Operative Aufgabensteuerung", weight: 8, score: kritischeAufgaben.length === 0 && kritischeOderNotwendigeAufgaben === 0 ? 8 : kritischeAufgaben.length <= 2 ? 4 : 0 },
+    { label: "Web-/Hinweisprüfungen", weight: 4, score: !!webDatenschutzCheck && !!datenschutzhinweiseCheck ? 4 : (!!webDatenschutzCheck || !!datenschutzhinweiseCheck) ? 2 : 0 },
+    { label: "Beschäftigtendatenschutz", weight: 4, score: !!beschaeftigtenDok ? 4 : 0 },
+    { label: "Dokumentenreife", weight: 3, score: dokumenteCount >= 6 ? 3 : dokumenteCount >= 3 ? 1 : 0 },
+    { label: "Verantwortungsstruktur", weight: 5, score: activeMandant?.verantwortlicherName ? 5 : 0 },
   ];
-  const reifegradScore = Math.round((governanceChecks.filter(Boolean).length / governanceChecks.length) * 100);
+  const maturityWeightTotal = maturityCriteria.reduce((sum, item) => sum + item.weight, 0);
+  const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
+  const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
+  const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
   const complianceKpis = {
     offeneAufgaben: stats?.offeneAufgaben ?? 0,
     leitlinien: leitlinieVorhanden ? 1 : 0,
@@ -980,17 +983,25 @@ function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Reifegrad</CardTitle>
-              <CardDescription>Ganzheitlicher Score aus Leitlinien, VVT, Löschkonzept, DSFA/DSB, Audits, TOM, AVV und Aufgabenlage</CardDescription>
+              <CardDescription>Gewichteter Governance- und Reifegrad aus Struktur, Audit, PDCA, DSFA, Löschkonzept, Aufgabensteuerung und Dokumentation</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{reifegradScore}%</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-3xl font-bold">{reifegradScore}%</p>
+                <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium border ${reifegradAmpel === "Grün" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : reifegradAmpel === "Gelb" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" : "bg-red-500/15 text-red-400 border-red-500/30"}`}>{reifegradAmpel}</span>
+              </div>
               <div className="mt-3 h-3 w-full rounded bg-secondary overflow-hidden">
                 <div className="h-full bg-primary transition-all" style={{ width: `${reifegradScore}%` }} />
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                <p>Audit-Gewichtung: 12 Punkte</p>
+                <p>PDCA-Gewichtung: 14 Punkte</p>
+                <p>Audit-Follow-ups ohne Audit-Bezug: {auditFollowUpsOhneAuditDashboard.length}</p>
+                <p>PDCA-Reviews fällig/überfällig: {pdcaReviewFaelligItems.length}</p>
+                <p>Offene PDCA-Folgeaufgaben: {pdcaFollowUpTasksOffenDashboard.length}</p>
                 <p>Leitlinien vorhanden: {leitlinienCount >= 2 ? "ja" : `nein (${leitlinienCount}/2)`}</p>
                 <p>VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschkonzept}</p>
-                <p>Interne Audits dokumentiert: {auditsVorhanden ? "ja" : "nein"}</p>
+                <p>Interne Audits dokumentiert: {auditsVorhanden ? "ja" : `nein (${dashboardAuditCount})`}</p>
                 <p>TOM-Katalog umfangreich: {tomUmfangreich ? "ja" : `nein (${stats?.tom ?? 0})`}</p>
                 <p>Copilot-Paket aktiv: {copilotStatusVorhanden ? "ja" : "nein"}</p>
                 <p>Copilot-DSFA ohne Reviewdatum: {copilotDsfaOhneReviewItems.length}</p>
@@ -5666,6 +5677,16 @@ function ExportPage() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/audits`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: stats } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/stats`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/stats`).then((r) => r.json()) : null,
+    enabled: !!activeMandantId,
+  });
+  const { data: dsfa = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/dsfa`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dsfa`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: pdca = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/pdca`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/pdca`).then((r) => r.json()) : [],
@@ -5712,6 +5733,49 @@ function ExportPage() {
   }, 0);
   const auditFollowUpsOhneAuditBezug = auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length;
   const fehlendeLoeschBezuge = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const exportLeitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
+  const exportProzessDokCount = dokumente.filter((d: any) => d.kategorie === "prozessbeschreibung" || d.kategorie === "verfahrensdokumentation").length;
+  const exportDsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(mandant?.dsb || mandant?.dsbEmail || mandant?.datenschutzmanagerName));
+  const exportDsfaOhneVvt = dsfa.filter((item: any) => !item.vvtId).length;
+  const exportDsfaMitArt36 = dsfa.filter((item: any) => !!item.art36Erforderlich).length;
+  const exportDsfaReviewFaellig = dsfa.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now()).length;
+  const exportDsfaMitHohemRestrisiko = dsfa.filter((item: any) => {
+    try {
+      const parsed = typeof item.risiken === "string" ? JSON.parse(item.risiken || "[]") : item.risiken;
+      return Array.isArray(parsed) && parsed.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    } catch {
+      return false;
+    }
+  }).length;
+  const exportKritischeAufgaben = aufgaben.filter((item: any) => String(item.prioritaet || "") === "kritisch" && String(item.status || "") !== "erledigt").length;
+  const exportKritischeOderNotwendigeAufgaben = aufgaben.filter((item: any) => ["hoch", "kritisch"].includes(String(item.prioritaet || "")) && String(item.status || "") !== "erledigt").length;
+  const exportTomUmfangreich = (stats?.tom ?? 0) >= 8;
+  const exportAvvVorhanden = (stats?.avv ?? 0) > 0;
+  const exportWebDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
+  const exportDatenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
+  const exportBeschaeftigtenDok = dokumente.find((d: any) => d.dokumentTyp === "beschaeftigten_datenschutz_check");
+  const exportDokumenteCount = dokumente.length;
+  const maturityCriteria = [
+    { label: "Leitlinienbasis", weight: 6, score: exportLeitlinienCount >= 2 ? 6 : exportLeitlinienCount === 1 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: exportProzessDokCount >= 2 ? 5 : exportProzessDokCount === 1 ? 2 : 0 },
+    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
+    { label: "DSFA-Struktur", weight: 8, score: exportDsfaMitDsbCheck && exportDsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
+    { label: "DSFA-Risikosteuerung", weight: 10, score: exportDsfaMitArt36 === 0 && exportDsfaMitHohemRestrisiko === 0 && exportDsfaReviewFaellig === 0 ? 10 : exportDsfaMitArt36 + exportDsfaMitHohemRestrisiko + exportDsfaReviewFaellig <= 2 ? 5 : 0 },
+    { label: "Löschkonzept-Verknüpfung", weight: 6, score: fehlendeLoeschBezuge === 0 ? 6 : fehlendeLoeschBezuge <= 2 ? 3 : 0 },
+    { label: "Audit-Struktur", weight: 12, score: audits.length > 0 ? (auditFollowUpsOhneAuditBezug === 0 && auditTodos.length <= 2 ? 12 : auditTodos.length <= 5 ? 6 : 2) : 0 },
+    { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaellig.length === 0 && pdcaFollowUpTasksOffen.length <= 2 ? 14 : pdcaReviewFaellig.length <= 2 && pdcaFollowUpTasksOffen.length <= 5 ? 7 : 2) : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: exportTomUmfangreich ? 5 : (stats?.tom ?? 0) > 0 ? 2 : 0 },
+    { label: "AVV-Abdeckung", weight: 4, score: exportAvvVorhanden ? 4 : 0 },
+    { label: "Operative Aufgabensteuerung", weight: 8, score: exportKritischeAufgaben === 0 && exportKritischeOderNotwendigeAufgaben === 0 ? 8 : exportKritischeAufgaben <= 2 ? 4 : 0 },
+    { label: "Web-/Hinweisprüfungen", weight: 4, score: !!exportWebDatenschutzCheck && !!exportDatenschutzhinweiseCheck ? 4 : (!!exportWebDatenschutzCheck || !!exportDatenschutzhinweiseCheck) ? 2 : 0 },
+    { label: "Beschäftigtendatenschutz", weight: 4, score: !!exportBeschaeftigtenDok ? 4 : 0 },
+    { label: "Dokumentenreife", weight: 3, score: exportDokumenteCount >= 6 ? 3 : exportDokumenteCount >= 3 ? 1 : 0 },
+    { label: "Verantwortungsstruktur", weight: 5, score: mandant?.verantwortlicherName ? 5 : 0 },
+  ];
+  const maturityWeightTotal = maturityCriteria.reduce((sum, item) => sum + item.weight, 0);
+  const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
+  const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
+  const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
@@ -5732,18 +5796,15 @@ function ExportPage() {
     const meta = deriveGovernanceMeta(item?.title, item?.severity);
     return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint, escalation: meta.escalation, overdue: meta.overdue };
   });
-  const managementScoreRaw = 100
-    - (auditTodos.length * 6)
-    - (pdcaReviewFaellig.length * 8)
-    - (pdcaFollowUpTasksOffen.length * 4)
-    - (auditFollowUpsOhneAuditBezug * 10)
-    - (fehlendeLoeschBezuge * 5)
-    - (!mandant?.verantwortlicherName ? 12 : 0);
-  const managementScore = Math.max(0, Math.min(100, managementScoreRaw));
-  const managementAmpel = managementScore >= 85 ? "Grün" : managementScore >= 60 ? "Gelb" : "Rot";
+  const managementScore = reifegradScore;
+  const managementAmpel = reifegradAmpel;
   const managementSummary = {
     score: managementScore,
     ampel: managementAmpel,
+    reifegradScore,
+    maturityWeightTotal,
+    maturityScoreRaw,
+    maturityCriteria,
     topRisiken: logs.filter((l: any) => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length,
     audits: audits.length,
     auditDeviationCount,
