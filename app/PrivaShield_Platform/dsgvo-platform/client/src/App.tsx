@@ -1991,12 +1991,30 @@ function DsfaPage() {
     return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
+  const dsfaFilterHint = dsfaFilter === "art36"
+    ? "Du siehst gerade: DSFA mit Art.-36-Prüfbedarf."
+    : dsfaFilter === "review"
+      ? "Du siehst gerade: DSFA mit fälligem oder überfälligem Review."
+      : dsfaFilter === "high-risk"
+        ? "Du siehst gerade: DSFA mit hohem Restrisiko."
+        : dsfaFilter === "missing-vvt"
+          ? "Du siehst gerade: DSFA ohne VVT-Bezug."
+          : dsfaFilter === "copilot-missing-review"
+            ? "Du siehst gerade: Copilot-DSFA ohne Reviewdatum."
+            : dsfaFilter === "copilot"
+              ? "Du siehst gerade: DSFA mit Copilot-Bezug."
+              : "";
   return (
     <MandantGuard>
       <PageHeader title={t("dsfaTitle")} desc={t("dsfaDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-2">
+          {dsfaFilterHint && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="py-3 px-4 text-sm text-muted-foreground">{dsfaFilterHint}</CardContent>
+            </Card>
+          )}
           <Card className="border-border/60 bg-muted/20">
             <CardContent className="py-3 px-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -3201,10 +3219,16 @@ function PdcaPage() {
   const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
   const pdcaAufgabenOffen = pdcaAufgaben.filter((item: any) => item.status !== "erledigt");
   const auditFollowUpOhneAudit = data.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId);
+  const pdcaFilterHint = new URL(location, "https://privashield.local").searchParams.get("filter") === "review"
+    ? "Du siehst gerade: PDCA-Zyklen mit fälligem oder überfälligem Review."
+    : new URL(location, "https://privashield.local").searchParams.get("filter") === "audit-follow-up-ohne-audit"
+      ? "Du siehst gerade: Audit-Follow-ups ohne Audit-Bezug."
+      : "";
   return (
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
+      {pdcaFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 text-sm text-muted-foreground">{pdcaFilterHint}</CardContent></Card>}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
@@ -3365,6 +3389,13 @@ function AufgabenPage() {
     }
   };
   const today = new Date().toISOString().split("T")[0];
+  const taskFilterHint = new URL(location, "https://privashield.local").searchParams.get("filter") === "kritisch"
+    ? "Du siehst gerade: kritische offene Aufgaben."
+    : new URL(location, "https://privashield.local").searchParams.get("filter") === "pdca-follow-up-offen"
+      ? "Du siehst gerade: offene PDCA-Folgeaufgaben."
+      : new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open"
+        ? "Du siehst gerade: offene Aufgaben mit Copilot-Bezug."
+        : "";
   const filtered = data.filter((a: any) => {
     const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
     if (rawFilter === "copilot-open") {
@@ -3385,6 +3416,7 @@ function AufgabenPage() {
     <MandantGuard>
       <PageHeader title={t("tasksTitle")} desc={t("tasksDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Aufgabe</Button>} />
+      {taskFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 text-sm text-muted-foreground">{taskFilterHint}</CardContent></Card>}
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button type="button" size="sm" variant={new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" ? "default" : "outline"} onClick={() => {
           const next = new URL(location, "https://privashield.local");
