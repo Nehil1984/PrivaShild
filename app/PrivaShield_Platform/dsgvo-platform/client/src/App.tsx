@@ -1968,12 +1968,16 @@ function DsfaPage() {
     setDsfaSortState(value);
     updateDsfaRouteState(dsfaFilter, value);
   };
+  const nowTs = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const isReviewDueTs = (value: any) => !!(value && new Date(value).getTime() < nowTs);
+  const isReviewOverdueTs = (value: any) => !!(value && new Date(value).getTime() < (nowTs - dayMs));
   const filteredDsfa = data.filter((item: any) => {
     const risks = getRisks(item);
     const isCopilot = /copilot/i.test(String(item?.titel || "")) || /copilot/i.test(String(item?.beschreibung || ""));
     if (dsfaFilter === "missing-vvt") return !item.vvtId;
     if (dsfaFilter === "art36") return !!item.art36Erforderlich;
-    if (dsfaFilter === "review") return !!(item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now());
+    if (dsfaFilter === "review") return isReviewDueTs(item.naechstePruefungAm);
     if (dsfaFilter === "high-risk") return risks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
     if (dsfaFilter === "copilot") return isCopilot;
     if (dsfaFilter === "copilot-missing-review") return isCopilot && !String(item?.naechstePruefungAm || "").trim();
@@ -1991,6 +1995,11 @@ function DsfaPage() {
     return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
+  const dsfaReviewDueCount = data.filter((item: any) => isReviewDueTs(item.naechstePruefungAm)).length;
+  const dsfaReviewOverdueCount = data.filter((item: any) => isReviewOverdueTs(item.naechstePruefungAm)).length;
+  const dsfaArt36Count = data.filter((item: any) => !!item.art36Erforderlich).length;
+  const dsfaHighRiskCount = data.filter((item: any) => getRisks(item).some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch")).length;
+  const dsfaMissingVvtCount = data.filter((item: any) => !item.vvtId).length;
   const dsfaFilterHint = dsfaFilter === "art36"
     ? "Du siehst gerade: DSFA mit Art.-36-Prüfbedarf."
     : dsfaFilter === "review"
@@ -2047,6 +2056,16 @@ function DsfaPage() {
             <Button type="button" size="sm" variant={dsfaSort === "review" ? "default" : "outline"} onClick={() => setDsfaSort("review")}>Review zuerst</Button>
             <Button type="button" size="sm" variant={dsfaSort === "risk" ? "default" : "outline"} onClick={() => setDsfaSort("risk")}>Hohes Risiko zuerst</Button>
           </div>
+          {dsfaFilter !== "all" && (
+            <Card className="border-border/60 bg-muted/20">
+              <CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
+                <div><p className="text-xs text-muted-foreground">Review fällig</p><p className="font-semibold">{dsfaReviewDueCount}</p></div>
+                <div><p className="text-xs text-muted-foreground">Davon überfällig</p><p className="font-semibold">{dsfaReviewOverdueCount}</p></div>
+                <div><p className="text-xs text-muted-foreground">Art.-36-Fälle</p><p className="font-semibold">{dsfaArt36Count}</p></div>
+                <div><p className="text-xs text-muted-foreground">Ohne VVT / hohes Restrisiko</p><p className="font-semibold">{dsfaMissingVvtCount} / {dsfaHighRiskCount}</p></div>
+              </CardContent>
+            </Card>
+          )}
           {filteredDsfa.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground space-y-3">{dsfaFilterHint ? `Für den aktiven Governance-Filter wurden bei ${activeMandantName} aktuell keine DSFA-Treffer gefunden.` : <>Keine DSFAs für den aktuellen Filter bei <span className="font-medium text-foreground">{activeMandantName}</span>.</>}<div><Button type="button" size="sm" onClick={() => setModal("new")}>Neue DSFA anlegen</Button></div></CardContent></Card>}
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für <span className="font-medium text-foreground">{activeMandantName}</span> sind aktuell keine DSFAs vorhanden.</CardContent></Card>}
           {filteredDsfa.map((item: any) => {
@@ -3212,14 +3231,16 @@ function PdcaPage() {
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
+  const todayIso = new Date().toISOString().split("T")[0];
   const filtered = data.filter((item: any) => {
     const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
-    if (rawFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen")) return false;
+    if (rawFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen")) return false;
     if (rawFilter === "audit-follow-up-ohne-audit" && !(String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) return false;
     return filter === "alle" ? true : item.status === filter;
   });
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
-  const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen");
+  const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen");
+  const reviewUeberfaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm < todayIso && item.status !== "abgeschlossen");
   const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
   const ohneAuditBezug = data.filter((item: any) => !item.verknuepftesAuditId);
   const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
@@ -3240,6 +3261,15 @@ function PdcaPage() {
         setLocation(`${next.pathname}${next.search}`);
         setFilter("alle");
       }}>Filter zurücksetzen</Button><Link href="/aufgaben?filter=pdca-follow-up-offen"><a className="text-xs text-primary hover:underline self-center">Zu Aufgaben</a></Link></div></CardContent></Card>}
+      {new URL(location, "https://privashield.local").searchParams.get("filter") === "review" && (
+        <Card className="mb-4 border-border/60 bg-muted/20">
+          <CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+            <div><p className="text-xs text-muted-foreground">Review fällig</p><p className="font-semibold">{reviewFaellig.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Davon überfällig</p><p className="font-semibold">{reviewUeberfaellig.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Offene PDCA-Folgeaufgaben</p><p className="font-semibold">{pdcaAufgabenOffen.length}</p></div>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
@@ -3400,11 +3430,12 @@ function AufgabenPage() {
     }
   };
   const today = new Date().toISOString().split("T")[0];
-  const taskFilterHint = new URL(location, "https://privashield.local").searchParams.get("filter") === "kritisch"
+  const rawTaskFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
+  const taskFilterHint = rawTaskFilter === "kritisch"
     ? "Du siehst gerade: kritische offene Aufgaben."
-    : new URL(location, "https://privashield.local").searchParams.get("filter") === "pdca-follow-up-offen"
+    : rawTaskFilter === "pdca-follow-up-offen"
       ? "Du siehst gerade: offene PDCA-Folgeaufgaben."
-      : new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open"
+      : rawTaskFilter === "copilot-open"
         ? "Du siehst gerade: offene Aufgaben mit Copilot-Bezug."
         : "";
   const filtered = data.filter((a: any) => {
@@ -3434,6 +3465,7 @@ function AufgabenPage() {
         setFilter("alle");
         setTypFilter("alle");
       }}>Filter zurücksetzen</Button><Link href="/export"><a className="text-xs text-primary hover:underline self-center">Export öffnen</a></Link></div></CardContent></Card>}
+      {(rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen") && <Card className="mb-4 border-border/60 bg-muted/20"><CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3"><div><p className="text-xs text-muted-foreground">Kritische Aufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.prioritaet || "") === "kritisch" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">PDCA-Folgeaufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">Davon in Bearbeitung</p><p className="font-semibold">{filtered.filter((a: any) => a.status === "in_bearbeitung").length}</p></div></CardContent></Card>}
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button type="button" size="sm" variant={new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" ? "default" : "outline"} onClick={() => {
           const next = new URL(location, "https://privashield.local");
