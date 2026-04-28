@@ -993,6 +993,26 @@ function Dashboard() {
               <div className="mt-3 h-3 w-full rounded bg-secondary overflow-hidden">
                 <div className="h-full bg-primary transition-all" style={{ width: `${reifegradScore}%` }} />
               </div>
+              <div className="mt-4 rounded-lg border border-border/60 overflow-hidden">
+                <div className="px-3 py-2 bg-secondary/40 text-xs font-medium">Score-Details nach Gewichtung</div>
+                <div className="divide-y divide-border/60">
+                  {maturityCriteria.map((item) => {
+                    const percent = item.weight ? Math.round((item.score / item.weight) * 100) : 0;
+                    const tone = percent >= 100 ? "text-emerald-400" : percent >= 50 ? "text-yellow-400" : "text-red-400";
+                    return (
+                      <div key={item.label} className="px-3 py-2">
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <p className="font-medium">{item.label}</p>
+                          <p className={tone}>{item.score}/{item.weight} Punkte</p>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded bg-secondary overflow-hidden">
+                          <div className={`h-full transition-all ${percent >= 100 ? "bg-emerald-500" : percent >= 50 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                 <p>Audit-Gewichtung: 12 Punkte</p>
                 <p>PDCA-Gewichtung: 14 Punkte</p>
