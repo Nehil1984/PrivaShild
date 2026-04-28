@@ -683,8 +683,22 @@ function Dashboard() {
     if (normalized.includes("verantwortungsstruktur")) return "Verantwortliche Rolle verbindlich benennen und Kontaktdaten vervollständigen.";
     return "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme festlegen.";
   };
+  const deriveMaturityAction = (label: string) => {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("audit")) return { href: "/audits", label: "Zu Audits" };
+    if (normalized.includes("pdca")) return { href: "/pdca?filter=review", label: "Zu PDCA" };
+    if (normalized.includes("dsfa")) return { href: "/dsfa", label: "Zu DSFA" };
+    if (normalized.includes("löschkonzept")) return { href: "/loeschkonzept", label: "Zum Löschkonzept" };
+    if (normalized.includes("aufgabensteuerung")) return { href: "/aufgaben?filter=kritisch", label: "Zu den Aufgaben" };
+    if (normalized.includes("leitlinien") || normalized.includes("prozessdokumentation") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
+    if (normalized.includes("verzeichnis")) return { href: "/vvt", label: "Zu VVT" };
+    if (normalized.includes("tom")) return { href: "/tom", label: "Zu TOM" };
+    if (normalized.includes("avv")) return { href: "/avv", label: "Zu AVV" };
+    if (normalized.includes("verantwortungsstruktur")) return { href: "/mandanten-uebersicht", label: "Zur Mandantenübersicht" };
+    return { href: "/dashboard", label: "Zum Dashboard" };
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label) }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const complianceKpis = {
@@ -1044,6 +1058,7 @@ function Dashboard() {
                       <p className="font-medium">{item.label}</p>
                       <p className="text-muted-foreground">{item.score}/{item.weight} Punkte · {item.percent}% Erfüllung</p>
                       <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
+                      <Link href={item.action.href}><a className="text-primary hover:underline">{item.action.label}</a></Link>
                     </div>
                   ))}
                 </div>
@@ -5850,8 +5865,22 @@ function ExportPage() {
     if (normalized.includes("verantwortungsstruktur")) return "Verantwortliche Rolle verbindlich benennen und Kontaktdaten vervollständigen.";
     return "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme festlegen.";
   };
+  const deriveMaturityAction = (label: string) => {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("audit")) return { href: "/audits", label: "Zu Audits" };
+    if (normalized.includes("pdca")) return { href: "/pdca?filter=review", label: "Zu PDCA" };
+    if (normalized.includes("dsfa")) return { href: "/dsfa", label: "Zu DSFA" };
+    if (normalized.includes("löschkonzept")) return { href: "/loeschkonzept", label: "Zum Löschkonzept" };
+    if (normalized.includes("aufgabensteuerung")) return { href: "/aufgaben?filter=kritisch", label: "Zu den Aufgaben" };
+    if (normalized.includes("leitlinien") || normalized.includes("prozessdokumentation") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
+    if (normalized.includes("verzeichnis")) return { href: "/vvt", label: "Zu VVT" };
+    if (normalized.includes("tom")) return { href: "/tom", label: "Zu TOM" };
+    if (normalized.includes("avv")) return { href: "/avv", label: "Zu AVV" };
+    if (normalized.includes("verantwortungsstruktur")) return { href: "/mandanten-uebersicht", label: "Zur Mandantenübersicht" };
+    return { href: "/dashboard", label: "Zum Dashboard" };
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label) }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
