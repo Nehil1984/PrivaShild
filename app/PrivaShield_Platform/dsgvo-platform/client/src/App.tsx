@@ -2124,6 +2124,7 @@ function DsfaPage() {
                       <p className="text-sm font-medium truncate">{item.titel}</p>
                       <p className="text-xs text-muted-foreground">{item.reviewer || "—"}{item.konsultation ? " · Behördenkonsultation" : ""}{linkedVvt ? ` · ${linkedVvt.bezeichnung}` : " · Ohne VVT"}</p>
                       <p className="text-xs text-muted-foreground">{risks.length} Risiko(e){item.naechstePruefungAm ? ` · Nächste Prüfung: ${new Date(item.naechstePruefungAm).toLocaleDateString("de-DE")}` : ""}</p>
+                      {(dsfaFilter === "art36" || dsfaFilter === "review" || dsfaFilter === "high-risk" || dsfaFilter === "missing-vvt") && <p className="text-xs text-muted-foreground">Arbeitszustand: {item.art36Erforderlich ? "heute erledigen" : !item.vvtId ? "neu" : reviewDue ? "in Bearbeitung" : hasHighResidualRisk ? "in Bearbeitung" : "beobachten"}</p>}
                     </div>
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
@@ -3379,6 +3380,7 @@ function PdcaPage() {
                   <div>
                     <p className="text-sm font-semibold">{item.titel}</p>
                     <p className="text-xs text-muted-foreground">{item.zyklusTyp || "verbesserungsmassnahme"} · {item.verantwortlicher || "—"}{item.zeitraumVon || item.zeitraumBis ? ` · ${item.zeitraumVon || "?"} bis ${item.zeitraumBis || "?"}` : ""}{item.naechstePruefungAm ? ` · nächste Prüfung ${item.naechstePruefungAm}` : ""}</p>
+                    {rawPdcaFilter && <p className="text-xs text-muted-foreground">Arbeitszustand: {String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId ? "heute erledigen" : reviewDue ? "in Bearbeitung" : offeneLinkedTasks.length > 0 ? "neu" : "beobachten"}</p>}
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                     <StatusBadge value={item.prioritaet} />
@@ -3578,6 +3580,7 @@ function AufgabenPage() {
                     <div className="min-w-0">
                       <p className={`text-sm font-medium truncate ${item.status === "erledigt" ? "line-through text-muted-foreground" : ""}`}>{item.titel}</p>
                       <p className="text-xs text-muted-foreground">{item.typ || "task"} · {item.verantwortlicher || "—"}{item.faelligAm ? ` · Fällig: ${item.faelligAm}` : ""}{ueberfaellig ? " ⚠ Überfällig" : ""}</p>
+                      {(rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "copilot-open") && <p className="text-xs text-muted-foreground">Arbeitszustand: {item.status === "in_bearbeitung" ? "in Bearbeitung" : item.prioritaet === "kritisch" ? "heute erledigen" : "neu"}</p>}
                       <div className="mt-2 h-2 w-full rounded bg-secondary overflow-hidden">
                         <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, item.fortschritt || 0))}%` }} />
                       </div>
