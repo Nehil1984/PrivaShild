@@ -3146,6 +3146,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
 }
 
 function PdcaPage() {
+  const [location] = useLocation();
   const { data, isLoading, create, update, remove } = useModuleData("pdca");
   const { data: audits = [] } = useModuleData("audits");
   const { data: aufgaben = [] } = useModuleData("aufgaben");
@@ -3153,6 +3154,12 @@ function PdcaPage() {
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
   const { toast } = useToast();
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    if (rawFilter === "review") setFilter("überprüfung");
+    else setFilter("alle");
+  }, [location]);
   const save = async (form: any) => {
     try {
       const pdcaItem = modal === "new" ? await create.mutateAsync(form) : await update.mutateAsync({ id: modal.id, ...form });
@@ -3181,7 +3188,12 @@ function PdcaPage() {
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
-  const filtered = data.filter((item: any) => filter === "alle" ? true : item.status === filter);
+  const filtered = data.filter((item: any) => {
+    const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
+    if (rawFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen")) return false;
+    if (rawFilter === "audit-follow-up-ohne-audit" && !(String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) return false;
+    return filter === "alle" ? true : item.status === filter;
+  });
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
   const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen");
   const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
@@ -3311,7 +3323,8 @@ function AufgabenPage() {
   const { toast } = useToast();
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
-    if (route.searchParams.get("filter") === "copilot-open") {
+    const rawFilter = route.searchParams.get("filter");
+    if (rawFilter === "copilot-open" || rawFilter === "kritisch" || rawFilter === "pdca-follow-up-offen") {
       setFilter("offen");
       setTypFilter("alle");
     }
@@ -3353,9 +3366,19 @@ function AufgabenPage() {
   };
   const today = new Date().toISOString().split("T")[0];
   const filtered = data.filter((a: any) => {
-    const copilotOnly = new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open";
-    if (copilotOnly && !/copilot/i.test(String(a?.titel || ""))) return false;
-    if (copilotOnly && a.status === "erledigt") return false;
+    const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
+    if (rawFilter === "copilot-open") {
+      if (!/copilot/i.test(String(a?.titel || ""))) return false;
+      if (a.status === "erledigt") return false;
+    }
+    if (rawFilter === "kritisch") {
+      if (String(a?.prioritaet || "") !== "kritisch") return false;
+      if (a.status === "erledigt") return false;
+    }
+    if (rawFilter === "pdca-follow-up-offen") {
+      if (String(a?.vorlagenBezug || "") !== "pdca_follow_up") return false;
+      if (a.status === "erledigt") return false;
+    }
     return (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter);
   });
   return (
