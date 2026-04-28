@@ -931,6 +931,22 @@ function buildGovernancePrioritySummary(dsfaRows, pdcaRows, taskRows) {
     }
     return { state: "neu", escalation: "normal", overdue: false };
   };
+  const deriveWorkPackage = (kind, row) => {
+    if (kind === "dsfa") {
+      if (row.art36Erforderlich) return ["Konsultationsbedarf bewerten", "Restrisiko dokumentieren", "Freigabe eskalieren"];
+      if (!row.vvtId) return ["VVT zuordnen", "Dokumentationskette schließen", "Bezug validieren"];
+      return ["Review vorbereiten", "Maßnahmen prüfen", "Status nachziehen"];
+    }
+    if (kind === "pdca") {
+      if (String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId) return ["Audit zuordnen", "Nachweis prüfen", "Folgeschritt terminieren"];
+      return ["Review terminieren", "Folgemaßnahmen bündeln", "Status aktualisieren"];
+    }
+    if (kind === "task") {
+      if (String(row.prioritaet || "") === "kritisch") return ["Verantwortliche bestätigen", "Termin absichern", "Abarbeitung nachhalten"];
+      return ["Aufgabe prüfen", "Termin konkretisieren", "Fortschritt dokumentieren"];
+    }
+    return ["Punkt prüfen", "Verantwortung klären", "Folgeschritt setzen"];
+  };
   const todayIso = new Date().toISOString().split("T")[0];
   const dsfaSorted = (dsfaRows || []).slice().sort((a, b) => {
     const aRisks = parseJsonArray(a.risiken || a.risks);
@@ -971,9 +987,9 @@ function buildGovernancePrioritySummary(dsfaRows, pdcaRows, taskRows) {
         <span class="badge">Top-Punkte</span>
       </div>
       <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
-        <div class="info-card"><h3>DSFA</h3><p>${dsfaSorted.length ? dsfaSorted.map((row) => { const meta = deriveWorkMeta("dsfa", row); return `• ${fmt(row.titel)}${row.art36Erforderlich ? " · Art. 36" : ""}${!row.vvtId ? " · ohne VVT" : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(row.art36Erforderlich ? "aufsichtsbehördlichen Prüfbedarf juristisch bewerten" : !row.vvtId ? "VVT-Verknüpfung ergänzen und Dokumentationskette schließen" : "Restrisiko und Review-Maßnahmen priorisieren")}</span>`; }).join("<br><br>") : "Keine prioritären DSFA-Punkte"}</p></div>
-        <div class="info-card"><h3>PDCA</h3><p>${pdcaSorted.length ? pdcaSorted.map((row) => { const meta = deriveWorkMeta("pdca", row); return `• ${fmt(row.titel)}${String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId ? " · ohne Audit-Bezug" : ""}${row.naechstePruefungAm ? ` · Review ${fmt(row.naechstePruefungAm)}` : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId ? "Audit-Verknüpfung nachziehen und Nachweisführung stabilisieren" : row.naechstePruefungAm ? "Review vorbereiten und Folgemaßnahmen konkret terminieren" : "Zyklusstatus und Maßnahmenstand fachlich nachschärfen")}</span>`; }).join("<br><br>") : "Keine prioritären PDCA-Punkte"}</p></div>
-        <div class="info-card"><h3>Aufgaben</h3><p>${taskSorted.length ? taskSorted.map((row) => { const meta = deriveWorkMeta("task", row); return `• ${fmt(row.titel)} · ${fmt(row.prioritaet)}${row.faelligAm ? ` · fällig ${fmt(row.faelligAm)}` : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(String(row.status || "") === "in_bearbeitung" ? "Bearbeitungsstand prüfen und Abschluss absichern" : String(row.prioritaet || "") === "kritisch" ? "sofort priorisieren, Verantwortliche bestätigen und Termin absichern" : "Terminierung und Verantwortlichkeit konkretisieren")}</span>`; }).join("<br><br>") : "Keine prioritären Aufgaben"}</p></div>
+        <div class="info-card"><h3>DSFA</h3><p>${dsfaSorted.length ? dsfaSorted.map((row) => { const meta = deriveWorkMeta("dsfa", row); return `• ${fmt(row.titel)}${row.art36Erforderlich ? " · Art. 36" : ""}${!row.vvtId ? " · ohne VVT" : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(row.art36Erforderlich ? "aufsichtsbehördlichen Prüfbedarf juristisch bewerten" : !row.vvtId ? "VVT-Verknüpfung ergänzen und Dokumentationskette schließen" : "Restrisiko und Review-Maßnahmen priorisieren")}</span><br><span style="color:#475569">Maßnahmenpaket: ${fmt(deriveWorkPackage("dsfa", row).join(" · "))}</span>`; }).join("<br><br>") : "Keine prioritären DSFA-Punkte"}</p></div>
+        <div class="info-card"><h3>PDCA</h3><p>${pdcaSorted.length ? pdcaSorted.map((row) => { const meta = deriveWorkMeta("pdca", row); return `• ${fmt(row.titel)}${String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId ? " · ohne Audit-Bezug" : ""}${row.naechstePruefungAm ? ` · Review ${fmt(row.naechstePruefungAm)}` : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId ? "Audit-Verknüpfung nachziehen und Nachweisführung stabilisieren" : row.naechstePruefungAm ? "Review vorbereiten und Folgemaßnahmen konkret terminieren" : "Zyklusstatus und Maßnahmenstand fachlich nachschärfen")}</span><br><span style="color:#475569">Maßnahmenpaket: ${fmt(deriveWorkPackage("pdca", row).join(" · "))}</span>`; }).join("<br><br>") : "Keine prioritären PDCA-Punkte"}</p></div>
+        <div class="info-card"><h3>Aufgaben</h3><p>${taskSorted.length ? taskSorted.map((row) => { const meta = deriveWorkMeta("task", row); return `• ${fmt(row.titel)} · ${fmt(row.prioritaet)}${row.faelligAm ? ` · fällig ${fmt(row.faelligAm)}` : ""}<br><span style="color:#475569">Arbeitszustand: ${fmt(meta.state)}${meta.overdue ? " · Frist überschritten" : ""} · Eskalation: ${fmt(meta.escalation)}</span><br><span style="color:#475569">Nächster Schritt: ${fmt(String(row.status || "") === "in_bearbeitung" ? "Bearbeitungsstand prüfen und Abschluss absichern" : String(row.prioritaet || "") === "kritisch" ? "sofort priorisieren, Verantwortliche bestätigen und Termin absichern" : "Terminierung und Verantwortlichkeit konkretisieren")}</span><br><span style="color:#475569">Maßnahmenpaket: ${fmt(deriveWorkPackage("task", row).join(" · "))}</span>`; }).join("<br><br>") : "Keine prioritären Aufgaben"}</p></div>
       </div>
     </div>`;
 }

@@ -622,6 +622,15 @@ function Dashboard() {
     const meta = deriveGovernanceMeta(item?.title, item?.severity);
     return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint, escalation: meta.escalation, overdue: meta.overdue };
   });
+  const deriveGovernanceWorkPackage = (title: string) => {
+    const normalizedTitle = String(title || "").toLowerCase();
+    if (normalizedTitle.includes("kritische offene aufgaben")) return ["Verantwortliche bestätigen", "Fälligkeit festziehen", "Bearbeitung täglich nachhalten"];
+    if (normalizedTitle.includes("ohne audit-bezug")) return ["Audit zuordnen", "Nachweis prüfen", "Exportkette validieren"];
+    if (normalizedTitle.includes("art.-36")) return ["Konsultationsbedarf bewerten", "Restrisiko dokumentieren", "Freigabe eskalieren"];
+    if (normalizedTitle.includes("review")) return ["Review terminieren", "Wirksamkeit prüfen", "Status aktualisieren"];
+    if (normalizedTitle.includes("restrisiko")) return ["Maßnahmen priorisieren", "Restrisiko neu bewerten", "Freigabe dokumentieren"];
+    return ["Punkt sichten", "Verantwortung klären", "nächsten Termin setzen"];
+  };
   const dashboardTodayProgress = {
     neu: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "neu").length,
     inBearbeitung: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "in Bearbeitung").length,
@@ -829,6 +838,7 @@ function Dashboard() {
                       </div>
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
                       <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus} · {item.priorityClass} · SLA: {item.slaHint}{item.overdue ? " · Frist überschritten" : ""} · Eskalation: {item.escalation}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Maßnahmenpaket: {deriveGovernanceWorkPackage(item.title).join(" · ")}</p>
                     </div>
                   ))}
                 </CardContent>
