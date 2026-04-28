@@ -2013,7 +2013,7 @@ function DsfaPage() {
           {dsfaFilterHint && (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <span>{dsfaFilterHint}</span>
+                <span>{dsfaFilterHint} <span className="font-medium text-foreground">({filteredDsfa.length})</span></span>
                 <Button type="button" size="sm" variant="outline" onClick={() => setDsfaFilter("all")}>Filter zurücksetzen</Button>
               </CardContent>
             </Card>
@@ -3231,7 +3231,7 @@ function PdcaPage() {
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
-      {pdcaFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{pdcaFilterHint}</span><Button type="button" size="sm" variant="outline" onClick={() => {
+      {pdcaFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{pdcaFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><Button type="button" size="sm" variant="outline" onClick={() => {
         const next = new URL(location, "https://privashield.local");
         next.searchParams.delete("filter");
         setLocation(`${next.pathname}${next.search}`);
@@ -3424,7 +3424,7 @@ function AufgabenPage() {
     <MandantGuard>
       <PageHeader title={t("tasksTitle")} desc={t("tasksDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Aufgabe</Button>} />
-      {taskFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{taskFilterHint}</span><Button type="button" size="sm" variant="outline" onClick={() => {
+      {taskFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{taskFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><Button type="button" size="sm" variant="outline" onClick={() => {
         const next = new URL(location, "https://privashield.local");
         next.searchParams.delete("filter");
         setLocation(`${next.pathname}${next.search}`);
