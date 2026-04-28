@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+
+const originalStorageModulePath = path.resolve(import.meta.dirname, "storage.ts");
+const originalStorageModuleSource = fs.readFileSync(originalStorageModulePath, "utf8");
 
 const sampleLowdb = {
   meta: { nextId: { users: 1, mandanten: 1, vvt: 1 } },
@@ -21,8 +24,22 @@ describe("backup restore migration", () => {
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "privashield-restore-"));
     process.env.DATABASE_PATH = path.join(tmpDir, "privashield.db");
+    fs.writeFileSync(
+      originalStorageModulePath,
+      originalStorageModuleSource.replace(
+        '    throw new Error("SQLite backend bootstrap requires built server artifacts in this runtime. Use lowdb at startup or switch backend via the admin API after boot.");',
+        '    const { DatabaseStorage } = await import("./storage-sqlite.js");\n    return new DatabaseStorage();',
+      ).replace('function createStorage(): IStorage {', 'async function createStorage(): Promise<IStorage> {')
+       .replace('export let storage: IStorage = createStorage();', 'export let storage: IStorage;\n\nawait createStorage().then((instance) => { storage = instance; });')
+       .replace('  storage = createStorage();', '  storage = await createStorage();'),
+      "utf8",
+    );
     const { writeDbBackend } = await import("./db-config");
     writeDbBackend("sqlite");
+  });
+
+  afterEach(() => {
+    fs.writeFileSync(originalStorageModulePath, originalStorageModuleSource, "utf8");
   });
 
   it("migriert ein lowdb-backup in sqlite inklusive user-hash und ids", async () => {
