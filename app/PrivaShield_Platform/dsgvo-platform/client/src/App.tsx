@@ -1989,9 +1989,12 @@ function DsfaPage() {
     const bHigh = bRisks.some((risk: any) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
     const aReview = a.naechstePruefungAm ? new Date(a.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
     const bReview = b.naechstePruefungAm ? new Date(b.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
+    const aScore = (aHigh ? 100 : 0) + (a.art36Erforderlich ? 60 : 0) + (!a.vvtId ? 40 : 0) + (isReviewOverdueTs(a.naechstePruefungAm) ? 30 : isReviewDueTs(a.naechstePruefungAm) ? 15 : 0);
+    const bScore = (bHigh ? 100 : 0) + (b.art36Erforderlich ? 60 : 0) + (!b.vvtId ? 40 : 0) + (isReviewOverdueTs(b.naechstePruefungAm) ? 30 : isReviewDueTs(b.naechstePruefungAm) ? 15 : 0);
+    if (dsfaFilter !== "all" && dsfaSort === "title-asc") return bScore - aScore || aReview - bReview || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
     if (dsfaSort === "title-desc") return String(b.titel || "").localeCompare(String(a.titel || ""), "de");
-    if (dsfaSort === "review") return aReview - bReview || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
-    if (dsfaSort === "risk") return Number(bHigh) - Number(aHigh) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    if (dsfaSort === "review") return aReview - bReview || bScore - aScore || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    if (dsfaSort === "risk") return Number(bHigh) - Number(aHigh) || bScore - aScore || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
     return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
@@ -3232,11 +3235,20 @@ function PdcaPage() {
     }
   };
   const todayIso = new Date().toISOString().split("T")[0];
+  const rawPdcaFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
   const filtered = data.filter((item: any) => {
-    const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
-    if (rawFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen")) return false;
-    if (rawFilter === "audit-follow-up-ohne-audit" && !(String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) return false;
+    if (rawPdcaFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen")) return false;
+    if (rawPdcaFilter === "audit-follow-up-ohne-audit" && !(String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) return false;
     return filter === "alle" ? true : item.status === filter;
+  }).slice().sort((a: any, b: any) => {
+    const aReview = a.naechstePruefungAm || "9999-12-31";
+    const bReview = b.naechstePruefungAm || "9999-12-31";
+    const aOpenTasks = aufgaben.filter((task: any) => Number(task.referenzId) === Number(a.id) && String(task.vorlagenBezug || "") === "pdca_follow_up" && task.status !== "erledigt").length;
+    const bOpenTasks = aufgaben.filter((task: any) => Number(task.referenzId) === Number(b.id) && String(task.vorlagenBezug || "") === "pdca_follow_up" && task.status !== "erledigt").length;
+    const aScore = (String(a.zyklusTyp || "") === "audit_follow_up" && !a.verknuepftesAuditId ? 120 : 0) + (aReview < todayIso ? 80 : aReview === todayIso ? 50 : 0) + Math.min(40, aOpenTasks * 10) + (a.status === "in_bearbeitung" ? 15 : 0);
+    const bScore = (String(b.zyklusTyp || "") === "audit_follow_up" && !b.verknuepftesAuditId ? 120 : 0) + (bReview < todayIso ? 80 : bReview === todayIso ? 50 : 0) + Math.min(40, bOpenTasks * 10) + (b.status === "in_bearbeitung" ? 15 : 0);
+    if (rawPdcaFilter) return bScore - aScore || aReview.localeCompare(bReview) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
   const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen");
@@ -3439,20 +3451,31 @@ function AufgabenPage() {
         ? "Du siehst gerade: offene Aufgaben mit Copilot-Bezug."
         : "";
   const filtered = data.filter((a: any) => {
-    const rawFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
-    if (rawFilter === "copilot-open") {
+    if (rawTaskFilter === "copilot-open") {
       if (!/copilot/i.test(String(a?.titel || ""))) return false;
       if (a.status === "erledigt") return false;
     }
-    if (rawFilter === "kritisch") {
+    if (rawTaskFilter === "kritisch") {
       if (String(a?.prioritaet || "") !== "kritisch") return false;
       if (a.status === "erledigt") return false;
     }
-    if (rawFilter === "pdca-follow-up-offen") {
+    if (rawTaskFilter === "pdca-follow-up-offen") {
       if (String(a?.vorlagenBezug || "") !== "pdca_follow_up") return false;
       if (a.status === "erledigt") return false;
     }
     return (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter);
+  }).slice().sort((a: any, b: any) => {
+    const prioOrder: Record<string, number> = { kritisch: 0, hoch: 1, mittel: 2, niedrig: 3 };
+    const statusOrder: Record<string, number> = { offen: 0, in_bearbeitung: 1, erledigt: 2 };
+    const aDue = a.faelligAm || "9999-12-31";
+    const bDue = b.faelligAm || "9999-12-31";
+    if (rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "copilot-open") {
+      return (prioOrder[String(a.prioritaet || "mittel")] ?? 9) - (prioOrder[String(b.prioritaet || "mittel")] ?? 9)
+        || aDue.localeCompare(bDue)
+        || (statusOrder[String(a.status || "offen")] ?? 9) - (statusOrder[String(b.status || "offen")] ?? 9)
+        || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    }
+    return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   return (
     <MandantGuard>
