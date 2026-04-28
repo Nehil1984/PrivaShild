@@ -5485,9 +5485,27 @@ function ExportPage() {
   const explicitAuditLinks = audits.reduce((sum: number, item: any) => {
     try { return sum + JSON.parse(item.verknuepftePdcaIds || "[]").length; } catch { return sum; }
   }, 0);
+  const auditFollowUpsOhneAuditBezug = auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length;
+  const fehlendeLoeschBezuge = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const governanceFindings = [
+    auditTodos.length > 0 ? `${auditTodos.length} offene Audit-To-dos` : "",
+    pdcaReviewFaellig.length > 0 ? `${pdcaReviewFaellig.length} PDCA-Reviews fällig oder überfällig` : "",
+    pdcaFollowUpTasksOffen.length > 0 ? `${pdcaFollowUpTasksOffen.length} offene PDCA-Folgeaufgaben` : "",
+    auditFollowUpsOhneAuditBezug > 0 ? `${auditFollowUpsOhneAuditBezug} Audit-Follow-ups ohne Audit-Bezug` : "",
+    fehlendeLoeschBezuge > 0 ? `${fehlendeLoeschBezuge} VVT ohne Löschkonzept-Bezug` : "",
+  ].filter(Boolean);
+  const managementScoreRaw = 100
+    - (auditTodos.length * 6)
+    - (pdcaReviewFaellig.length * 8)
+    - (pdcaFollowUpTasksOffen.length * 4)
+    - (auditFollowUpsOhneAuditBezug * 10)
+    - (fehlendeLoeschBezuge * 5)
+    - (!mandant?.verantwortlicherName ? 12 : 0);
+  const managementScore = Math.max(0, Math.min(100, managementScoreRaw));
+  const managementAmpel = managementScore >= 85 ? "Grün" : managementScore >= 60 ? "Gelb" : "Rot";
   const managementSummary = {
-    score: mandant?.verantwortlicherName ? 75 : 40,
-    ampel: mandant?.verantwortlicherName ? "Gelb" : "Rot",
+    score: managementScore,
+    ampel: managementAmpel,
     topRisiken: logs.filter((l: any) => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length,
     audits: audits.length,
     auditDeviationCount,
@@ -5497,20 +5515,14 @@ function ExportPage() {
     pdcaReviewFaellig: pdcaReviewFaellig.length,
     auditFollowUps: auditFollowUps.length,
     auditFollowUpsOffen: auditFollowUpsOffen.length,
-    auditFollowUpsOhneAuditBezug: auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length,
+    auditFollowUpsOhneAuditBezug,
     pdcaMitAuditBezug: pdcaMitAuditBezug.length,
     pdcaOhneAuditBezug: pdcaOhneAuditBezug.length,
     pdcaFollowUpTasks: pdcaFollowUpTasks.length,
     pdcaFollowUpTasksOffen: pdcaFollowUpTasksOffen.length,
     explicitAuditLinks,
-    fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
-    governanceFindings: [
-      auditTodos.length > 0 ? `${auditTodos.length} offene Audit-To-dos` : "",
-      pdcaReviewFaellig.length > 0 ? `${pdcaReviewFaellig.length} PDCA-Reviews fällig oder überfällig` : "",
-      pdcaFollowUpTasksOffen.length > 0 ? `${pdcaFollowUpTasksOffen.length} offene PDCA-Folgeaufgaben` : "",
-      auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length > 0 ? `${auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length} Audit-Follow-ups ohne Audit-Bezug` : "",
-      vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length > 0 ? `${vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length} VVT ohne Löschkonzept-Bezug` : "",
-    ].filter(Boolean),
+    fehlendeLoeschBezuge,
+    governanceFindings,
   };
 
   const toggle = (key: string) => {
