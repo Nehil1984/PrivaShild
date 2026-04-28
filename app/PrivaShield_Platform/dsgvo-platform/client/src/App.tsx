@@ -716,8 +716,19 @@ function Dashboard() {
     if (normalized.includes("verantwortungsstruktur")) return { priority: "hoch", title: "Verantwortungsstruktur festziehen", draft: "Verantwortliche Rolle benennen und Kontaktdaten vollständig pflegen." };
     return { priority: "mittel", title: "Reifegradlücke nacharbeiten", draft: "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme als Aufgabe vorbereiten." };
   };
+  const deriveMaturityTaskAction = (label: string) => {
+    const task = deriveMaturityTaskDraft(label);
+    const action = deriveMaturityAction(label);
+    const params = new URLSearchParams({
+      draftTitle: task.title,
+      draftPriority: task.priority,
+      draftDescription: task.draft,
+      draftSource: label,
+    });
+    return { href: `/aufgaben?${params.toString()}`, label: "Aufgabe vorbereiten", fallbackHref: action.href };
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label), taskDraft: deriveMaturityTaskDraft(item.label) }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label), taskDraft: deriveMaturityTaskDraft(item.label), taskAction: deriveMaturityTaskAction(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const complianceKpis = {
@@ -1078,7 +1089,10 @@ function Dashboard() {
                       <p className="text-muted-foreground">{item.score}/{item.weight} Punkte · {item.percent}% Erfüllung</p>
                       <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
                       <p className="text-muted-foreground">Aufgabenentwurf: [{item.taskDraft.priority}] {item.taskDraft.title} – {item.taskDraft.draft}</p>
-                      <Link href={item.action.href}><a className="text-primary hover:underline">{item.action.label}</a></Link>
+                      <div className="flex flex-wrap gap-3 mt-1">
+                        <Link href={item.action.href}><a className="text-primary hover:underline">{item.action.label}</a></Link>
+                        <Link href={item.taskAction.href}><a className="text-primary hover:underline">{item.taskAction.label}</a></Link>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -3600,6 +3614,29 @@ function AufgabenPage() {
   };
   const today = new Date().toISOString().split("T")[0];
   const rawTaskFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const draftTitle = route.searchParams.get("draftTitle");
+    if (!draftTitle || modal) return;
+    setModal({
+      titel: draftTitle,
+      beschreibung: route.searchParams.get("draftDescription") || "",
+      typ: "task",
+      prioritaet: route.searchParams.get("draftPriority") || "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: "",
+      kategorie: "governance",
+      referenzId: null,
+      vorlagenBezug: "score_gap",
+    });
+    route.searchParams.delete("draftTitle");
+    route.searchParams.delete("draftDescription");
+    route.searchParams.delete("draftPriority");
+    route.searchParams.delete("draftSource");
+    setLocation(`${route.pathname}${route.search}`);
+  }, [location, modal, setLocation]);
   const taskFilterHint = rawTaskFilter === "kritisch"
     ? "Du siehst gerade: kritische offene Aufgaben."
     : rawTaskFilter === "pdca-follow-up-offen"
