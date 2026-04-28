@@ -2967,7 +2967,6 @@ function AufgabeForm({ initial, onSave, onCancel }: any) {
 
 function PdcaForm({ initial, onSave, onCancel }: any) {
   const { data: audits = [] } = useModuleData("audits");
-  const selectedAudit = audits.find((item: any) => item.id === form?.verknuepftesAuditId);
   const [form, setForm] = useState({
     titel: "",
     beschreibung: "",
@@ -3004,6 +3003,7 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
     ...initial,
   });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const selectedAudit = audits.find((auditEntry: any) => auditEntry.id === form?.verknuepftesAuditId);
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
