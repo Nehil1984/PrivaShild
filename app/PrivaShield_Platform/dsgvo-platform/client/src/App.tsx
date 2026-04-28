@@ -611,6 +611,11 @@ function Dashboard() {
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3);
+  const dashboardTodayProgress = {
+    neu: dashboardTodayFirst.filter((item: any) => item.severity === "hoch").length,
+    inBearbeitung: dashboardTodayFirst.filter((item: any) => item.severity === "mittel").length,
+    heuteErledigen: dashboardTodayFirst.filter((item: any) => item.severity === "hoch" || item.severity === "mittel").length,
+  };
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
@@ -800,6 +805,11 @@ function Dashboard() {
                   <CardDescription>Die drei wichtigsten Governance-Punkte für die unmittelbare Bearbeitung.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div className="rounded-lg border border-border/60 bg-background/60 p-3"><p className="text-xs text-muted-foreground">Neu</p><p className="text-lg font-semibold">{dashboardTodayProgress.neu}</p></div>
+                    <div className="rounded-lg border border-border/60 bg-background/60 p-3"><p className="text-xs text-muted-foreground">In Bearbeitung</p><p className="text-lg font-semibold">{dashboardTodayProgress.inBearbeitung}</p></div>
+                    <div className="rounded-lg border border-border/60 bg-background/60 p-3"><p className="text-xs text-muted-foreground">Heute erledigen</p><p className="text-lg font-semibold">{dashboardTodayProgress.heuteErledigen}</p></div>
+                  </div>
                   {dashboardTodayFirst.map((item: any, idx: number) => (
                     <div key={`today-${item.title}-${idx}`} className="rounded-lg border border-border/60 bg-background/60 p-3">
                       <div className="flex items-center justify-between gap-3 mb-1">
@@ -807,6 +817,7 @@ function Dashboard() {
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                       </div>
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Status: {item.severity === "hoch" ? "neu" : item.severity === "mittel" ? "in Bearbeitung" : "beobachten"}</p>
                     </div>
                   ))}
                 </CardContent>
