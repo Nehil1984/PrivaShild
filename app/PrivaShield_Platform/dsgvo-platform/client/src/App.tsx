@@ -610,15 +610,18 @@ function Dashboard() {
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
-  const deriveGovernanceWorkState = (title: string, severity: string) => {
+  const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
-    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return "heute erledigen";
-    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return "in Bearbeitung";
-    if (severity === "hoch") return "heute erledigen";
-    if (severity === "mittel") return "in Bearbeitung";
-    return "neu";
+    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
+    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
+    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
+    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
+    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche" };
   };
-  const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3).map((item: any) => ({ ...item, derivedStatus: deriveGovernanceWorkState(item?.title, item?.severity) }));
+  const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3).map((item: any) => {
+    const meta = deriveGovernanceMeta(item?.title, item?.severity);
+    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint };
+  });
   const dashboardTodayProgress = {
     neu: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "neu").length,
     inBearbeitung: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "in Bearbeitung").length,
@@ -825,7 +828,7 @@ function Dashboard() {
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                       </div>
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus} · {item.priorityClass} · SLA: {item.slaHint}</p>
                     </div>
                   ))}
                 </CardContent>
@@ -5698,13 +5701,13 @@ function ExportPage() {
   const auditFollowUpsOhneAuditBezug = auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length;
   const fehlendeLoeschBezuge = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
-  const deriveGovernanceWorkState = (title: string, severity: string) => {
+  const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
-    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return "heute erledigen";
-    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return "in Bearbeitung";
-    if (severity === "hoch") return "heute erledigen";
-    if (severity === "mittel") return "in Bearbeitung";
-    return "neu";
+    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
+    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
+    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
+    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
+    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche" };
   };
   const governanceFindings = [
     auditTodos.length > 0 ? { severity: auditTodos.length >= 5 ? "hoch" : "mittel", title: `${auditTodos.length} offene Audit-To-dos`, recommendation: "Audit-Maßnahmen priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen." } : null,
@@ -5713,7 +5716,10 @@ function ExportPage() {
     auditFollowUpsOhneAuditBezug > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditBezug} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Fehlende Audit-Verknüpfungen ergänzen, damit Nachverfolgung und Export belastbar bleiben." } : null,
     fehlendeLoeschBezuge > 0 ? { severity: fehlendeLoeschBezuge >= 3 ? "mittel" : "niedrig", title: `${fehlendeLoeschBezuge} VVT ohne Löschkonzept-Bezug`, recommendation: "Löschkonzept-Einträge mit den betroffenen Verarbeitungstätigkeiten verknüpfen oder fachlich begründen." } : null,
   ].filter(Boolean).sort((a: any, b: any) => (governanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (governanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
-  const dashboardTodayFirst = governanceFindings.slice(0, 3).map((item: any) => ({ ...item, derivedStatus: deriveGovernanceWorkState(item?.title, item?.severity) }));
+  const dashboardTodayFirst = governanceFindings.slice(0, 3).map((item: any) => {
+    const meta = deriveGovernanceMeta(item?.title, item?.severity);
+    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint };
+  });
   const managementScoreRaw = 100
     - (auditTodos.length * 6)
     - (pdcaReviewFaellig.length * 8)
