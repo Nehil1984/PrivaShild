@@ -2014,7 +2014,10 @@ function DsfaPage() {
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                 <span>{dsfaFilterHint} <span className="font-medium text-foreground">({filteredDsfa.length})</span></span>
-                <Button type="button" size="sm" variant="outline" onClick={() => setDsfaFilter("all")}>Filter zurücksetzen</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setDsfaFilter("all")}>Filter zurücksetzen</Button>
+                  <Link href="/export"><a className="text-xs text-primary hover:underline self-center">Export öffnen</a></Link>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -3231,12 +3234,12 @@ function PdcaPage() {
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer PDCA-Zyklus</Button>} />
-      {pdcaFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{pdcaFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><Button type="button" size="sm" variant="outline" onClick={() => {
+      {pdcaFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{pdcaFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => {
         const next = new URL(location, "https://privashield.local");
         next.searchParams.delete("filter");
         setLocation(`${next.pathname}${next.search}`);
         setFilter("alle");
-      }}>Filter zurücksetzen</Button></CardContent></Card>}
+      }}>Filter zurücksetzen</Button><Link href="/aufgaben?filter=pdca-follow-up-offen"><a className="text-xs text-primary hover:underline self-center">Zu Aufgaben</a></Link></div></CardContent></Card>}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Zyklen gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offen / laufend</p><p className="text-2xl font-bold">{offene.length}</p></CardContent></Card>
@@ -3424,13 +3427,13 @@ function AufgabenPage() {
     <MandantGuard>
       <PageHeader title={t("tasksTitle")} desc={t("tasksDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Aufgabe</Button>} />
-      {taskFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{taskFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><Button type="button" size="sm" variant="outline" onClick={() => {
+      {taskFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{taskFilterHint} <span className="font-medium text-foreground">({filtered.length})</span></span><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => {
         const next = new URL(location, "https://privashield.local");
         next.searchParams.delete("filter");
         setLocation(`${next.pathname}${next.search}`);
         setFilter("alle");
         setTypFilter("alle");
-      }}>Filter zurücksetzen</Button></CardContent></Card>}
+      }}>Filter zurücksetzen</Button><Link href="/export"><a className="text-xs text-primary hover:underline self-center">Export öffnen</a></Link></div></CardContent></Card>}
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button type="button" size="sm" variant={new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" ? "default" : "outline"} onClick={() => {
           const next = new URL(location, "https://privashield.local");
