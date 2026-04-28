@@ -664,8 +664,27 @@ function Dashboard() {
   const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
   const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
   const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
+  const deriveMaturityRecommendation = (label: string) => {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("audit")) return "Audits nachziehen, offene Audit-Punkte terminieren und Verknüpfungen bereinigen.";
+    if (normalized.includes("pdca")) return "Fällige Reviews durchführen und offene PDCA-Folgeaufgaben verbindlich abschließen.";
+    if (normalized.includes("dsfa-risikosteuerung")) return "Art.-36-, Restrisiko- und Review-Fälle priorisiert juristisch und operativ schließen.";
+    if (normalized.includes("dsfa-struktur")) return "DSFA-VVT-Bezüge und Governance-Rollen in den DSFA-Datensätzen vervollständigen.";
+    if (normalized.includes("löschkonzept")) return "Fehlende VVT-Löschkonzept-Verknüpfungen ergänzen und dokumentieren.";
+    if (normalized.includes("aufgabensteuerung")) return "Kritische und hohe Aufgaben priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen.";
+    if (normalized.includes("leitlinien")) return "Fehlende Leitlinien freigeben oder bestehende Leitlinien fachlich vervollständigen.";
+    if (normalized.includes("prozessdokumentation")) return "Wesentliche Datenschutzprozesse dokumentieren und in den operativen Ablauf überführen.";
+    if (normalized.includes("verzeichnis")) return "VVT fachlich vervollständigen und relevante Verarbeitungstätigkeiten nachpflegen.";
+    if (normalized.includes("tom")) return "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen.";
+    if (normalized.includes("avv")) return "Fehlende AVV-Verträge bzw. Prüfdokumentationen ergänzen.";
+    if (normalized.includes("web-/hinweis")) return "Webdatenschutz- und Datenschutzhinweis-Prüfungen aktualisieren und dokumentieren.";
+    if (normalized.includes("beschäftigtendatenschutz")) return "Beschäftigtendatenschutz-Check dokumentieren und organisatorisch verankern.";
+    if (normalized.includes("dokumentenreife")) return "Zentrale Nachweisdokumente ergänzen und auf aktuellen Stand bringen.";
+    if (normalized.includes("verantwortungsstruktur")) return "Verantwortliche Rolle verbindlich benennen und Kontaktdaten vervollständigen.";
+    return "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme festlegen.";
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0 }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const complianceKpis = {
@@ -1024,6 +1043,7 @@ function Dashboard() {
                     <div key={item.label} className="text-xs">
                       <p className="font-medium">{item.label}</p>
                       <p className="text-muted-foreground">{item.score}/{item.weight} Punkte · {item.percent}% Erfüllung</p>
+                      <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
                     </div>
                   ))}
                 </div>
@@ -5811,8 +5831,27 @@ function ExportPage() {
   const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
   const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
   const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
+  const deriveMaturityRecommendation = (label: string) => {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("audit")) return "Audits nachziehen, offene Audit-Punkte terminieren und Verknüpfungen bereinigen.";
+    if (normalized.includes("pdca")) return "Fällige Reviews durchführen und offene PDCA-Folgeaufgaben verbindlich abschließen.";
+    if (normalized.includes("dsfa-risikosteuerung")) return "Art.-36-, Restrisiko- und Review-Fälle priorisiert juristisch und operativ schließen.";
+    if (normalized.includes("dsfa-struktur")) return "DSFA-VVT-Bezüge und Governance-Rollen in den DSFA-Datensätzen vervollständigen.";
+    if (normalized.includes("löschkonzept")) return "Fehlende VVT-Löschkonzept-Verknüpfungen ergänzen und dokumentieren.";
+    if (normalized.includes("aufgabensteuerung")) return "Kritische und hohe Aufgaben priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen.";
+    if (normalized.includes("leitlinien")) return "Fehlende Leitlinien freigeben oder bestehende Leitlinien fachlich vervollständigen.";
+    if (normalized.includes("prozessdokumentation")) return "Wesentliche Datenschutzprozesse dokumentieren und in den operativen Ablauf überführen.";
+    if (normalized.includes("verzeichnis")) return "VVT fachlich vervollständigen und relevante Verarbeitungstätigkeiten nachpflegen.";
+    if (normalized.includes("tom")) return "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen.";
+    if (normalized.includes("avv")) return "Fehlende AVV-Verträge bzw. Prüfdokumentationen ergänzen.";
+    if (normalized.includes("web-/hinweis")) return "Webdatenschutz- und Datenschutzhinweis-Prüfungen aktualisieren und dokumentieren.";
+    if (normalized.includes("beschäftigtendatenschutz")) return "Beschäftigtendatenschutz-Check dokumentieren und organisatorisch verankern.";
+    if (normalized.includes("dokumentenreife")) return "Zentrale Nachweisdokumente ergänzen und auf aktuellen Stand bringen.";
+    if (normalized.includes("verantwortungsstruktur")) return "Verantwortliche Rolle verbindlich benennen und Kontaktdaten vervollständigen.";
+    return "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme festlegen.";
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0 }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
