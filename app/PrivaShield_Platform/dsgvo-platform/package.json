@@ -1,6 +1,6 @@
 {
   "name": "rest-express",
-  "version": "1.7.25",
+  "version": "1.7.26",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
