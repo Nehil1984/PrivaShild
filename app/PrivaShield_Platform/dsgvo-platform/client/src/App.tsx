@@ -2776,17 +2776,23 @@ function AuditsPage() {
     try {
       const auditItem = modal === "new" ? await create.mutateAsync(form) : await update.mutateAsync({ id: modal.id, ...form });
       if (modal === "new" && activeMandantId && form.createPdcaFollowUp) {
+        const combinedFindings = Array.from(new Set([
+          ...String(form.feststellungen || "").split("\n").map((line: string) => line.trim()).filter(Boolean),
+          ...String(form.abweichungen || "").split("\n").map((line: string) => line.trim()).filter(Boolean),
+        ])).join("\n");
+        const recommendationLines = Array.from(new Set(String(form.empfehlungen || "").split("\n").map((line: string) => line.trim()).filter(Boolean)));
         const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
           titel: `Audit-Follow-up: ${auditItem.titel}`,
-          beschreibung: form.feststellungen || form.abweichungen || form.empfehlungen || "",
+          beschreibung: [form.pruefbereich, combinedFindings].filter(Boolean).join("\n\n"),
           zyklusTyp: "audit_follow_up",
           status: "geplant",
           prioritaet: form.ergebnis === "kritisch" ? "kritisch" : "hoch",
           verantwortlicher: form.auditor || "",
           naechstePruefungAm: form.followUpDatum || form.naechstesAuditAm || "",
-          planZiele: form.empfehlungen || "",
-          checkFeststellungen: form.feststellungen || form.abweichungen || "",
-          actFolgemassnahmen: form.empfehlungen || "",
+          planZiele: recommendationLines.join("\n"),
+          planMassnahmen: recommendationLines.join("\n"),
+          checkFeststellungen: combinedFindings,
+          actFolgemassnahmen: recommendationLines.join("\n"),
           verknuepftesAuditId: auditItem.id,
           tags: JSON.stringify(["Audit", "Follow-up"]),
         }).then(r => r.json());
@@ -2796,7 +2802,7 @@ function AuditsPage() {
         const mergedIds = Array.from(new Set([...currentIds, pdcaItem.id]));
         await update.mutateAsync({ id: auditItem.id, verknuepftePdcaIds: JSON.stringify(mergedIds) });
         if (form.createAuditTasks) {
-          const lines = Array.from(new Set(String(form.empfehlungen || "").split("\n").map((line: string) => line.trim()).filter(Boolean)));
+          const lines = recommendationLines;
           for (const line of lines) {
             await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
               titel: `Audit-Maßnahme: ${line}`,
@@ -3018,8 +3024,13 @@ function PdcaForm({ initial, onSave, onCancel }: any) {
         <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.naechstePruefungAm || ""} onChange={e => set("naechstePruefungAm", e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Fortschritt (%)</Label><Input type="number" min="0" max="100" value={form.doFortschritt ?? 0} onChange={e => set("doFortschritt", Number(e.target.value))} className="h-8 text-sm" /></div>
         <div className="space-y-1"><Label className="text-xs">Verknüpftes Audit</Label><Select value={String(form.verknuepftesAuditId ?? "none")} onValueChange={v => set("verknuepftesAuditId", v === "none" ? null : Number(v))}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Kein Audit verknüpft</SelectItem>{audits.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>#{item.id} {item.titel}</SelectItem>)}</SelectContent></Select></div>
-        <div className="space-y-1 rounded-lg border p-3 text-xs"><p className="font-medium mb-1">Audit-Bezug</p><p className="text-muted-foreground whitespace-pre-wrap">{selectedAudit ? `${selectedAudit.titel}\n${selectedAudit.pruefbereich || "Allgemeiner Prüfbereich"}\nStatus: ${selectedAudit.status || "—"}` : "Kein Audit zugeordnet."}</p></div>
+        <div className="space-y-1 rounded-lg border p-3 text-xs"><p className="font-medium mb-1">Audit-Bezug</p><p className="text-muted-foreground whitespace-pre-wrap">{selectedAudit ? `${selectedAudit.titel}\n${selectedAudit.pruefbereich || "Allgemeiner Prüfbereich"}\nStatus: ${selectedAudit.status || "—"}` : form.zyklusTyp === "audit_follow_up" ? "Für Audit-Follow-up sollte ein Audit verknüpft werden." : "Kein Audit zugeordnet."}</p></div>
         <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30 text-xs"><input type="checkbox" checked={!!form.createFollowUpTask} onChange={e => set("createFollowUpTask", e.target.checked)} /><span>Beim Speichern automatisch Folgeaufgabe anlegen</span></label>
+        {form.zyklusTyp === "audit_follow_up" && !form.verknuepftesAuditId && (
+          <div className="col-span-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+            Hinweis: Ein Audit-Follow-up ohne verknüpftes Audit erschwert die Nachverfolgung im Workflow und Export.
+          </div>
+        )}
         <div className="col-span-2 space-y-1"><Label className="text-xs">Tags (JSON-Array oder Freitext)</Label><Input value={form.tags || ""} onChange={e => set("tags", e.target.value)} className="h-8 text-sm" placeholder='z. B. ["DSMS","Review"]' /></div>
         <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1"><Label className="text-xs">PLAN – Ziele</Label><Textarea value={form.planZiele || ""} onChange={e => set("planZiele", e.target.value)} className="text-sm min-h-20" /></div>
@@ -3126,6 +3137,8 @@ function PdcaPage() {
   const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
   const ohneAuditBezug = data.filter((item: any) => !item.verknuepftesAuditId);
   const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
+  const pdcaAufgabenOffen = pdcaAufgaben.filter((item: any) => item.status !== "erledigt");
+  const auditFollowUpOhneAudit = data.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId);
   return (
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
@@ -3149,6 +3162,19 @@ function PdcaPage() {
           <div><p className="text-xs text-muted-foreground">Verknüpfte Audits</p><p className="text-2xl font-bold">{new Set(mitAuditBezug.map((item: any) => item.verknuepftesAuditId)).size}</p></div>
         </CardContent>
       </Card>
+      {(auditFollowUpOhneAudit.length > 0 || reviewFaellig.length > 0 || pdcaAufgabenOffen.length > 0) && (
+        <Card className="mb-4 border-amber-500/40 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-sm">Hinweise mit Prüfbedarf</CardTitle>
+            <CardDescription>Diese Punkte sind aktuell für die Steuerung am wichtigsten.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            {auditFollowUpOhneAudit.length > 0 && <p>• {auditFollowUpOhneAudit.length} Audit-Follow-up(s) ohne verknüpftes Audit.</p>}
+            {reviewFaellig.length > 0 && <p>• {reviewFaellig.length} PDCA-Review(s) sind fällig oder überfällig.</p>}
+            {pdcaAufgabenOffen.length > 0 && <p>• {pdcaAufgabenOffen.length} offene PDCA-Folgeaufgabe(n) warten auf Bearbeitung.</p>}
+          </CardContent>
+        </Card>
+      )}
       <div className="flex gap-2 mb-4 flex-wrap">
         {[
           ["alle", "Alle"],
@@ -3163,7 +3189,12 @@ function PdcaPage() {
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
           {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine PDCA-Zyklen in dieser Ansicht.</CardContent></Card>}
-          {filtered.map((item: any) => (
+          {filtered.map((item: any) => {
+            const linkedTasks = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id));
+            const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
+            const reviewDue = !!item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen";
+            const progress = Math.max(0, Math.min(100, Number(item.doFortschritt || 0)));
+            return (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
               <CardContent className="p-4 space-y-3">
                 <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
@@ -3179,19 +3210,30 @@ function PdcaPage() {
                   </div>
                 </div>
                 {item.beschreibung && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{item.beschreibung}</p>}
-                <div className="h-2 w-full rounded bg-secondary overflow-hidden">
-                  <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, Number(item.doFortschritt || 0)))}%` }} />
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Fortschritt</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded bg-secondary overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 text-xs">
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">PLAN</p><p className="text-muted-foreground whitespace-pre-wrap">{item.planZiele || item.planMassnahmen || item.planRisiken || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">DO</p><p className="text-muted-foreground whitespace-pre-wrap">{item.doUmsetzung || item.doNachweise || item.doAbweichungen || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">CHECK</p><p className="text-muted-foreground whitespace-pre-wrap">{item.checkErgebnisse || item.checkFeststellungen || item.checkSollIst || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">ACT</p><p className="text-muted-foreground whitespace-pre-wrap">{item.actKorrekturen || item.actVerbesserungen || item.actFolgemassnahmen || "—"}</p></div>
-                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">Workflow</p><p className="text-muted-foreground whitespace-pre-wrap">{item.verknuepftesAuditId ? `Audit #${item.verknuepftesAuditId}` : "Ohne Audit-Bezug"}{(() => { const linked = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id)); return linked.length ? `\n${linked.length} verknüpfte Aufgabe(n)` : "\nKeine verknüpfte Aufgabe"; })()}</p></div>
+                  <div className="rounded-lg border p-3"><p className="font-medium mb-1">Workflow</p><p className="text-muted-foreground whitespace-pre-wrap">{(() => { const auditRef = audits.find((audit: any) => Number(audit.id) === Number(item.verknuepftesAuditId)); const auditLabel = auditRef ? `Audit #${auditRef.id}: ${auditRef.titel}` : item.verknuepftesAuditId ? `Audit #${item.verknuepftesAuditId}` : "Ohne Audit-Bezug"; return `${auditLabel}${linkedTasks.length ? `\n${linkedTasks.length} verknüpfte Aufgabe(n)` : "\nKeine verknüpfte Aufgabe"}`; })()}</p><p className="mt-2 text-[11px] text-muted-foreground">{reviewDue ? "Review fällig" : item.naechstePruefungAm ? `Nächste Prüfung: ${item.naechstePruefungAm}` : "Kein Review-Datum gesetzt"}{offeneLinkedTasks.length ? ` · ${offeneLinkedTasks.length} Aufgabe(n) offen` : ""}</p></div>
                 </div>
+                {(reviewDue || (String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                    {reviewDue ? "Dieser PDCA-Zyklus sollte zeitnah geprüft oder aktualisiert werden." : "Audit-Follow-up ohne Audit-Bezug: bitte verknüpftes Audit ergänzen."}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+          );})}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
