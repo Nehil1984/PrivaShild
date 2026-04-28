@@ -908,6 +908,55 @@ function buildLogsBox(logs) {
     </div>`;
 }
 
+function buildGovernancePrioritySummary(dsfaRows, pdcaRows, taskRows) {
+  const now = Date.now();
+  const todayIso = new Date().toISOString().split("T")[0];
+  const dsfaSorted = (dsfaRows || []).slice().sort((a, b) => {
+    const aRisks = parseJsonArray(a.risiken || a.risks);
+    const bRisks = parseJsonArray(b.risiken || b.risks);
+    const aHigh = aRisks.some((risk) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    const bHigh = bRisks.some((risk) => String(risk?.restrisiko || "").toLowerCase() === "hoch");
+    const aReview = a.naechstePruefungAm ? new Date(a.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
+    const bReview = b.naechstePruefungAm ? new Date(b.naechstePruefungAm).getTime() : Number.MAX_SAFE_INTEGER;
+    const aScore = (aHigh ? 100 : 0) + (a.art36Erforderlich ? 60 : 0) + (!a.vvtId ? 40 : 0) + (aReview < now - 86400000 ? 30 : aReview < now ? 15 : 0);
+    const bScore = (bHigh ? 100 : 0) + (b.art36Erforderlich ? 60 : 0) + (!b.vvtId ? 40 : 0) + (bReview < now - 86400000 ? 30 : bReview < now ? 15 : 0);
+    return bScore - aScore || aReview - bReview || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+  }).slice(0, 5);
+  const pdcaTaskPool = (taskRows || []).filter((task) => String(task.vorlagenBezug || "") === "pdca_follow_up" && String(task.status || "") !== "erledigt");
+  const pdcaSorted = (pdcaRows || []).slice().sort((a, b) => {
+    const aReview = a.naechstePruefungAm || "9999-12-31";
+    const bReview = b.naechstePruefungAm || "9999-12-31";
+    const aOpenTasks = pdcaTaskPool.filter((task) => Number(task.referenzId) === Number(a.id)).length;
+    const bOpenTasks = pdcaTaskPool.filter((task) => Number(task.referenzId) === Number(b.id)).length;
+    const aScore = (String(a.zyklusTyp || "") === "audit_follow_up" && !a.verknuepftesAuditId ? 120 : 0) + (aReview < todayIso ? 80 : aReview === todayIso ? 50 : 0) + Math.min(40, aOpenTasks * 10) + (a.status === "in_bearbeitung" ? 15 : 0);
+    const bScore = (String(b.zyklusTyp || "") === "audit_follow_up" && !b.verknuepftesAuditId ? 120 : 0) + (bReview < todayIso ? 80 : bReview === todayIso ? 50 : 0) + Math.min(40, bOpenTasks * 10) + (b.status === "in_bearbeitung" ? 15 : 0);
+    return bScore - aScore || aReview.localeCompare(bReview) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+  }).slice(0, 5);
+  const prioOrder = { kritisch: 0, hoch: 1, mittel: 2, niedrig: 3 };
+  const statusOrder = { offen: 0, in_bearbeitung: 1, erledigt: 2 };
+  const taskSorted = (taskRows || []).slice().sort((a, b) => {
+    const aDue = a.faelligAm || "9999-12-31";
+    const bDue = b.faelligAm || "9999-12-31";
+    return (prioOrder[String(a.prioritaet || "mittel")] ?? 9) - (prioOrder[String(b.prioritaet || "mittel")] ?? 9)
+      || aDue.localeCompare(bDue)
+      || (statusOrder[String(a.status || "offen")] ?? 9) - (statusOrder[String(b.status || "offen")] ?? 9)
+      || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+  }).slice(0, 5);
+  if (!dsfaSorted.length && !pdcaSorted.length && !taskSorted.length) return "";
+  return `
+    <div class="module-section">
+      <div class="module-header">
+        <h2>Priorisierte Governance-Arbeitsliste</h2>
+        <span class="badge">Top-Punkte</span>
+      </div>
+      <div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;">
+        <div class="info-card"><h3>DSFA</h3><p>${dsfaSorted.length ? dsfaSorted.map((row) => `• ${fmt(row.titel)}${row.art36Erforderlich ? " · Art. 36" : ""}${!row.vvtId ? " · ohne VVT" : ""}`).join("<br>") : "Keine prioritären DSFA-Punkte"}</p></div>
+        <div class="info-card"><h3>PDCA</h3><p>${pdcaSorted.length ? pdcaSorted.map((row) => `• ${fmt(row.titel)}${String(row.zyklusTyp || "") === "audit_follow_up" && !row.verknuepftesAuditId ? " · ohne Audit-Bezug" : ""}${row.naechstePruefungAm ? ` · Review ${fmt(row.naechstePruefungAm)}` : ""}`).join("<br>") : "Keine prioritären PDCA-Punkte"}</p></div>
+        <div class="info-card"><h3>Aufgaben</h3><p>${taskSorted.length ? taskSorted.map((row) => `• ${fmt(row.titel)} · ${fmt(row.prioritaet)}${row.faelligAm ? ` · fällig ${fmt(row.faelligAm)}` : ""}`).join("<br>") : "Keine prioritären Aufgaben"}</p></div>
+      </div>
+    </div>`;
+}
+
 function buildAuditSummary(audits, auditTodos, pdcaRows, pdcaTasks) {
   if ((!audits || audits.length === 0) && (!auditTodos || auditTodos.length === 0) && (!pdcaRows || pdcaRows.length === 0) && (!pdcaTasks || pdcaTasks.length === 0)) return "";
   const deviations = (audits || []).flatMap(a => String(a.abweichungen || "").split("\n").filter(line => line.trim()));
@@ -1380,6 +1429,7 @@ async function render() {
       html += `<div class="module-section"><div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p></div><div class="info-card" style="grid-column: span 2"><h3>Priorisierte offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• [${fmt(item?.severity || "")}] ${fmt(item?.title || "")}<br><span style="color:#475569">Empfehlung: ${fmt(item?.recommendation || "")}</span>`).join("<br><br>")}</p></div></div></div>`;
     }
     html += buildAuditSummary(dataMap.audits || config.audits || [], config.auditTodos || [], dataMap.pdca || config.pdca || [], config.pdcaFollowUpTasks || []);
+    html += buildGovernancePrioritySummary(dataMap.dsfa || config.dsfa || [], dataMap.pdca || config.pdca || [], dataMap.aufgaben || config.aufgaben || []);
     if (config.gruppeInfo && Array.isArray(config.gruppenMitglieder) && config.gruppenMitglieder.length) {
       html += buildGroupExecutiveSummary(config.gruppeInfo, config.gruppenMitglieder);
       html += buildGroupGovernanceCards(config.gruppenMitglieder);
