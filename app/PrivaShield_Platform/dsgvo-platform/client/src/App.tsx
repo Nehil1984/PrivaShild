@@ -664,6 +664,10 @@ function Dashboard() {
   const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
   const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
   const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
+  const weakestMaturityCriteria = [...maturityCriteria]
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0 }))
+    .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
+    .slice(0, 3);
   const complianceKpis = {
     offeneAufgaben: stats?.offeneAufgaben ?? 0,
     leitlinien: leitlinieVorhanden ? 1 : 0,
@@ -1011,6 +1015,17 @@ function Dashboard() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border border-border/60 p-3">
+                <p className="text-xs font-medium mb-2">Top-Handlungsfelder</p>
+                <div className="space-y-2">
+                  {weakestMaturityCriteria.map((item) => (
+                    <div key={item.label} className="text-xs">
+                      <p className="font-medium">{item.label}</p>
+                      <p className="text-muted-foreground">{item.score}/{item.weight} Punkte · {item.percent}% Erfüllung</p>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
@@ -5796,6 +5811,10 @@ function ExportPage() {
   const maturityScoreRaw = maturityCriteria.reduce((sum, item) => sum + item.score, 0);
   const reifegradScore = Math.round((maturityScoreRaw / maturityWeightTotal) * 100);
   const reifegradAmpel = reifegradScore >= 95 ? "Grün" : reifegradScore >= 80 ? "Gelb" : "Rot";
+  const weakestMaturityCriteria = [...maturityCriteria]
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0 }))
+    .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
+    .slice(0, 3);
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
@@ -5825,6 +5844,7 @@ function ExportPage() {
     maturityWeightTotal,
     maturityScoreRaw,
     maturityCriteria,
+    weakestMaturityCriteria,
     topRisiken: logs.filter((l: any) => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length,
     audits: audits.length,
     auditDeviationCount,
