@@ -600,6 +600,15 @@ function Dashboard() {
   const auditFollowUpsOhneAuditDashboard = auditFollowUpsDashboard.filter((item: any) => !item.verknuepftesAuditId);
   const pdcaFollowUpTasksDashboard = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
   const pdcaFollowUpTasksOffenDashboard = pdcaFollowUpTasksDashboard.filter((item: any) => String(item.status || "") !== "erledigt");
+  const dashboardGovernanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
+  const dashboardGovernanceFindings = [
+    kritischeAufgaben.length > 0 ? { severity: "hoch", title: `${kritischeAufgaben.length} kritische offene Aufgaben`, recommendation: "Kritische Aufgaben sofort priorisieren und Verantwortliche mit Termin festziehen." } : null,
+    pdcaReviewFaelligItems.length > 0 ? { severity: pdcaReviewFaelligItems.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaelligItems.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig ansetzen und Wirksamkeitsstatus aktualisieren." } : null,
+    auditFollowUpsOhneAuditDashboard.length > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditDashboard.length} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Audit-Verknüpfungen nachziehen, damit Nachverfolgung und Export vollständig bleiben." } : null,
+    pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen." } : null,
+    dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten." } : null,
+    dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren." } : null,
+  ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
@@ -780,6 +789,26 @@ function Dashboard() {
               {dsfaMitHohemRestrisiko > 0 && <p className="text-red-400">DSFA mit hohem Restrisiko: {dsfaMitHohemRestrisiko}</p>}
             </CardContent>
           </Card>
+
+          {dashboardGovernanceFindings.length > 0 && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardHeader>
+                <CardTitle className="text-sm">Priorisierte Governance-Hinweise</CardTitle>
+                <CardDescription>Die wichtigsten Steuerungspunkte mit empfohlener nächster Maßnahme.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {dashboardGovernanceFindings.map((item: any, idx: number) => (
+                  <div key={`${item.title}-${idx}`} className="rounded-lg border border-border/60 bg-background/60 p-3">
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <p className="font-medium">{item.title}</p>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
+                    </div>
+                    <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
