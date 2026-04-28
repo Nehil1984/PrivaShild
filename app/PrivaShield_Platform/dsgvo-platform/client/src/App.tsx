@@ -596,6 +596,10 @@ function Dashboard() {
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const pdcaOffenItems = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const pdcaReviewFaelligItems = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
+  const auditFollowUpsDashboard = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
+  const auditFollowUpsOhneAuditDashboard = auditFollowUpsDashboard.filter((item: any) => !item.verknuepftesAuditId);
+  const pdcaFollowUpTasksDashboard = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
+  const pdcaFollowUpTasksOffenDashboard = pdcaFollowUpTasksDashboard.filter((item: any) => String(item.status || "") !== "erledigt");
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
@@ -710,6 +714,8 @@ function Dashboard() {
                 <p>Dokumentierte PDCA-Zyklen: <span className="font-medium">{pdca.length}</span></p>
                 <p>Offen / laufend: <span className="font-medium">{pdcaOffenItems.length}</span></p>
                 <p>Review fällig: <span className="font-medium">{pdcaReviewFaelligItems.length}</span></p>
+                <p>Audit-Follow-ups ohne Audit-Bezug: <span className="font-medium">{auditFollowUpsOhneAuditDashboard.length}</span></p>
+                <p>Offene PDCA-Folgeaufgaben: <span className="font-medium">{pdcaFollowUpTasksOffenDashboard.length}</span></p>
                 {pdca.length > 0 ? (
                   pdca.slice(0, 3).map((item: any) => <p key={item.id} className="text-muted-foreground">{item.titel} · {item.status}{item.naechstePruefungAm ? ` · Prüfung ${item.naechstePruefungAm}` : ""}</p>)
                 ) : (
@@ -756,6 +762,9 @@ function Dashboard() {
               )}
               {kritischeAufgaben.length > 0 && <p className="text-red-400">Kritische offene Aufgaben: {kritischeAufgaben.length}</p>}
               {offeneReviews.length > 0 && <p className="text-yellow-400">Offene Reviews: {offeneReviews.length}</p>}
+              {pdcaReviewFaelligItems.length > 0 && <p className="text-yellow-400">PDCA-Reviews fällig oder überfällig: {pdcaReviewFaelligItems.length}</p>}
+              {auditFollowUpsOhneAuditDashboard.length > 0 && <p className="text-orange-400">Audit-Follow-ups ohne Audit-Bezug: {auditFollowUpsOhneAuditDashboard.length}</p>}
+              {pdcaFollowUpTasksOffenDashboard.length > 0 && <p className="text-orange-400">Offene PDCA-Folgeaufgaben: {pdcaFollowUpTasksOffenDashboard.length}</p>}
               {!leitlinieVorhanden && <p className="text-orange-400">Leitliniendokument für Datenschutz und Informationssicherheit fehlt.</p>}
               {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
               {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
@@ -5488,12 +5497,20 @@ function ExportPage() {
     pdcaReviewFaellig: pdcaReviewFaellig.length,
     auditFollowUps: auditFollowUps.length,
     auditFollowUpsOffen: auditFollowUpsOffen.length,
+    auditFollowUpsOhneAuditBezug: auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length,
     pdcaMitAuditBezug: pdcaMitAuditBezug.length,
     pdcaOhneAuditBezug: pdcaOhneAuditBezug.length,
     pdcaFollowUpTasks: pdcaFollowUpTasks.length,
     pdcaFollowUpTasksOffen: pdcaFollowUpTasksOffen.length,
     explicitAuditLinks,
     fehlendeLoeschBezuge: vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length,
+    governanceFindings: [
+      auditTodos.length > 0 ? `${auditTodos.length} offene Audit-To-dos` : "",
+      pdcaReviewFaellig.length > 0 ? `${pdcaReviewFaellig.length} PDCA-Reviews fällig oder überfällig` : "",
+      pdcaFollowUpTasksOffen.length > 0 ? `${pdcaFollowUpTasksOffen.length} offene PDCA-Folgeaufgaben` : "",
+      auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length > 0 ? `${auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length} Audit-Follow-ups ohne Audit-Bezug` : "",
+      vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length > 0 ? `${vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length} VVT ohne Löschkonzept-Bezug` : "",
+    ].filter(Boolean),
   };
 
   const toggle = (key: string) => {
