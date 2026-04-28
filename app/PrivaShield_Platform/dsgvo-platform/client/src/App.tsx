@@ -484,6 +484,7 @@ function MandantGuard({ children }: { children: React.ReactNode }) {
 // ─── DASHBOARD ─────────────────────────────────────────────────────────────
 function Dashboard() {
   const { t } = useI18n();
+  const [, setLocation] = useLocation();
   const { activeMandantId } = useMandant();
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/stats", activeMandantId],
@@ -602,12 +603,12 @@ function Dashboard() {
   const pdcaFollowUpTasksOffenDashboard = pdcaFollowUpTasksDashboard.filter((item: any) => String(item.status || "") !== "erledigt");
   const dashboardGovernanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const dashboardGovernanceFindings = [
-    kritischeAufgaben.length > 0 ? { severity: "hoch", title: `${kritischeAufgaben.length} kritische offene Aufgaben`, recommendation: "Kritische Aufgaben sofort priorisieren und Verantwortliche mit Termin festziehen." } : null,
-    pdcaReviewFaelligItems.length > 0 ? { severity: pdcaReviewFaelligItems.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaelligItems.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig ansetzen und Wirksamkeitsstatus aktualisieren." } : null,
-    auditFollowUpsOhneAuditDashboard.length > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditDashboard.length} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Audit-Verknüpfungen nachziehen, damit Nachverfolgung und Export vollständig bleiben." } : null,
-    pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen." } : null,
-    dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten." } : null,
-    dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren." } : null,
+    kritischeAufgaben.length > 0 ? { severity: "hoch", title: `${kritischeAufgaben.length} kritische offene Aufgaben`, recommendation: "Kritische Aufgaben sofort priorisieren und Verantwortliche mit Termin festziehen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch" } : null,
+    pdcaReviewFaelligItems.length > 0 ? { severity: pdcaReviewFaelligItems.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaelligItems.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig ansetzen und Wirksamkeitsstatus aktualisieren.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=review" } : null,
+    auditFollowUpsOhneAuditDashboard.length > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditDashboard.length} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Audit-Verknüpfungen nachziehen, damit Nachverfolgung und Export vollständig bleiben.", actionLabel: "Zu Audit/PDCA", actionHref: "/pdca?filter=audit-follow-up-ohne-audit" } : null,
+    pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
+    dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
+    dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
@@ -804,6 +805,17 @@ function Dashboard() {
                       <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                     </div>
                     <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
+                    {item.actionHref && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setLocation(item.actionHref)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {item.actionLabel || "Zum Modul"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </CardContent>
