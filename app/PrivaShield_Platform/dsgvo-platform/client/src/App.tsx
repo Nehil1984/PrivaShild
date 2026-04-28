@@ -610,6 +610,7 @@ function Dashboard() {
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
+  const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3);
   const kritischeOderNotwendigeAufgaben = aufgaben.filter((t: any) => ["hoch", "kritisch"].includes(String(t.prioritaet || "")) && t.status !== "erledigt").length;
   const tomUmfangreich = (stats?.tom ?? 0) >= 8;
   const auditsVorhanden = (stats?.audits ?? 0) > 0;
@@ -792,34 +793,53 @@ function Dashboard() {
           </Card>
 
           {dashboardGovernanceFindings.length > 0 && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardHeader>
-                <CardTitle className="text-sm">Priorisierte Governance-Hinweise</CardTitle>
-                <CardDescription>Die wichtigsten Steuerungspunkte mit empfohlener nächster Maßnahme.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {dashboardGovernanceFindings.map((item: any, idx: number) => (
-                  <div key={`${item.title}-${idx}`} className="rounded-lg border border-border/60 bg-background/60 p-3">
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <p className="font-medium">{item.title}</p>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
-                    </div>
-                    <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
-                    {item.actionHref && (
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() => setLocation(item.actionHref)}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          {item.actionLabel || "Zum Modul"}
-                        </button>
+            <>
+              <Card className="border-red-500/30 bg-red-500/5">
+                <CardHeader>
+                  <CardTitle className="text-sm">Heute zuerst</CardTitle>
+                  <CardDescription>Die drei wichtigsten Governance-Punkte für die unmittelbare Bearbeitung.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {dashboardTodayFirst.map((item: any, idx: number) => (
+                    <div key={`today-${item.title}-${idx}`} className="rounded-lg border border-border/60 bg-background/60 p-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="font-medium">{idx + 1}. {item.title}</p>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                      <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardHeader>
+                  <CardTitle className="text-sm">Priorisierte Governance-Hinweise</CardTitle>
+                  <CardDescription>Die wichtigsten Steuerungspunkte mit empfohlener nächster Maßnahme.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {dashboardGovernanceFindings.map((item: any, idx: number) => (
+                    <div key={`${item.title}-${idx}`} className="rounded-lg border border-border/60 bg-background/60 p-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="font-medium">{item.title}</p>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
+                      </div>
+                      <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
+                      {item.actionHref && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setLocation(item.actionHref)}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {item.actionLabel || "Zum Modul"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </>
           )}
 
           <Card>
@@ -5663,6 +5683,7 @@ function ExportPage() {
     auditFollowUpsOhneAuditBezug > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditBezug} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Fehlende Audit-Verknüpfungen ergänzen, damit Nachverfolgung und Export belastbar bleiben." } : null,
     fehlendeLoeschBezuge > 0 ? { severity: fehlendeLoeschBezuge >= 3 ? "mittel" : "niedrig", title: `${fehlendeLoeschBezuge} VVT ohne Löschkonzept-Bezug`, recommendation: "Löschkonzept-Einträge mit den betroffenen Verarbeitungstätigkeiten verknüpfen oder fachlich begründen." } : null,
   ].filter(Boolean).sort((a: any, b: any) => (governanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (governanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
+  const dashboardTodayFirst = governanceFindings.slice(0, 3);
   const managementScoreRaw = 100
     - (auditTodos.length * 6)
     - (pdcaReviewFaellig.length * 8)
