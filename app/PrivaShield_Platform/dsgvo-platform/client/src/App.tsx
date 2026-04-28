@@ -697,8 +697,27 @@ function Dashboard() {
     if (normalized.includes("verantwortungsstruktur")) return { href: "/mandanten-uebersicht", label: "Zur Mandantenübersicht" };
     return { href: "/dashboard", label: "Zum Dashboard" };
   };
+  const deriveMaturityTaskDraft = (label: string) => {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("audit")) return { priority: "hoch", title: "Audit-Struktur bereinigen", draft: "Offene Audit-Punkte terminieren, Nachweise prüfen und fehlende Audit-Verknüpfungen ergänzen." };
+    if (normalized.includes("pdca")) return { priority: "hoch", title: "PDCA-Reviews und Folgeaufgaben abschließen", draft: "Fällige PDCA-Reviews durchführen und offene Folgeaufgaben mit Termin und Verantwortung schließen." };
+    if (normalized.includes("dsfa-risikosteuerung")) return { priority: "hoch", title: "DSFA-Risikosteuerung nachziehen", draft: "Art.-36-, Restrisiko- und Review-Fälle priorisieren und fachlich abschließen." };
+    if (normalized.includes("dsfa-struktur")) return { priority: "mittel", title: "DSFA-Struktur vervollständigen", draft: "Fehlende VVT-Bezüge und Governance-Rollen in den DSFA-Datensätzen ergänzen." };
+    if (normalized.includes("löschkonzept")) return { priority: "mittel", title: "Löschkonzept-Verknüpfungen ergänzen", draft: "Fehlende Verknüpfungen zwischen VVT und Löschkonzept fachlich nachpflegen." };
+    if (normalized.includes("aufgabensteuerung")) return { priority: "hoch", title: "Kritische Aufgaben priorisiert nachsteuern", draft: "Kritische und hohe offene Aufgaben bündeln, priorisieren und verbindlich terminieren." };
+    if (normalized.includes("leitlinien")) return { priority: "mittel", title: "Leitlinienbasis vervollständigen", draft: "Fehlende Leitlinien erstellen oder bestehende Leitlinien zur Freigabe bringen." };
+    if (normalized.includes("prozessdokumentation")) return { priority: "mittel", title: "Prozessdokumentation ausbauen", draft: "Wesentliche Datenschutzprozesse dokumentieren und in der Organisation verankern." };
+    if (normalized.includes("verzeichnis")) return { priority: "mittel", title: "VVT vervollständigen", draft: "Fehlende oder unvollständige Verarbeitungstätigkeiten im Verzeichnis ergänzen." };
+    if (normalized.includes("tom")) return { priority: "mittel", title: "TOM-Katalog erweitern", draft: "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen." };
+    if (normalized.includes("avv")) return { priority: "mittel", title: "AVV-Nachweise ergänzen", draft: "Fehlende AVV-Verträge oder Prüfdokumentationen vervollständigen." };
+    if (normalized.includes("web-/hinweis")) return { priority: "mittel", title: "Web-Datenschutzprüfung aktualisieren", draft: "Webdatenschutz- und Datenschutzhinweis-Prüfungen aktualisieren und dokumentieren." };
+    if (normalized.includes("beschäftigtendatenschutz")) return { priority: "mittel", title: "Beschäftigtendatenschutz dokumentieren", draft: "Beschäftigtendatenschutz-Check erfassen und organisatorisch absichern." };
+    if (normalized.includes("dokumentenreife")) return { priority: "niedrig", title: "Nachweisdokumente ergänzen", draft: "Zentrale Datenschutzdokumente ergänzen und auf Aktualität prüfen." };
+    if (normalized.includes("verantwortungsstruktur")) return { priority: "hoch", title: "Verantwortungsstruktur festziehen", draft: "Verantwortliche Rolle benennen und Kontaktdaten vollständig pflegen." };
+    return { priority: "mittel", title: "Reifegradlücke nacharbeiten", draft: "Kriterium fachlich prüfen und gezielte Nachbesserungsmaßnahme als Aufgabe vorbereiten." };
+  };
   const weakestMaturityCriteria = [...maturityCriteria]
-    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label) }))
+    .map((item) => ({ ...item, percent: item.weight ? Math.round((item.score / item.weight) * 100) : 0, recommendation: deriveMaturityRecommendation(item.label), action: deriveMaturityAction(item.label), taskDraft: deriveMaturityTaskDraft(item.label) }))
     .sort((a, b) => a.percent - b.percent || b.weight - a.weight || String(a.label || "").localeCompare(String(b.label || ""), "de"))
     .slice(0, 3);
   const complianceKpis = {
@@ -1058,6 +1077,7 @@ function Dashboard() {
                       <p className="font-medium">{item.label}</p>
                       <p className="text-muted-foreground">{item.score}/{item.weight} Punkte · {item.percent}% Erfüllung</p>
                       <p className="text-muted-foreground">Empfehlung: {item.recommendation}</p>
+                      <p className="text-muted-foreground">Aufgabenentwurf: [{item.taskDraft.priority}] {item.taskDraft.title} – {item.taskDraft.draft}</p>
                       <Link href={item.action.href}><a className="text-primary hover:underline">{item.action.label}</a></Link>
                     </div>
                   ))}
