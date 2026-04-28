@@ -612,15 +612,15 @@ function Dashboard() {
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
-    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
-    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
-    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
-    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
-    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche" };
+    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute", escalation: "sofort", overdue: true };
+    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h", escalation: "kurzfristig", overdue: false };
+    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute", escalation: "sofort", overdue: false };
+    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h", escalation: "kurzfristig", overdue: false };
+    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche", escalation: "normal", overdue: false };
   };
   const dashboardTodayFirst = dashboardGovernanceFindings.slice(0, 3).map((item: any) => {
     const meta = deriveGovernanceMeta(item?.title, item?.severity);
-    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint };
+    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint, escalation: meta.escalation, overdue: meta.overdue };
   });
   const dashboardTodayProgress = {
     neu: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "neu").length,
@@ -828,7 +828,7 @@ function Dashboard() {
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${item.severity === "hoch" ? "bg-red-500/15 text-red-300" : item.severity === "mittel" ? "bg-amber-500/15 text-amber-300" : "bg-slate-500/15 text-slate-300"}`}>{item.severity}</span>
                       </div>
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus} · {item.priorityClass} · SLA: {item.slaHint}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus} · {item.priorityClass} · SLA: {item.slaHint}{item.overdue ? " · Frist überschritten" : ""} · Eskalation: {item.escalation}</p>
                     </div>
                   ))}
                 </CardContent>
@@ -5703,11 +5703,11 @@ function ExportPage() {
   const governanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
-    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
-    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
-    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute" };
-    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h" };
-    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche" };
+    if (normalizedTitle.includes("kritische offene aufgaben") || normalizedTitle.includes("ohne audit-bezug") || normalizedTitle.includes("art.-36")) return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute", escalation: "sofort", overdue: true };
+    if (normalizedTitle.includes("review") || normalizedTitle.includes("restrisiko") || normalizedTitle.includes("audit-to-dos")) return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h", escalation: "kurzfristig", overdue: false };
+    if (severity === "hoch") return { state: "heute erledigen", priorityClass: "P1", slaHint: "heute", escalation: "sofort", overdue: false };
+    if (severity === "mittel") return { state: "in Bearbeitung", priorityClass: "P2", slaHint: "48h", escalation: "kurzfristig", overdue: false };
+    return { state: "neu", priorityClass: "P3", slaHint: "diese Woche", escalation: "normal", overdue: false };
   };
   const governanceFindings = [
     auditTodos.length > 0 ? { severity: auditTodos.length >= 5 ? "hoch" : "mittel", title: `${auditTodos.length} offene Audit-To-dos`, recommendation: "Audit-Maßnahmen priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen." } : null,
@@ -5718,7 +5718,7 @@ function ExportPage() {
   ].filter(Boolean).sort((a: any, b: any) => (governanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (governanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const dashboardTodayFirst = governanceFindings.slice(0, 3).map((item: any) => {
     const meta = deriveGovernanceMeta(item?.title, item?.severity);
-    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint };
+    return { ...item, derivedStatus: meta.state, priorityClass: meta.priorityClass, slaHint: meta.slaHint, escalation: meta.escalation, overdue: meta.overdue };
   });
   const managementScoreRaw = 100
     - (auditTodos.length * 6)
