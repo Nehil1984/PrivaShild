@@ -631,6 +631,7 @@ function Dashboard() {
     if (normalizedTitle.includes("restrisiko")) return ["Maßnahmen priorisieren", "Restrisiko neu bewerten", "Freigabe dokumentieren"];
     return ["Punkt sichten", "Verantwortung klären", "nächsten Termin setzen"];
   };
+  const deriveGovernanceTaskSuggestions = (title: string) => deriveGovernanceWorkPackage(title).map((step, idx) => `Vorschlag ${idx + 1}: ${step}`);
   const dashboardTodayProgress = {
     neu: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "neu").length,
     inBearbeitung: dashboardTodayFirst.filter((item: any) => item.derivedStatus === "in Bearbeitung").length,
@@ -839,6 +840,7 @@ function Dashboard() {
                       <p className="text-muted-foreground">Nächster Schritt: {item.recommendation}</p>
                       <p className="text-xs text-muted-foreground mt-1">Status: {item.derivedStatus} · {item.priorityClass} · SLA: {item.slaHint}{item.overdue ? " · Frist überschritten" : ""} · Eskalation: {item.escalation}</p>
                       <p className="text-xs text-muted-foreground mt-1">Maßnahmenpaket: {deriveGovernanceWorkPackage(item.title).join(" · ")}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Aufgaben-Vorschläge: {deriveGovernanceTaskSuggestions(item.title).join(" · ")}</p>
                     </div>
                   ))}
                 </CardContent>
