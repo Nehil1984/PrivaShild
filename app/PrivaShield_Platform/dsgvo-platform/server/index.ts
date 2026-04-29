@@ -20,11 +20,6 @@ function assertProductionSecrets() {
   if (jwtSecret.length < 32 || /bitte-langen-zufaelligen-produktionsschluessel-setzen/i.test(jwtSecret)) {
     throw new Error("Unsichere Produktionskonfiguration: JWT_SECRET fehlt oder ist zu schwach.");
   }
-
-  const adminPassword = String(process.env.INITIAL_ADMIN_PASSWORD || "");
-  if (adminPassword && (/bitte-sicheres-einmalpasswort-setzen/i.test(adminPassword) || adminPassword.length < 12)) {
-    throw new Error("Unsichere Produktionskonfiguration: INITIAL_ADMIN_PASSWORD ist zu schwach.");
-  }
 }
 
 const app = express();

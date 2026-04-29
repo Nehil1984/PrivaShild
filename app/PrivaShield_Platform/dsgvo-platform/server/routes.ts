@@ -356,6 +356,10 @@ async function seedAdmin() {
     return;
   }
 
+  if (password.length < 12 || /bitte-sicheres-einmalpasswort-setzen/i.test(password)) {
+    throw new Error("Unsichere Produktionskonfiguration: INITIAL_ADMIN_PASSWORD ist für das Initial-Seeding zu schwach.");
+  }
+
   await storage.createUser({
     email,
     password,
