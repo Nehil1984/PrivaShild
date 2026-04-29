@@ -53,6 +53,18 @@ type BackupMeta = {
   sourceFile: string;
 };
 
+export type BackupPreflightResult = {
+  ok: boolean;
+  fileName: string;
+  encrypted: boolean;
+  currentBackend: DbBackend;
+  backupBackend: DbBackend | null;
+  backendMismatch: boolean;
+  migrationRequired: boolean;
+  sizeBytes: number;
+  warnings: string[];
+};
+
 type LowdbPayload = {
   meta?: { nextId?: Record<string, number> };
   mandanten?: any[];
@@ -461,9 +473,59 @@ async function migrateLowdbPayloadToSqlite(payload: Buffer) {
   return { targetFile: targetPath, migratedFrom: "lowdb", migratedTo: "sqlite" };
 }
 
-async function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+function assertRestorePayloadLooksSafe(fileName: string, payload: Buffer, meta: BackupMeta | null) {
+  if (!payload || payload.length === 0) {
+    throw new Error("Backup-Inhalt ist leer");
+  }
+
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext === ".bak" && meta?.backend === "lowdb") {
+    const text = payload.toString("utf8").trim();
+    try {
+      JSON.parse(text);
+    } catch {
+      throw new Error("Backup-Datei enthält ungültiges JSON");
+    }
+  }
+}
+
+export function inspectBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string): BackupPreflightResult {
   const currentBackend = readDbBackend();
   const { meta, payload } = splitBackupPayload(raw, encrypted, passwordOverride);
+  assertRestorePayloadLooksSafe(fileName, payload, meta);
+
+  const backupBackend = meta?.backend || null;
+  const backendMismatch = !!backupBackend && backupBackend !== currentBackend;
+  const migrationRequired = backupBackend === "lowdb" && currentBackend === "sqlite";
+  const warnings: string[] = [];
+
+  if (!meta) warnings.push("Backup enthält keine auswertbaren Metadaten.");
+  if (backendMismatch && !migrationRequired) warnings.push(`Backup-Backend '${backupBackend}' passt nicht zum aktiven Backend '${currentBackend}'.`);
+  if (migrationRequired) warnings.push("Wiederherstellung erfordert eine Lowdb-zu-SQLite-Migration.");
+  if (encrypted && !passwordOverride && !process.env.PRIVASHIELD_BACKUP_PASSWORD) warnings.push("Für verschlüsselte Backups ist aktuell kein Laufzeitkennwort gesetzt.");
+
+  return {
+    ok: !backendMismatch || migrationRequired,
+    fileName,
+    encrypted,
+    currentBackend,
+    backupBackend,
+    backendMismatch,
+    migrationRequired,
+    sizeBytes: raw.length,
+    warnings,
+  };
+}
+
+async function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boolean, passwordOverride?: string) {
+  const preflight = inspectBackupBuffer(fileName, raw, encrypted, passwordOverride);
+  if (!preflight.ok) {
+    throw new Error(preflight.warnings[0] || "Backup-Vorprüfung fehlgeschlagen");
+  }
+
+  const currentBackend = readDbBackend();
+  const { meta, payload } = splitBackupPayload(raw, encrypted, passwordOverride);
+  assertRestorePayloadLooksSafe(fileName, payload, meta);
 
   if (meta?.backend === "lowdb" && currentBackend === "sqlite") {
     const migration = await migrateLowdbPayloadToSqlite(payload);
@@ -503,11 +565,24 @@ async function restoreBackupBuffer(fileName: string, raw: Buffer, encrypted: boo
   };
 }
 
+export function inspectBackup(fileName: string, passwordOverride?: string) {
+  const backup = listBackups().find((row) => row.fileName === fileName);
+  if (!backup) throw new Error("Backup nicht gefunden");
+  if (!fs.existsSync(backup.filePath)) throw new Error("Backup-Datei nicht gefunden");
+  return inspectBackupBuffer(backup.fileName, fs.readFileSync(backup.filePath), backup.encrypted, passwordOverride);
+}
+
 export async function restoreBackup(fileName: string, passwordOverride?: string) {
   const backup = listBackups().find((row) => row.fileName === fileName);
   if (!backup) throw new Error("Backup nicht gefunden");
   if (!fs.existsSync(backup.filePath)) throw new Error("Backup-Datei nicht gefunden");
   return restoreBackupBuffer(backup.fileName, fs.readFileSync(backup.filePath), backup.encrypted, passwordOverride);
+}
+
+export function inspectUploadedBackup(fileName: string, raw: Buffer, passwordOverride?: string) {
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext !== ".bak" && ext !== ".enc") throw new Error("Nur Backup-Dateien mit .bak oder .enc sind erlaubt");
+  return inspectBackupBuffer(fileName, raw, ext === ".enc", passwordOverride);
 }
 
 export async function restoreUploadedBackup(fileName: string, raw: Buffer, passwordOverride?: string) {

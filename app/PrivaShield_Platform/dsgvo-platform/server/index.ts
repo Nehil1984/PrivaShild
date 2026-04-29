@@ -13,6 +13,20 @@ import { createServer } from "http";
 import { securityHeaders } from "./security";
 import { startBackupScheduler } from "./backup";
 
+function assertProductionSecrets() {
+  if (process.env.NODE_ENV !== "production") return;
+
+  const jwtSecret = String(process.env.JWT_SECRET || "");
+  if (jwtSecret.length < 32 || /bitte-langen-zufaelligen-produktionsschluessel-setzen/i.test(jwtSecret)) {
+    throw new Error("Unsichere Produktionskonfiguration: JWT_SECRET fehlt oder ist zu schwach.");
+  }
+
+  const adminPassword = String(process.env.INITIAL_ADMIN_PASSWORD || "");
+  if (adminPassword && (/bitte-sicheres-einmalpasswort-setzen/i.test(adminPassword) || adminPassword.length < 12)) {
+    throw new Error("Unsichere Produktionskonfiguration: INITIAL_ADMIN_PASSWORD ist zu schwach.");
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -71,6 +85,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  assertProductionSecrets();
   await registerRoutes(httpServer, app);
   startBackupScheduler();
 

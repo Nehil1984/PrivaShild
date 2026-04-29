@@ -28,6 +28,17 @@ function canAccessEntity(userRole: string, mandantIds: string | undefined, entit
   return parseMandantIds(mandantIds).includes(entity.mandantId);
 }
 
+function visibleGruppenForUser(userRole: string, mandantIds: string | undefined, mandanten: Array<{ id: number; gruppeId?: number | null }>, gruppen: Array<{ id: number; name: string }>) {
+  if (userRole === "admin") return gruppen;
+  const allowed = new Set(parseMandantIds(mandantIds));
+  const gruppeIds = new Set(
+    mandanten
+      .filter((mandant) => allowed.has(mandant.id) && Number.isInteger(mandant.gruppeId) && (mandant.gruppeId as number) > 0)
+      .map((mandant) => mandant.gruppeId as number),
+  );
+  return gruppen.filter((gruppe) => gruppeIds.has(gruppe.id));
+}
+
 describe("integration-like access flows", () => {
   it("maps login result to visible mandants", () => {
     const all = [
@@ -62,5 +73,20 @@ describe("integration-like access flows", () => {
     ];
     const visible = filterMandantenForUser("user", "[12]", all);
     expect(visible).toEqual([{ id: 12, name: "Mandant Y" }]);
+  });
+
+  it("does not leak unrelated groups to users", () => {
+    const mandanten = [
+      { id: 1, gruppeId: 10 },
+      { id: 2, gruppeId: 20 },
+      { id: 3, gruppeId: null },
+    ];
+    const gruppen = [
+      { id: 10, name: "Gruppe A" },
+      { id: 20, name: "Gruppe B" },
+      { id: 30, name: "Gruppe C" },
+    ];
+
+    expect(visibleGruppenForUser("user", "[1,3]", mandanten, gruppen)).toEqual([{ id: 10, name: "Gruppe A" }]);
   });
 });

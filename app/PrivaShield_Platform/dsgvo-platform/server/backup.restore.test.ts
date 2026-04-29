@@ -43,8 +43,13 @@ describe("backup restore migration", () => {
   });
 
   it("migriert ein lowdb-backup in sqlite inklusive user-hash und ids", async () => {
-    const { restoreUploadedBackup } = await import("./backup");
+    const { inspectUploadedBackup, restoreUploadedBackup } = await import("./backup");
     const payload = Buffer.from(`PSMETA1\n${JSON.stringify({ backend: "lowdb", createdAt: new Date().toISOString(), sourceFile: "privashield.json" })}\n${JSON.stringify(sampleLowdb)}`, "utf8");
+
+    const preflight = inspectUploadedBackup("backup-daily-test.bak", payload);
+    expect(preflight.ok).toBe(true);
+    expect(preflight.migrationRequired).toBe(true);
+    expect(preflight.backupBackend).toBe("lowdb");
 
     const result = await restoreUploadedBackup("backup-daily-test.bak", payload);
     expect(result.migrated).toBe(true);
@@ -68,5 +73,12 @@ describe("backup restore migration", () => {
     expect(vvts).toHaveLength(1);
     expect(vvts[0].id).toBe(1);
     expect(vvts[0].mandantId).toBe(1);
+  });
+
+  it("verwirft offensichtlich ungültige Backup-Inhalte im Preflight", async () => {
+    const { inspectUploadedBackup } = await import("./backup");
+    const payload = Buffer.from(`PSMETA1\n${JSON.stringify({ backend: "lowdb", createdAt: new Date().toISOString(), sourceFile: "privashield.json" })}\nnot-json-and-no-sqlite`, "utf8");
+
+    expect(() => inspectUploadedBackup("backup-daily-broken.bak", payload)).toThrow("Backup-Datei enthält ungültiges JSON");
   });
 });

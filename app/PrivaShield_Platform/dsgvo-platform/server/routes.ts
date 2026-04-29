@@ -13,7 +13,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
 import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
-import { listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
+import { inspectBackup, inspectUploadedBackup, listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
 import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertPdcaSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestPdcaSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
 import type { ZodTypeAny } from "zod";
@@ -278,6 +278,27 @@ async function canAccessMandant(req: any, mandantId: number): Promise<boolean> {
   if (req.userRole === "admin") return true;
   const ids = await getAllowedMandantIds(req);
   return ids.includes(mandantId);
+}
+
+async function getAccessibleGruppenIds(req: any): Promise<number[]> {
+  if (req.userRole === "admin") {
+    const gruppen = await storage.getMandantenGruppen();
+    return gruppen.map((gruppe) => gruppe.id);
+  }
+
+  const mandanten = await storage.getMandanten();
+  const allowedMandantIds = await getAllowedMandantIds(req);
+  return Array.from(new Set(
+    mandanten
+      .filter((mandant) => allowedMandantIds.includes(mandant.id) && Number.isInteger(mandant.gruppeId) && (mandant.gruppeId as number) > 0)
+      .map((mandant) => mandant.gruppeId as number),
+  ));
+}
+
+async function canAccessGruppe(req: any, gruppenId: number): Promise<boolean> {
+  if (req.userRole === "admin") return true;
+  const ids = await getAccessibleGruppenIds(req);
+  return ids.includes(gruppenId);
 }
 
 async function requireMandantAccess(req: any, res: Response, mandantId: number): Promise<boolean> {
@@ -642,8 +663,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(historie);
   });
 
-  app.get("/api/mandanten-gruppen", authMiddleware, async (_req, res) => {
-    res.json(await storage.getMandantenGruppen());
+  app.get("/api/mandanten-gruppen", authMiddleware, async (req: any, res) => {
+    const gruppen = await storage.getMandantenGruppen();
+    if (req.userRole === "admin") return res.json(gruppen);
+    const allowedGruppenIds = await getAccessibleGruppenIds(req);
+    res.json(gruppen.filter((gruppe) => allowedGruppenIds.includes(gruppe.id)));
   });
   app.post("/api/mandanten-gruppen", authMiddleware, adminOnly, validateBody(insertMandantenGruppeSchema), async (req: any, res) => {
     const gruppe = await storage.createMandantenGruppe(req.body);
@@ -709,6 +733,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/gruppen/:gruppenId/vorlagenpakete/:paketId/apply", authMiddleware, adminOnly, async (req: any, res) => {
     const gruppenId = Number(req.params.gruppenId);
+    if (!(await canAccessGruppe(req, gruppenId))) return res.status(403).json({ message: "Kein Zugriff auf diese Gruppe" });
+    const gruppe = await storage.getMandantenGruppe(gruppenId);
+    if (!gruppe) return res.status(404).json({ message: "Gruppe nicht gefunden" });
     const paketId = Number(req.params.paketId);
     const mandanten = await storage.getMandanten();
     const targets = mandanten.filter((m) => m.gruppeId === gruppenId);
@@ -1152,8 +1179,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/admin/backups/restore", authMiddleware, adminOnly, validateBody(requestBackupRestoreSchema as ZodTypeAny), async (req: any, res) => {
     try {
+      const preflight = inspectBackup(req.body?.fileName, req.body?.password);
+      if (req.body?.dryRun === true) return res.json({ ok: true, dryRun: true, preflight });
       const result = await restoreBackup(req.body?.fileName, req.body?.password);
-      res.json(result);
+      res.json({ ...result, preflight });
     } catch (error: any) {
       res.status(400).json({ message: error?.message || "Backup konnte nicht wiederhergestellt werden" });
     }
@@ -1163,10 +1192,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const fileName = String(req.query.fileName || "").trim();
       const password = typeof req.query.password === "string" ? req.query.password : undefined;
+      const dryRun = String(req.query.dryRun || "").trim() === "true";
       if (!fileName) return res.status(400).json({ message: "Dateiname fehlt" });
       if (!req.body || !Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ message: "Keine Backup-Datei hochgeladen" });
+      const preflight = inspectUploadedBackup(fileName, req.body, password);
+      if (dryRun) return res.json({ ok: true, dryRun: true, preflight });
       const result = await restoreUploadedBackup(fileName, req.body, password);
-      res.json(result);
+      res.json({ ...result, preflight });
     } catch (error: any) {
       res.status(400).json({ message: error?.message || "Hochgeladenes Backup konnte nicht wiederhergestellt werden" });
     }
