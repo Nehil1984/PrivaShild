@@ -155,7 +155,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
         }
         throw new Error(data.message);
       }
-      onLogin(data.user, data.token);
+      onLogin(data.user, data.token || "session");
     } catch (e: any) {
       setError(e.message);
     } finally { setLoading(false); }
@@ -5530,32 +5530,23 @@ function BenutzerPage() {
 // ─── ROOT APP ──────────────────────────────────────────────────────────────
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("privashield_token"));
-  const [restoring, setRestoring] = useState<boolean>(() => !!localStorage.getItem("privashield_token"));
+  const [token, setToken] = useState<string | null>("session");
+  const [restoring, setRestoring] = useState<boolean>(true);
 
-  const login = (u: AuthUser, t: string) => {
-    setUser(u); setToken(t); setRestoring(false);
-    localStorage.setItem("privashield_token", t);
+  const login = (u: AuthUser, _t: string) => {
+    setUser(u); setToken("session"); setRestoring(false);
   };
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout", {});
+    } catch {}
     setUser(null); setToken(null); setRestoring(false); queryClient.clear();
-    localStorage.removeItem("privashield_token");
     localStorage.removeItem("privashield_active_mandant_id");
   };
 
   useEffect(() => {
-    const origFetch = window.fetch;
-    (window as any).__origFetch = origFetch;
-  }, []);
-
-  useEffect(() => {
-    if (!token) {
-      setRestoring(false);
-      return;
-    }
-
     let cancelled = false;
-    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/auth/me", { credentials: "same-origin" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Session ungültig");
         return res.json();
@@ -5563,10 +5554,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((safeUser) => {
         if (cancelled) return;
         setUser(safeUser);
+        setToken("session");
       })
       .catch(() => {
         if (cancelled) return;
-        localStorage.removeItem("privashield_token");
         localStorage.removeItem("privashield_active_mandant_id");
         setToken(null);
         setUser(null);
@@ -5577,7 +5568,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, [token]);
+  }, []);
 
   if (restoring) {
     return (
@@ -5599,9 +5590,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthCtx.Provider>
   );
 }
-
-// Override apiRequest to inject auth token
-const origApiRequest = apiRequest;
 
 // ─── SYSTEM PAGE (DB-Backend-Umschalter) ────────────────────────────────────
 function SystemPage() {
@@ -6487,20 +6475,6 @@ function AppRoutes() {
     if (activeMandantId) localStorage.setItem("privashield_active_mandant_id", String(activeMandantId));
     else localStorage.removeItem("privashield_active_mandant_id");
   }, [activeMandantId]);
-
-  // Patch apiRequest with token
-  useEffect(() => {
-    if (!token) return;
-    const orig = (window as any).__origFetch || window.fetch;
-    window.fetch = (input: any, init: any = {}) => {
-      const url = typeof input === "string" ? input : input.url;
-      if (url?.includes("/api/")) {
-        init.headers = { ...init.headers, Authorization: `Bearer ${token}` };
-      }
-      return orig(input, init);
-    };
-    return () => { window.fetch = orig; };
-  }, [token]);
 
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("privashield_lang") as Lang) || "de");
   useEffect(() => { localStorage.setItem("privashield_lang", lang); }, [lang]);

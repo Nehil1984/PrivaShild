@@ -61,11 +61,52 @@ function getJwtSecret(): string {
   return JWT_SECRET;
 }
 
+function readCookieToken(req: Request): string | null {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(/(?:^|;\s*)privashield_auth=([^;]+)/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+function setAuthCookie(res: Response, token: string) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookie = [
+    `privashield_auth=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    `Max-Age=${8 * 60 * 60}`,
+    isProduction ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.setHeader("Set-Cookie", cookie);
+}
+
+function clearAuthCookie(res: Response) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookie = [
+    "privashield_auth=",
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    "Max-Age=0",
+    isProduction ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.setHeader("Set-Cookie", cookie);
+}
+
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) return res.status(401).json({ message: "Nicht authentifiziert" });
+  const bearerToken = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const cookieToken = readCookieToken(req);
+  const token = bearerToken || cookieToken;
+  if (!token) return res.status(401).json({ message: "Nicht authentifiziert" });
   try {
-    const payload = jwt.verify(auth.slice(7), getJwtSecret()) as unknown as { userId: number; role: string };
+    const payload = jwt.verify(token, getJwtSecret()) as unknown as { userId: number; role: string };
     (req as any).userId = payload.userId;
     (req as any).userRole = payload.role;
     next();
@@ -433,6 +474,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } as any);
     }
     const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "8h" });
+    setAuthCookie(res, token);
     const refreshedUser = await storage.getUserById(user.id);
     const safeUser = sanitizeUser(refreshedUser || user);
     await auditLog({
@@ -447,6 +489,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       details: { email, role: user.role },
     });
     res.json({ token, user: safeUser });
+  });
+
+  app.post("/api/auth/logout", authMiddleware, async (_req, res) => {
+    clearAuthCookie(res);
+    res.json({ ok: true });
   });
 
   app.get("/api/auth/me", authMiddleware, async (req: any, res) => {
