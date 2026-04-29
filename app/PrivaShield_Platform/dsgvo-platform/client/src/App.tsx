@@ -142,6 +142,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
@@ -6433,7 +6434,7 @@ function AppRoutes() {
     return stored ? Number(stored) : null;
   });
 
-  const { data: mandanten = [], isLoading: mandantenLoading } = useQuery({
+  const { data: mandanten = [], isLoading: mandantenLoading, isError: mandantenError } = useQuery({
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
     enabled: !!token,
@@ -6489,6 +6490,14 @@ function AppRoutes() {
             <CardContent className="pt-6 text-center space-y-3">
               <Skeleton className="h-10 w-10 rounded-full mx-auto" />
               <p className="text-sm text-muted-foreground">Mandantenkontext wird vorbereitet...</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : mandantenError ? (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm border-border/60">
+            <CardContent className="pt-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">Mandantenkontext konnte nicht geladen werden. Bitte Seite neu laden oder erneut anmelden.</p>
             </CardContent>
           </Card>
         </div>
