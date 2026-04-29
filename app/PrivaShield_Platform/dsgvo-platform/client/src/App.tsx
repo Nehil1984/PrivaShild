@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useComplianceMeta } from "@/hooks/useComplianceMeta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, setApiAuthToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { useState, createContext, useContext, useEffect } from "react";
@@ -156,7 +156,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
         }
         throw new Error(data.message);
       }
-      onLogin(data.user, data.token || "session");
+      onLogin(data.user, data.token);
     } catch (e: any) {
       setError(e.message);
     } finally { setLoading(false); }
@@ -5531,23 +5531,34 @@ function BenutzerPage() {
 // ─── ROOT APP ──────────────────────────────────────────────────────────────
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>("session");
-  const [restoring, setRestoring] = useState<boolean>(true);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("privashield_token"));
+  const [restoring, setRestoring] = useState<boolean>(() => !!localStorage.getItem("privashield_token"));
 
-  const login = (u: AuthUser, _t: string) => {
-    setUser(u); setToken("session"); setRestoring(false);
+  const login = (u: AuthUser, t: string) => {
+    setUser(u); setToken(t); setRestoring(false);
+    localStorage.setItem("privashield_token", t);
   };
   const logout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout", {});
     } catch {}
     setUser(null); setToken(null); setRestoring(false); queryClient.clear();
+    localStorage.removeItem("privashield_token");
     localStorage.removeItem("privashield_active_mandant_id");
   };
 
   useEffect(() => {
+    setApiAuthToken(token);
+    if (!token) {
+      setRestoring(false);
+      return;
+    }
+
     let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
+    fetch("/api/auth/me", {
+      credentials: "same-origin",
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(async (res) => {
         if (!res.ok) throw new Error("Session ungültig");
         return res.json();
@@ -5555,10 +5566,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((safeUser) => {
         if (cancelled) return;
         setUser(safeUser);
-        setToken("session");
       })
       .catch(() => {
         if (cancelled) return;
+        localStorage.removeItem("privashield_token");
         localStorage.removeItem("privashield_active_mandant_id");
         setToken(null);
         setUser(null);
@@ -5569,7 +5580,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [token]);
 
   if (restoring) {
     return (

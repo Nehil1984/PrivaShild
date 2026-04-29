@@ -10,8 +10,15 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
+let authToken: string | null = null;
+
+export function setApiAuthToken(token: string | null) {
+  authToken = token;
+}
+
 function buildAuthHeaders(headers: Record<string, string>) {
-  return headers;
+  if (!authToken) return headers;
+  return { ...headers, Authorization: `Bearer ${authToken}` };
 }
 
 async function throwIfResNotOk(res: Response) {
