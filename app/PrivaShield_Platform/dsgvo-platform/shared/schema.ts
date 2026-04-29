@@ -155,6 +155,10 @@ export const vvt = sqliteTable("vvt", {
   betroffenePersonen: text("betroffene_personen").default("[]"), // JSON
   empfaenger: text("empfaenger"),
   drittlandtransfer: integer("drittlandtransfer", { mode: "boolean" }).default(false),
+  risikostufe: text("risikostufe").default("niedrig"), // niedrig | mittel | hoch
+  risikobegruendung: text("risikobegruendung"),
+  risikoTriggers: text("risiko_triggers").default("[]"), // JSON
+  risikopruefungAm: text("risikopruefung_am"),
   loeschfrist: text("loeschfrist"),
   loeschklasse: text("loeschklasse"),
   aufbewahrungsgrund: text("aufbewahrungsgrund"),

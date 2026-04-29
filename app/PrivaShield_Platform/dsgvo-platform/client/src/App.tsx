@@ -1190,6 +1190,61 @@ function useModuleData(endpoint: string) {
 
 // ─── VVT PAGE ──────────────────────────────────────────────────────────────
 const rechtsgrundlagen = ["Art. 6 Abs. 1 lit. a (Einwilligung)", "Art. 6 Abs. 1 lit. b (Vertrag)", "Art. 6 Abs. 1 lit. c (rechtl. Verpflichtung)", "Art. 6 Abs. 1 lit. d (lebenswichtige Interessen)", "Art. 6 Abs. 1 lit. e (öffentliche Aufgabe)", "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)"];
+const VVT_RISIKO_STUFEN = ["niedrig", "mittel", "hoch"] as const;
+
+function normalizeTextList(value: any) {
+  return String(value || "")
+    .split(/\n|,|;/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function parseVvtRiskTriggers(value: any) {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value || "[]") : value;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function deriveVvtRiskAssessment(source: any) {
+  const triggers: string[] = [];
+  const kategorien = normalizeTextList(source?.datenkategorien).join(" ").toLowerCase();
+  const betroffene = normalizeTextList(source?.betroffenePersonen).join(" ").toLowerCase();
+  const empfaenger = String(source?.empfaenger || "").toLowerCase();
+  const zweck = String(source?.zweck || "").toLowerCase();
+  const name = String(source?.bezeichnung || "").toLowerCase();
+
+  if (source?.drittlandtransfer) triggers.push("Drittlandtransfer");
+  if (source?.dsfa) triggers.push("DSFA-pflichtige Verarbeitung");
+  if (/gesund|biometr|genet|straf|gewerkschaft|relig|sex|krank/.test(kategorien)) triggers.push("besondere Kategorien personenbezogener Daten");
+  if (/bewerber|beschäftigte|kinder|patient|schutzbedürftig/.test(betroffene)) triggers.push("schutzbedürftige oder besonders betroffene Personengruppen");
+  if (/profil|scoring|monitor|überwach|ki|automat/.test(`${zweck} ${name}`)) triggers.push("profiling-/überwachungs- oder automatisierungsnaher Verarbeitungskontext");
+  if (/behörde|dienstleister|anbieter|konzern|dritt/.test(empfaenger) && String(source?.empfaenger || "").trim()) triggers.push("erweiterter Empfängerkreis / externe Offenlegung");
+
+  const uniqueTriggers = Array.from(new Set(triggers));
+  const risikostufe = uniqueTriggers.length >= 3 ? "hoch" : uniqueTriggers.length >= 1 ? "mittel" : "niedrig";
+  const risikobegruendung = risikostufe === "hoch"
+    ? `Erhöhte Risikolage aufgrund von ${uniqueTriggers.join(", ")}. Fachlich ist eine enge Verzahnung mit DSFA, TOM und Reviewsteuerung angezeigt.`
+    : risikostufe === "mittel"
+      ? `Erkennbare Risikotreiber: ${uniqueTriggers.join(", ")}. Verarbeitung sollte dokumentiert überprüft und bei Änderungen erneut bewertet werden.`
+      : "Aktuell keine besonderen Risikotreiber aus VVT-Sicht erkennbar; Standardrisiko bei dokumentierter TOM- und Löschkonzept-Steuerung.";
+
+  return {
+    risikostufe,
+    risikoTriggers: uniqueTriggers,
+    risikobegruendung,
+    risikopruefungAm: source?.risikopruefungAm || new Date().toISOString().slice(0, 10),
+    dsfa: source?.dsfa || risikostufe === "hoch",
+  };
+}
+
+function getVvtRiskBadgeClass(level: string) {
+  if (level === "hoch") return "border-red-500/40 text-red-600";
+  if (level === "mittel") return "border-yellow-500/40 text-yellow-600";
+  return "border-emerald-500/40 text-emerald-600";
+}
 const vvtTemplates: Record<string, any> = {
   none: null,
   personalverwaltung: {
@@ -1281,14 +1336,37 @@ const vvtTemplates: Record<string, any> = {
 function VvtForm({ initial, onSave, onCancel }: any) {
   const { t } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
-  const [form, setForm] = useState({ bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", ...initial });
+  const [form, setForm] = useState(() => {
+    const base = { bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", risikostufe: "niedrig", risikobegruendung: "", risikoTriggers: "[]", risikopruefungAm: "", ...initial };
+    const assessment = deriveVvtRiskAssessment(base);
+    return { ...base, ...assessment, risikoTriggers: JSON.stringify(assessment.risikoTriggers), ...initial };
+  });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
     const template = vvtTemplates[value];
     if (!template) return;
-    setForm((p: any) => ({ ...p, ...template }));
+    setForm((p: any) => {
+      const next = { ...p, ...template };
+      const assessment = deriveVvtRiskAssessment(next);
+      return { ...next, ...assessment, risikoTriggers: JSON.stringify(assessment.risikoTriggers) };
+    });
   };
+
+  useEffect(() => {
+    setForm((prev: any) => {
+      const assessment = deriveVvtRiskAssessment(prev);
+      const nextTriggers = JSON.stringify(assessment.risikoTriggers);
+      if (
+        prev.risikostufe === assessment.risikostufe &&
+        prev.risikobegruendung === assessment.risikobegruendung &&
+        prev.risikopruefungAm === assessment.risikopruefungAm &&
+        prev.dsfa === assessment.dsfa &&
+        prev.risikoTriggers === nextTriggers
+      ) return prev;
+      return { ...prev, ...assessment, risikoTriggers: nextTriggers };
+    });
+  }, [form.bezeichnung, form.zweck, form.datenkategorien, form.betroffenePersonen, form.empfaenger, form.drittlandtransfer, form.dsfa]);
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1332,6 +1410,15 @@ function VvtForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRecipients")}</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtTomHint")}</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">Risikostufe</Label>
+          <Select value={form.risikostufe || "niedrig"} onValueChange={v => set("risikostufe", v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{VVT_RISIKO_STUFEN.map(level => <SelectItem key={level} value={level} className="text-xs capitalize">{level}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1"><Label className="text-xs">Risikoprüfung am</Label><Input type="date" value={form.risikopruefungAm || ""} onChange={e => set("risikopruefungAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Risikotreiber / Trigger</Label><Textarea value={parseVvtRiskTriggers(form.risikoTriggers).join("\n")} onChange={e => set("risikoTriggers", JSON.stringify(normalizeTextList(e.target.value)))} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">Fachliche Risikobewertung</Label><Textarea value={form.risikobegruendung || ""} onChange={e => set("risikobegruendung", e.target.value)} className="text-sm min-h-16" /></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dsfa" checked={!!form.dsfa} onChange={e => set("dsfa", e.target.checked)} className="rounded" /><Label htmlFor="dsfa" className="text-xs">{t("dsfaRequired")}</Label></div>
         <div className="flex items-center gap-2"><input type="checkbox" id="dritt" checked={!!form.drittlandtransfer} onChange={e => set("drittlandtransfer", e.target.checked)} className="rounded" /><Label htmlFor="dritt" className="text-xs">{t("thirdCountryTransfer")}</Label></div>
       </div>
@@ -1500,6 +1587,7 @@ function VvtPage() {
             {filteredData.map((item: any) => {
               const linkedDsfa = dsfa.filter((entry: any) => entry.vvtId === item.id);
               const hasRequiredButMissingDsfa = item.dsfa && linkedDsfa.length === 0;
+              const riskTriggers = parseVvtRiskTriggers(item.risikoTriggers);
               return (
                 <Card key={item.id} className="group hover:border-border/80 transition-colors">
                   <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -1509,6 +1597,8 @@ function VvtPage() {
                         <p className="text-sm font-medium truncate">{item.bezeichnung}</p>
                         <p className="text-xs text-muted-foreground truncate">{item.rechtsgrundlage || "Keine Rechtsgrundlage"}{item.dsfa ? " · DSFA erforderlich" : ""}</p>
                         <p className="text-xs text-muted-foreground truncate">{linkedDsfa.length > 0 ? `Verknüpfte DSFA: ${linkedDsfa.map((entry: any) => entry.titel).join(", ")}` : item.dsfa ? "Noch keine verknüpfte DSFA" : "Keine DSFA-Verknüpfung erforderlich"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.risikobegruendung || "Keine fachliche Risikobewertung dokumentiert."}</p>
+                        <p className="text-xs text-muted-foreground truncate">{riskTriggers.length > 0 ? `Trigger: ${riskTriggers.join(", ")}` : `Risikoprüfung: ${item.risikopruefungAm || "offen"}`}</p>
                       </div>
                     </div>
                     <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
@@ -1516,6 +1606,7 @@ function VvtPage() {
                         {item.drittlandtransfer && <Badge variant="outline" className="text-xs">Drittland</Badge>}
                         {item.dsfa && linkedDsfa.length > 0 && <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600">DSFA verknüpft</Badge>}
                         {hasRequiredButMissingDsfa && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">DSFA fehlt</Badge>}
+                        <Badge variant="outline" className={`text-xs ${getVvtRiskBadgeClass(String(item.risikostufe || "niedrig"))}`}>Risiko: {String(item.risikostufe || "niedrig")}</Badge>
                         <StatusBadge value={item.status} />
                       </div>
                       <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
