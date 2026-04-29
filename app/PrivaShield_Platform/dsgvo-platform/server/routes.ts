@@ -61,14 +61,14 @@ function getJwtSecret(): string {
   return JWT_SECRET;
 }
 
-function readCookieToken(req: Request): string | null {
+function readNamedCookie(req: Request, name: string): string | null {
   const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return null;
 
   for (const part of cookieHeader.split(";")) {
     const trimmed = part.trim();
-    if (!trimmed.startsWith("privashield_auth=")) continue;
-    const rawValue = trimmed.slice("privashield_auth=".length);
+    if (!trimmed.startsWith(`${name}=`)) continue;
+    const rawValue = trimmed.slice(name.length + 1);
     if (!rawValue) return null;
     try {
       return decodeURIComponent(rawValue);
@@ -78,6 +78,10 @@ function readCookieToken(req: Request): string | null {
   }
 
   return null;
+}
+
+function readCookieToken(req: Request): string | null {
+  return readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
 }
 
 function setAuthCookie(res: Response, token: string) {
