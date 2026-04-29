@@ -595,6 +595,8 @@ function Dashboard() {
   const copilotAvvOhnePruefungItems = copilotAvvItems.filter((item: any) => !String(item?.pruefFaellig || "").trim());
   const copilotVvtOhneDsfaItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
   const copilotStatusVorhanden = copilotVvtItems.length > 0 || copilotDsfaItems.length > 0 || copilotAvvItems.length > 0 || copilotTomItems.length > 0;
+  const vvtMitHohemRisikoItems = vvt.filter((entry: any) => String(entry?.risikostufe || "").toLowerCase() === "hoch");
+  const vvtMitReviewBedarfItems = vvt.filter((entry: any) => String(entry?.risikostufe || "").toLowerCase() === "mittel" || !!entry?.drittlandtransfer);
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
   const pdcaOffenItems = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const pdcaReviewFaelligItems = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
@@ -610,6 +612,8 @@ function Dashboard() {
     pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
+    vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
+    vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
   const deriveGovernanceMeta = (title: string, severity: string) => {
     const normalizedTitle = String(title || "").toLowerCase();
@@ -1434,26 +1438,28 @@ function VvtPage() {
   const { t } = useI18n();
   const [location, setLocation] = useLocation();
   const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("vvt");
   const { data: dsfa = [] } = useModuleData("dsfa");
   const { data: loeschkonzept = [] } = useModuleData("loeschkonzept");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
   const { data: mandanten = [] } = useQuery({ queryKey: ["/api/mandanten"], queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()) });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag">("all");
+  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag" | "high-risk" | "review-needed">("all");
   const [vvtSort, setVvtSortState] = useState<"name-asc" | "name-desc" | "status" | "drittland">("name-asc");
 
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawQuickFilter = route.searchParams.get("filter");
     const rawSort = route.searchParams.get("sort");
-    setQuickFilterState(rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch" || rawQuickFilter === "copilot" || rawQuickFilter === "copilot-missing-dsfa-flag" ? rawQuickFilter : "all");
+    setQuickFilterState(rawQuickFilter === "missing-dsfa" || rawQuickFilter === "drittland" || rawQuickFilter === "missing-loesch" || rawQuickFilter === "copilot" || rawQuickFilter === "copilot-missing-dsfa-flag" || rawQuickFilter === "high-risk" || rawQuickFilter === "review-needed" ? rawQuickFilter : "all");
     setVvtSortState(rawSort === "name-desc" || rawSort === "status" || rawSort === "drittland" ? rawSort : "name-asc");
   }, [location]);
 
-  const updateVvtRouteState = (nextFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag", nextSort: "name-asc" | "name-desc" | "status" | "drittland") => {
+  const updateVvtRouteState = (nextFilter: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag" | "high-risk" | "review-needed", nextSort: "name-asc" | "name-desc" | "status" | "drittland") => {
     const next = new URL(location, "https://privashield.local");
     if (nextFilter === "all") next.searchParams.delete("filter");
     else next.searchParams.set("filter", nextFilter);
@@ -1462,7 +1468,7 @@ function VvtPage() {
     setLocation(`${next.pathname}${next.search}`);
   };
 
-  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag") => {
+  const setQuickFilter = (value: "all" | "missing-dsfa" | "drittland" | "missing-loesch" | "copilot" | "copilot-missing-dsfa-flag" | "high-risk" | "review-needed") => {
     setQuickFilterState(value);
     updateVvtRouteState(value, vvtSort);
   };
@@ -1478,6 +1484,8 @@ function VvtPage() {
 
   const vvtMitFehlenderDsfa = data.filter((item: any) => item.dsfa && !dsfa.some((entry: any) => entry.vvtId === item.id));
   const vvtMitDrittlandtransfer = data.filter((item: any) => !!item.drittlandtransfer);
+  const vvtMitHohemRisiko = data.filter((item: any) => String(item?.risikostufe || "").toLowerCase() === "hoch");
+  const vvtMitReviewBedarf = data.filter((item: any) => String(item?.risikostufe || "").toLowerCase() === "mittel" || !!item.drittlandtransfer);
   const vvtOhneLoeschbezug = data.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase()));
   const copilotVvtItems = data.filter((item: any) => /copilot/i.test(String(item?.bezeichnung || "")));
   const copilotVvtOhneDsfaFlagItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
@@ -1485,6 +1493,8 @@ function VvtPage() {
     if (quickFilter === "missing-dsfa") return vvtMitFehlenderDsfa.some((entry: any) => entry.id === item.id);
     if (quickFilter === "drittland") return vvtMitDrittlandtransfer.some((entry: any) => entry.id === item.id);
     if (quickFilter === "missing-loesch") return vvtOhneLoeschbezug.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "high-risk") return vvtMitHohemRisiko.some((entry: any) => entry.id === item.id);
+    if (quickFilter === "review-needed") return vvtMitReviewBedarf.some((entry: any) => entry.id === item.id);
     if (quickFilter === "copilot") return copilotVvtItems.some((entry: any) => entry.id === item.id);
     if (quickFilter === "copilot-missing-dsfa-flag") return copilotVvtOhneDsfaFlagItems.some((entry: any) => entry.id === item.id);
     return true;
@@ -1495,6 +1505,133 @@ function VvtPage() {
     return String(a.bezeichnung || "").localeCompare(String(b.bezeichnung || ""), "de");
   });
   const activeMandantName = mandanten.find((m: any) => m.id === activeMandantId)?.name || `Mandant #${activeMandantId ?? "?"}`;
+  const buildVvtTaskDraft = (item: any, kind: "high-risk" | "missing-dsfa" | "review-needed" | "drittland" | "missing-loesch") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "high-risk": {
+        title: `VVT-Risiko priorisieren: ${item.bezeichnung}`,
+        priority: "hoch",
+        description: `Hohe Risikostufe im VVT. Bitte DSFA-Verknüpfung, TOM-Niveau, Rechtsgrundlage und erforderliche Governance-/Folgemaßnahmen für "${item.bezeichnung}" priorisiert prüfen und dokumentieren.`,
+      },
+      "missing-dsfa": {
+        title: `DSFA zu VVT ergänzen: ${item.bezeichnung}`,
+        priority: "hoch",
+        description: `Für die Verarbeitung "${item.bezeichnung}" ist eine DSFA-Pflicht markiert, aber noch keine DSFA verknüpft. Bitte DSFA anlegen oder bestehenden Bezug dokumentiert herstellen.`,
+      },
+      "review-needed": {
+        title: `VVT-Review durchführen: ${item.bezeichnung}`,
+        priority: "mittel",
+        description: `Die Verarbeitung "${item.bezeichnung}" weist dokumentierten Reviewbedarf auf. Bitte Risikologik, DSFA-/Transferlage, TOM-Hinweise und Aktualität fachlich überprüfen.`,
+      },
+      drittland: {
+        title: `Drittlandtransfer prüfen: ${item.bezeichnung}`,
+        priority: "mittel",
+        description: `Für die Verarbeitung "${item.bezeichnung}" ist ein Drittlandtransfer dokumentiert. Bitte Transfergrundlage, SCC/TIA, Anbieterprüfung und ergänzende Schutzmaßnahmen prüfen.`,
+      },
+      "missing-loesch": {
+        title: `Löschkonzept verknüpfen: ${item.bezeichnung}`,
+        priority: "mittel",
+        description: `Für die Verarbeitung "${item.bezeichnung}" fehlt ein sauberer Löschkonzept-Bezug. Bitte Löschklasse, Frist und operativen Bezug fachlich ergänzen.`,
+      },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({
+      draftTitle: draft.title,
+      draftPriority: draft.priority,
+      draftDescription: draft.description,
+      draftSource: `vvt:${kind}:${item.id}`,
+    });
+    return {
+      href: `/aufgaben?${params.toString()}`,
+      title: draft.title,
+      priority: draft.priority,
+      description: draft.description,
+      source: `vvt:${kind}:${item.id}`,
+    };
+  };
+
+  const createVvtFollowUpTask = async (item: any, kind: "high-risk" | "missing-dsfa" | "review-needed" | "drittland" | "missing-loesch") => {
+    const draft = buildVvtTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "review-needed" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: "",
+      kategorie: "governance",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createVvtPdcaCycle = async (item: any, kind: "high-risk" | "missing-dsfa" | "review-needed" | "drittland" | "missing-loesch") => {
+    const source = `vvt-pdca:${kind}:${item.id}`;
+    const existingPdca = (await qc.fetchQuery({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`], queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}/pdca`).then(r => r.json()) })) as any[];
+    const duplicate = existingPdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "high-risk" || kind === "missing-dsfa" ? 14 : 30));
+    const pdcaTitle = kind === "high-risk"
+      ? `PDCA VVT-Hochrisiko: ${item.bezeichnung}`
+      : kind === "missing-dsfa"
+        ? `PDCA DSFA-Nachzug: ${item.bezeichnung}`
+        : kind === "drittland"
+          ? `PDCA Drittlandtransfer: ${item.bezeichnung}`
+          : kind === "missing-loesch"
+            ? `PDCA Löschkonzept-Bezug: ${item.bezeichnung}`
+            : `PDCA VVT-Review: ${item.bezeichnung}`;
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: pdcaTitle,
+      beschreibung: `Automatisch vorbereiteter Verbesserungszyklus aus VVT-Risikologik für \"${item.bezeichnung}\".`,
+      zyklusTyp: kind === "review-needed" ? "management_review" : "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "high-risk" || kind === "missing-dsfa" ? "hoch" : "mittel",
+      verantwortlicher: item.verantwortlicher || "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: item.risikobegruendung || "",
+      planMassnahmen: kind === "high-risk"
+        ? "DSFA-Verknüpfung, TOM-Prüfung, Governance-Freigabe und Maßnahmennachverfolgung priorisieren."
+        : kind === "missing-dsfa"
+          ? "DSFA fachlich anlegen oder verknüpfen und Risikologik dokumentieren."
+          : kind === "drittland"
+            ? "Transfergrundlage, Anbieterprüfung und zusätzliche Schutzmaßnahmen bewerten."
+            : kind === "missing-loesch"
+              ? "Löschklasse, Frist und operativen Löschkonzept-Bezug ergänzen."
+              : "Review, Aktualität und Angemessenheit der Verarbeitung fachlich überprüfen.",
+      planZiele: `Risikologik für ${item.bezeichnung} strukturiert nachsteuern.`,
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${pdcaTitle} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum PDCA-Zyklus \"${pdcaTitle}\" für die Verarbeitung \"${item.bezeichnung}\".`,
+      typ: kind === "review-needed" ? "review" : "task",
+      prioritaet: kind === "high-risk" || kind === "missing-dsfa" ? "hoch" : "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.verantwortlicher || "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "vvt",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: pdcaTitle });
+  };
 
   return (
     <MandantGuard>
@@ -1518,11 +1655,13 @@ function VvtPage() {
               <CardDescription>Schneller Blick auf typische Lücken in Verarbeitungstätigkeiten</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
+              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtMitHohemRisiko.length === 0 && vvtMitReviewBedarf.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
                 <p className="text-muted-foreground">Aktuell keine auffälligen VVT-Lücken.</p>
               ) : (
                 <>
                   {vvtMitFehlenderDsfa.length > 0 && <p className="text-red-400">DSFA erforderlich, aber nicht verknüpft: {vvtMitFehlenderDsfa.length}</p>}
+                  {vvtMitHohemRisiko.length > 0 && <p className="text-red-400">VVT mit hoher Risikostufe: {vvtMitHohemRisiko.length}</p>}
+                  {vvtMitReviewBedarf.length > 0 && <p className="text-yellow-400">VVT mit dokumentiertem Reviewbedarf: {vvtMitReviewBedarf.length}</p>}
                   {vvtMitDrittlandtransfer.length > 0 && <p className="text-yellow-400">VVT mit Drittlandtransfer: {vvtMitDrittlandtransfer.length}</p>}
                   {vvtOhneLoeschbezug.length > 0 && <p className="text-yellow-400">VVT ohne Löschkonzept-Bezug: {vvtOhneLoeschbezug.length}</p>}
                 </>
@@ -1536,29 +1675,43 @@ function VvtPage() {
               <CardDescription>Konkrete Verarbeitungstätigkeiten mit priorisiertem Prüfbedarf</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
+              {vvtMitFehlenderDsfa.length === 0 && vvtMitDrittlandtransfer.length === 0 && vvtMitHohemRisiko.length === 0 && vvtMitReviewBedarf.length === 0 && vvtOhneLoeschbezug.length === 0 ? (
                 <p className="text-muted-foreground">Aktuell keine priorisierten VVT-Fälle.</p>
               ) : (
                 <>
+                  {vvtMitHohemRisiko.slice(0, 3).map((item: any) => (
+                    <div key={`high-risk-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">Hohes VVT-Risiko: {item.bezeichnung}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: DSFA priorisiert anlegen oder verknüpfen und Maßnahmen-/Governance-Folge dokumentieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("high-risk")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtFollowUpTask(item, "high-risk")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtPdcaCycle(item, "high-risk")}>PDCA erzeugen</Button><Link href={buildVvtTaskDraft(item, "high-risk").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link><Link href="/dsfa?filter=missing-vvt"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
+                    </div>
+                  ))}
                   {vvtMitFehlenderDsfa.slice(0, 3).map((item: any) => (
                     <div key={`missing-dsfa-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                       <p className="font-medium text-red-700 dark:text-red-400">DSFA fehlt: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: DSFA anlegen oder vorhandene DSFA mit diesem VVT verknüpfen.</p>
-                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-dsfa")}>Nur diese Fälle</Button><Link href="/dsfa?filter=missing-vvt"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-dsfa")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtFollowUpTask(item, "missing-dsfa")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtPdcaCycle(item, "missing-dsfa")}>PDCA erzeugen</Button><Link href={buildVvtTaskDraft(item, "missing-dsfa").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link><Link href="/dsfa?filter=missing-vvt"><a className="text-xs text-primary hover:underline self-center">Zur DSFA-Seite</a></Link></div>
+                    </div>
+                  ))}
+                  {vvtMitReviewBedarf.slice(0, 3).filter((item: any) => String(item?.risikostufe || "").toLowerCase() === "mittel").map((item: any) => (
+                    <div key={`review-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">VVT mit Reviewbedarf: {item.bezeichnung}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Review-/Prüfaufgabe auslösen und DSFA-/Transfer-/TOM-Lage fachlich nachziehen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("review-needed")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtFollowUpTask(item, "review-needed")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtPdcaCycle(item, "review-needed")}>PDCA erzeugen</Button><Link href={buildVvtTaskDraft(item, "review-needed").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
                     </div>
                   ))}
                   {vvtMitDrittlandtransfer.slice(0, 3).map((item: any) => (
                     <div key={`transfer-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Drittlandtransfer: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Transfergrundlage, Anbieterprüfung und TOM-/AVV-Lage gezielt prüfen.</p>
-                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("drittland")}>Nur diese Fälle</Button></div>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("drittland")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtFollowUpTask(item, "drittland")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtPdcaCycle(item, "drittland")}>PDCA erzeugen</Button><Link href={buildVvtTaskDraft(item, "drittland").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
                     </div>
                   ))}
                   {vvtOhneLoeschbezug.slice(0, 3).map((item: any) => (
                     <div key={`retention-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                       <p className="font-medium text-yellow-700 dark:text-yellow-400">Ohne Löschkonzept-Bezug: {item.bezeichnung}</p>
                       <p className="text-xs text-muted-foreground">Empfehlung: Eintrag mit passender Löschklasse bzw. Löschregel verknüpfen.</p>
-                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-loesch")}>Nur diese Fälle</Button></div>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-loesch")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtFollowUpTask(item, "missing-loesch")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createVvtPdcaCycle(item, "missing-loesch")}>PDCA erzeugen</Button><Link href={buildVvtTaskDraft(item, "missing-loesch").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
                     </div>
                   ))}
                 </>
@@ -1570,6 +1723,8 @@ function VvtPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant={quickFilter === "all" ? "default" : "outline"} onClick={() => setQuickFilter("all")}>Alle</Button>
               <Button type="button" size="sm" variant={quickFilter === "missing-dsfa" ? "default" : "outline"} onClick={() => setQuickFilter("missing-dsfa")}>DSFA fehlt</Button>
+              <Button type="button" size="sm" variant={quickFilter === "high-risk" ? "default" : "outline"} onClick={() => setQuickFilter("high-risk")}>Hohes Risiko</Button>
+              <Button type="button" size="sm" variant={quickFilter === "review-needed" ? "default" : "outline"} onClick={() => setQuickFilter("review-needed")}>Reviewbedarf</Button>
               <Button type="button" size="sm" variant={quickFilter === "drittland" ? "default" : "outline"} onClick={() => setQuickFilter("drittland")}>Drittlandtransfer</Button>
               <Button type="button" size="sm" variant={quickFilter === "missing-loesch" ? "default" : "outline"} onClick={() => setQuickFilter("missing-loesch")}>Ohne Löschkonzept</Button>
               <Button type="button" size="sm" variant={quickFilter === "copilot" ? "default" : "outline"} onClick={() => setQuickFilter("copilot")}>Copilot</Button>
@@ -1979,10 +2134,15 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
     set("vvtId", Number.isFinite(vvtId) ? vvtId : undefined);
     const selectedVvt = vvts.find((item: any) => item.id === vvtId);
     if (!selectedVvt) return;
+    const riskTriggers = parseVvtRiskTriggers(selectedVvt.risikoTriggers);
+    const inferredRiskTitle = riskTriggers[0] || selectedVvt.risikostufe || "Risikotreiber";
+    const inferredProbability = String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "hoch" : String(selectedVvt.risikostufe || "").toLowerCase() === "mittel" ? "mittel" : "niedrig";
+    const inferredSeverity = String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "hoch" : selectedVvt.drittlandtransfer ? "mittel" : "mittel";
     setForm((p: any) => ({
       ...p,
       vvtId,
       titel: p.titel || selectedVvt.bezeichnung || "",
+      beschreibung: p.beschreibung || selectedVvt.risikobegruendung || selectedVvt.zweck || "",
       zweck: p.zweck || selectedVvt.zweck || "",
       rechtsgrundlage: p.rechtsgrundlage || selectedVvt.rechtsgrundlage || "",
       empfaenger: p.empfaenger || selectedVvt.empfaenger || "",
@@ -1990,10 +2150,24 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
       technologienSysteme: p.technologienSysteme || selectedVvt.tomHinweis || "",
       verantwortlicherBereich: p.verantwortlicherBereich || selectedVvt.verantwortlicher || "",
       speicherbegrenzungBewertung: p.speicherbegrenzungBewertung || selectedVvt.loeschfrist || "",
+      notwendigkeit: p.notwendigkeit || `Verarbeitung aus VVT übernommen. Fachliche Prüfung insbesondere im Hinblick auf ${selectedVvt.risikostufe || "dokumentierte"} Risikolage erforderlich.`,
+      massnahmen: p.massnahmen || (riskTriggers.length > 0 ? `Aus VVT abgeleitete Schwerpunkte: ${riskTriggers.join(", ")}. Bestehende TOM prüfen und ergänzende Maßnahmen dokumentieren.` : p.massnahmen),
+      restrisikoBegruendung: p.restrisikoBegruendung || selectedVvt.risikobegruendung || "",
+      art36Erforderlich: p.art36Erforderlich || String(selectedVvt.risikostufe || "").toLowerCase() === "hoch",
+      naechstePruefungAm: p.naechstePruefungAm || selectedVvt.risikopruefungAm || "",
       risiken: p.risiken.map((risk: any, index: number) => index === 0 ? {
         ...risk,
+        titel: risk.titel || inferredRiskTitle,
+        beschreibung: risk.beschreibung || selectedVvt.risikobegruendung || selectedVvt.zweck || "",
         betroffeneGruppen: risk.betroffeneGruppen || selectedVvt.betroffenePersonen || "",
         datenarten: risk.datenarten || selectedVvt.datenkategorien || "",
+        ursache: risk.ursache || riskTriggers.join(", ") || selectedVvt.bezeichnung || "",
+        bestehendeKontrollen: risk.bestehendeKontrollen || selectedVvt.tomHinweis || "",
+        eintrittswahrscheinlichkeit: risk.eintrittswahrscheinlichkeit || inferredProbability,
+        schweregrad: risk.schweregrad || inferredSeverity,
+        inhärentesRisiko: risk.inhärentesRisiko || (String(selectedVvt.risikostufe || "").toLowerCase() || inferredSeverity),
+        restrisiko: risk.restrisiko || (String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "mittel" : inferredProbability),
+        weitereMassnahmen: risk.weitereMassnahmen || (riskTriggers.length > 0 ? `Prüfung und Nachsteuerung zu: ${riskTriggers.join(", ")}` : ""),
       } : risk),
     }));
   };
