@@ -64,13 +64,20 @@ function getJwtSecret(): string {
 function readCookieToken(req: Request): string | null {
   const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return null;
-  const match = cookieHeader.match(/(?:^|;\s*)privashield_auth=([^;]+)/);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
+
+  for (const part of cookieHeader.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith("privashield_auth=")) continue;
+    const rawValue = trimmed.slice("privashield_auth=".length);
+    if (!rawValue) return null;
+    try {
+      return decodeURIComponent(rawValue);
+    } catch {
+      return rawValue;
+    }
   }
+
+  return null;
 }
 
 function setAuthCookie(res: Response, token: string) {
