@@ -2677,40 +2677,357 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
 
 function DatenpannenPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("datenpannen");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const { toast } = useToast();
+  const [incidentFilter, setIncidentFilterState] = useState<"all" | "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34" | "open">("all");
+  const [incidentSort, setIncidentSortState] = useState<"deadline" | "severity" | "newest" | "title">("deadline");
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    const rawSort = route.searchParams.get("sort");
+    setIncidentFilterState(rawFilter === "critical" || rawFilter === "reportable-open" || rawFilter === "deadline-72h" || rawFilter === "deadline-missed" || rawFilter === "notify-art34" || rawFilter === "open" ? rawFilter : "all");
+    setIncidentSortState(rawSort === "severity" || rawSort === "newest" || rawSort === "title" ? rawSort : "deadline");
+  }, [location]);
+
+  const updateIncidentRouteState = (nextFilter: "all" | "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34" | "open", nextSort: "deadline" | "severity" | "newest" | "title") => {
+    const next = new URL(location, "https://privashield.local");
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "deadline") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+
+  const setIncidentFilter = (value: "all" | "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34" | "open") => {
+    setIncidentFilterState(value);
+    updateIncidentRouteState(value, incidentSort);
+  };
+  const setIncidentSort = (value: "deadline" | "severity" | "newest" | "title") => {
+    setIncidentSortState(value);
+    updateIncidentRouteState(incidentFilter, value);
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
+
+  const now = Date.now();
+  const severityWeight: Record<string, number> = { kritisch: 0, hoch: 1, mittel: 2, niedrig: 3 };
+  const parseIncidentDateTime = (item: any, fieldDate: string, fieldTime?: string) => {
+    const date = String(item?.[fieldDate] || "").trim();
+    if (!date) return null;
+    const time = String(fieldTime ? item?.[fieldTime] || "" : "").trim() || "00:00";
+    const normalized = time.length === 5 ? `${time}:00` : time;
+    const parsed = new Date(`${date}T${normalized}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const parseDeadline = (item: any) => {
+    const raw = String(item?.frist72h || "").trim();
+    if (!raw) return null;
+    const normalized = raw.length === 16 ? `${raw}:00` : raw;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const formatDeadline = (date: Date | null) => date ? date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "offen";
+  const getIncidentMeta = (item: any) => {
+    const discoveredAt = parseIncidentDateTime(item, "entdecktAm", "entdecktUm");
+    const deadline = parseDeadline(item) || (discoveredAt ? new Date(discoveredAt.getTime() + 72 * 60 * 60 * 1000) : null);
+    const authorityReported = !!String(item?.behoerdeMeldung || item?.gemeldetAm || "").trim() || String(item?.status || "") === "gemeldet";
+    const isOpen = String(item?.status || "") !== "abgeschlossen";
+    const isCritical = ["kritisch", "hoch"].includes(String(item?.schwere || "").toLowerCase()) || Number(item?.betroffenePersonen || 0) >= 500;
+    const shouldNotifyDataSubjects = !!item?.meldepflichtig && !item?.betroffenInformiert && ["kritisch", "hoch"].includes(String(item?.schwere || "").toLowerCase());
+    const hoursLeft = deadline ? (deadline.getTime() - now) / (1000 * 60 * 60) : null;
+    const deadlineMissed = !!item?.meldepflichtig && isOpen && !authorityReported && hoursLeft !== null && hoursLeft < 0;
+    const deadlineSoon = !!item?.meldepflichtig && isOpen && !authorityReported && hoursLeft !== null && hoursLeft >= 0 && hoursLeft <= 72;
+    const reportableOpen = !!item?.meldepflichtig && isOpen && !authorityReported;
+    const urgency = deadlineMissed ? "Frist überschritten" : deadlineSoon ? `72h-Frist läuft (${Math.max(0, Math.round(hoursLeft || 0))}h)` : reportableOpen ? "Meldung offen" : authorityReported ? "Meldung dokumentiert" : "Interne Prüfung";
+    return { discoveredAt, deadline, authorityReported, isOpen, isCritical, shouldNotifyDataSubjects, hoursLeft, deadlineMissed, deadlineSoon, reportableOpen, urgency };
+  };
+
+  const criticalItems = data.filter((item: any) => getIncidentMeta(item).isCritical);
+  const reportableOpenItems = data.filter((item: any) => getIncidentMeta(item).reportableOpen);
+  const deadlineSoonItems = data.filter((item: any) => getIncidentMeta(item).deadlineSoon);
+  const deadlineMissedItems = data.filter((item: any) => getIncidentMeta(item).deadlineMissed);
+  const notifyArt34Items = data.filter((item: any) => getIncidentMeta(item).shouldNotifyDataSubjects);
+  const openItems = data.filter((item: any) => getIncidentMeta(item).isOpen);
+
+  const buildIncidentTaskDraft = (item: any, kind: "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34") => {
+    const meta = getIncidentMeta(item);
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      critical: {
+        title: `Kritische Datenpanne priorisieren: ${item.titel}`,
+        priority: "kritisch",
+        description: `Für die Datenpanne "${item.titel}" besteht erhöhter Handlungsdruck. Bitte Sachverhalt, Sofortmaßnahmen, Meldepflicht, Art.-34-Benachrichtigung und Nachsteuerung priorisiert dokumentieren. Aktueller Fokus: ${meta.urgency}.`,
+      },
+      "reportable-open": {
+        title: `Behördenmeldung absichern: ${item.titel}`,
+        priority: "hoch",
+        description: `Die Datenpanne "${item.titel}" ist als meldepflichtig markiert, aber eine dokumentierte Behördenmeldung fehlt noch. Bitte Art.-33-Bewertung, Meldestatus, Nachweis und interne Freigabe kurzfristig abschließen.`,
+      },
+      "deadline-72h": {
+        title: `72h-Frist steuern: ${item.titel}`,
+        priority: "kritisch",
+        description: `Für die Datenpanne "${item.titel}" läuft die 72h-Frist. Bitte Behördenmeldung, Freigabe und Kommunikationskette sofort nachziehen. Friststand: ${meta.urgency}.`,
+      },
+      "deadline-missed": {
+        title: `Fristüberschreitung aufarbeiten: ${item.titel}`,
+        priority: "kritisch",
+        description: `Für die Datenpanne "${item.titel}" ist die 72h-Frist überschritten, ohne dokumentierte Behördenmeldung. Bitte rechtliche Bewertung, Begründung der Verzögerung und Sofortmaßnahmen umgehend dokumentieren.`,
+      },
+      "notify-art34": {
+        title: `Art.-34-Benachrichtigung prüfen: ${item.titel}`,
+        priority: "hoch",
+        description: `Die Datenpanne "${item.titel}" ist schwerwiegend und Betroffene wurden noch nicht als informiert dokumentiert. Bitte Benachrichtigungspflicht, Inhalt und Zeitpunkt der Kommunikation prüfen und dokumentieren.`,
+      },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({
+      draftTitle: draft.title,
+      draftPriority: draft.priority,
+      draftDescription: draft.description,
+      draftSource: `datenpanne:${kind}:${item.id}`,
+    });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `datenpanne:${kind}:${item.id}` };
+  };
+
+  const createIncidentFollowUpTask = async (item: any, kind: "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34") => {
+    const draft = buildIncidentTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "reportable-open" || kind === "notify-art34" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: getIncidentMeta(item).deadline ? getIncidentMeta(item).deadline!.toISOString().split("T")[0] : "",
+      kategorie: "datenpanne",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createIncidentPdcaCycle = async (item: any, kind: "critical" | "reportable-open" | "deadline-72h" | "deadline-missed" | "notify-art34") => {
+    const source = `datenpanne-pdca:${kind}:${item.id}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const meta = getIncidentMeta(item);
+    const reviewDate = meta.deadline ? new Date(meta.deadline.getTime()) : new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "deadline-missed" || kind === "critical" ? 7 : 14));
+    const titleMap: Record<string, string> = {
+      critical: `PDCA Kritische Datenpanne: ${item.titel}`,
+      "reportable-open": `PDCA Behördenmeldung: ${item.titel}`,
+      "deadline-72h": `PDCA 72h-Friststeuerung: ${item.titel}`,
+      "deadline-missed": `PDCA Fristüberschreitung: ${item.titel}`,
+      "notify-art34": `PDCA Betroffeneninformation: ${item.titel}`,
+    };
+    const measuresMap: Record<string, string> = {
+      critical: "Sofortmaßnahmen, Meldepflichtbewertung, Kommunikations- und Verbesserungsmaßnahmen priorisiert steuern.",
+      "reportable-open": "Behördenmeldung, Nachweisführung und interne Freigabekette kurzfristig abschließen.",
+      "deadline-72h": "72h-Frist aktiv steuern, Meldung vorbereiten und Verantwortlichkeiten eng nachhalten.",
+      "deadline-missed": "Verspätungsbegründung dokumentieren, Behördenkommunikation absichern und Ursachenanalyse durchführen.",
+      "notify-art34": "Benachrichtigung betroffener Personen rechtlich prüfen, Inhalt abstimmen und Versand dokumentieren.",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: `Automatisch vorbereiteter PDCA-Zyklus zur Datenpanne "${item.titel}". Fokus: ${meta.urgency}.`,
+      zyklusTyp: kind === "reportable-open" || kind === "notify-art34" ? "management_review" : "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "critical" || kind === "deadline-72h" || kind === "deadline-missed" ? "kritisch" : "hoch",
+      verantwortlicher: "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `${item.beschreibung || ""}\n\nSchwere: ${item.schwere || "—"}\nBetroffene Personen: ${item.betroffenePersonen || 0}`.trim(),
+      planMassnahmen: measuresMap[kind],
+      planZiele: `Rechtssichere und nachvollziehbare Abarbeitung der Datenpanne "${item.titel}" sicherstellen.`,
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum PDCA-Zyklus "${titleMap[kind]}" für die Datenpanne "${item.titel}".`,
+      typ: kind === "reportable-open" || kind === "notify-art34" ? "review" : "task",
+      prioritaet: kind === "critical" || kind === "deadline-72h" || kind === "deadline-missed" ? "kritisch" : "hoch",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "datenpanne",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
+
+  const filteredData = data.filter((item: any) => {
+    const meta = getIncidentMeta(item);
+    if (incidentFilter === "critical") return meta.isCritical;
+    if (incidentFilter === "reportable-open") return meta.reportableOpen;
+    if (incidentFilter === "deadline-72h") return meta.deadlineSoon;
+    if (incidentFilter === "deadline-missed") return meta.deadlineMissed;
+    if (incidentFilter === "notify-art34") return meta.shouldNotifyDataSubjects;
+    if (incidentFilter === "open") return meta.isOpen;
+    return true;
+  }).slice().sort((a: any, b: any) => {
+    const metaA = getIncidentMeta(a);
+    const metaB = getIncidentMeta(b);
+    if (incidentSort === "severity") return (severityWeight[String(a?.schwere || "niedrig").toLowerCase()] ?? 99) - (severityWeight[String(b?.schwere || "niedrig").toLowerCase()] ?? 99) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    if (incidentSort === "newest") return (metaB.discoveredAt?.getTime() || 0) - (metaA.discoveredAt?.getTime() || 0);
+    if (incidentSort === "title") return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    const deadlineA = metaA.deadline?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const deadlineB = metaB.deadline?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    return deadlineA - deadlineB || (severityWeight[String(a?.schwere || "niedrig").toLowerCase()] ?? 99) - (severityWeight[String(b?.schwere || "niedrig").toLowerCase()] ?? 99);
+  });
+
   return (
     <MandantGuard>
       <PageHeader title={t("incidentsTitle")} desc={t("incidentsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Panne</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
-        <div className="space-y-2">
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Datenpannen erfasst.</CardContent></Card>}
-          {data.map((item: any) => (
-            <Card key={item.id} className={`group hover:border-border/80 transition-colors ${item.schwere === "kritisch" ? "border-red-500/30" : ""}`}>
-              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <AlertCircle className={`h-4 w-4 shrink-0 ${item.schwere === "kritisch" ? "text-red-400" : item.schwere === "hoch" ? "text-orange-400" : "text-yellow-400"}`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.titel}</p>
-                    <p className="text-xs text-muted-foreground">{item.entdecktAm} · {item.betroffenePersonen} Betr. · {item.meldepflichtig ? "Meldepflichtig" : "Nicht meldepflichtig"}</p>
-                  </div>
-                </div>
-                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                  <StatusBadge value={item.schwere} />
-                  <StatusBadge value={item.status} />
-                  <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Datenpannen-Quick-Check</CardTitle>
+              <CardDescription>Schneller Blick auf meldepflichtige, fristkritische und besonders schwere Vorfälle</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {data.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine Datenpannen dokumentiert.</p>
+              ) : (
+                <>
+                  {deadlineMissedItems.length > 0 && <p className="text-red-400">72h-Frist überschritten ohne dokumentierte Meldung: {deadlineMissedItems.length}</p>}
+                  {deadlineSoonItems.length > 0 && <p className="text-red-400">Meldepflichtige Vorfälle innerhalb der 72h-Frist: {deadlineSoonItems.length}</p>}
+                  {reportableOpenItems.length > 0 && <p className="text-yellow-400">Meldepflichtige Vorfälle ohne abgeschlossene Behördenmeldung: {reportableOpenItems.length}</p>}
+                  {notifyArt34Items.length > 0 && <p className="text-yellow-400">Schwere Vorfälle mit möglicher Art.-34-Benachrichtigung: {notifyArt34Items.length}</p>}
+                  {criticalItems.length > 0 && <p className="text-yellow-400">Kritische/hohe Datenpannen: {criticalItems.length}</p>}
+                  {openItems.length > 0 && <p className="text-muted-foreground">Offene Vorfälle insgesamt: {openItems.length}</p>}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Datenpannen-Fokusliste</CardTitle>
+              <CardDescription>Priorisierte Vorfälle mit unmittelbarem Melde-, Frist- oder Kommunikationsbedarf</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {criticalItems.length === 0 && reportableOpenItems.length === 0 && deadlineSoonItems.length === 0 && deadlineMissedItems.length === 0 && notifyArt34Items.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine priorisierten Datenpannen-Fälle.</p>
+              ) : (
+                <>
+                  {deadlineMissedItems.slice(0, 3).map((item: any) => (
+                    <div key={`deadline-missed-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">72h-Frist überschritten: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Verzögerung rechtlich begründen, Behördenkommunikation absichern und Sofortmaßnahmen dokumentieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setIncidentFilter("deadline-missed")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentFollowUpTask(item, "deadline-missed")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentPdcaCycle(item, "deadline-missed")}>PDCA erzeugen</Button><Link href={buildIncidentTaskDraft(item, "deadline-missed").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {deadlineSoonItems.slice(0, 3).map((item: any) => (
+                    <div key={`deadline-72h-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">72h-Frist aktiv: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Meldeweg, Freigabe und Nachweisführung sofort nachhalten.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setIncidentFilter("deadline-72h")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentFollowUpTask(item, "deadline-72h")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentPdcaCycle(item, "deadline-72h")}>PDCA erzeugen</Button><Link href={buildIncidentTaskDraft(item, "deadline-72h").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {reportableOpenItems.slice(0, 3).filter((item: any) => !getIncidentMeta(item).deadlineSoon && !getIncidentMeta(item).deadlineMissed).map((item: any) => (
+                    <div key={`reportable-open-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Meldepflichtig, Meldung offen: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Art.-33-Bewertung, Meldung und Nachweisführung strukturiert abschließen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setIncidentFilter("reportable-open")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentFollowUpTask(item, "reportable-open")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentPdcaCycle(item, "reportable-open")}>PDCA erzeugen</Button><Link href={buildIncidentTaskDraft(item, "reportable-open").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {notifyArt34Items.slice(0, 3).map((item: any) => (
+                    <div key={`notify-art34-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Art.-34-Prüfbedarf: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Betroffeneninformation rechtlich bewerten und Kommunikationsstatus dokumentieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setIncidentFilter("notify-art34")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentFollowUpTask(item, "notify-art34")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentPdcaCycle(item, "notify-art34")}>PDCA erzeugen</Button><Link href={buildIncidentTaskDraft(item, "notify-art34").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {criticalItems.slice(0, 3).filter((item: any) => !getIncidentMeta(item).deadlineSoon && !getIncidentMeta(item).deadlineMissed).map((item: any) => (
+                    <div key={`critical-${item.id}`} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
+                      <p className="font-medium text-orange-700 dark:text-orange-400">Kritische/hohe Datenpanne: {item.titel}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Lagebewertung, Sofortmaßnahmen und Governance-Nachsteuerung priorisieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setIncidentFilter("critical")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentFollowUpTask(item, "critical")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createIncidentPdcaCycle(item, "critical")}>PDCA erzeugen</Button><Link href={buildIncidentTaskDraft(item, "critical").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant={incidentFilter === "all" ? "default" : "outline"} onClick={() => setIncidentFilter("all")}>Alle</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "critical" ? "default" : "outline"} onClick={() => setIncidentFilter("critical")}>Kritisch/Hoch</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "reportable-open" ? "default" : "outline"} onClick={() => setIncidentFilter("reportable-open")}>Meldepflicht offen</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "deadline-72h" ? "default" : "outline"} onClick={() => setIncidentFilter("deadline-72h")}>72h-Frist läuft</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "deadline-missed" ? "default" : "outline"} onClick={() => setIncidentFilter("deadline-missed")}>72h überschritten</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "notify-art34" ? "default" : "outline"} onClick={() => setIncidentFilter("notify-art34")}>Art. 34 prüfen</Button>
+              <Button type="button" size="sm" variant={incidentFilter === "open" ? "default" : "outline"} onClick={() => setIncidentFilter("open")}>Nur offen</Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Sortierung:</span>
+              <Button type="button" size="sm" variant={incidentSort === "deadline" ? "default" : "outline"} onClick={() => setIncidentSort("deadline")}>Frist zuerst</Button>
+              <Button type="button" size="sm" variant={incidentSort === "severity" ? "default" : "outline"} onClick={() => setIncidentSort("severity")}>Schwere</Button>
+              <Button type="button" size="sm" variant={incidentSort === "newest" ? "default" : "outline"} onClick={() => setIncidentSort("newest")}>Neueste</Button>
+              <Button type="button" size="sm" variant={incidentSort === "title" ? "default" : "outline"} onClick={() => setIncidentSort("title")}>Titel</Button>
+            </div>
+
+            {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Datenpannen für die aktuelle Filterung.</CardContent></Card>}
+            {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Datenpannen erfasst.</CardContent></Card>}
+            {filteredData.map((item: any) => {
+              const meta = getIncidentMeta(item);
+              return (
+                <Card key={item.id} className={`group hover:border-border/80 transition-colors ${meta.deadlineMissed || String(item.schwere || "").toLowerCase() === "kritisch" ? "border-red-500/30" : meta.deadlineSoon ? "border-orange-500/30" : ""}`}>
+                  <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <AlertCircle className={`h-4 w-4 shrink-0 ${meta.deadlineMissed || String(item.schwere || "").toLowerCase() === "kritisch" ? "text-red-400" : String(item.schwere || "").toLowerCase() === "hoch" || meta.deadlineSoon ? "text-orange-400" : "text-yellow-400"}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.titel}</p>
+                        <p className="text-xs text-muted-foreground">{item.entdecktAm} · {item.betroffenePersonen} Betr. · {item.meldepflichtig ? "Meldepflichtig" : "Nicht meldepflichtig"}</p>
+                        <p className="text-xs text-muted-foreground truncate">72h-Frist: {formatDeadline(meta.deadline)} · {meta.urgency}</p>
+                        <p className="text-xs text-muted-foreground truncate">Behördenmeldung: {meta.authorityReported ? "dokumentiert" : "offen"}{meta.shouldNotifyDataSubjects ? " · Art. 34 prüfen" : ""}</p>
+                      </div>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {meta.deadlineMissed && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">72h überschritten</Badge>}
+                        {!meta.deadlineMissed && meta.deadlineSoon && <Badge variant="outline" className="text-xs border-orange-500/40 text-orange-600">72h läuft</Badge>}
+                        {meta.reportableOpen && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Meldung offen</Badge>}
+                        {meta.shouldNotifyDataSubjects && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Art. 34</Badge>}
+                        <StatusBadge value={item.schwere} />
+                        <StatusBadge value={item.status} />
+                      </div>
+                      <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
