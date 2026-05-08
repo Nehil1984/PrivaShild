@@ -536,6 +536,11 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/pdca`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: datenpannen = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/datenpannen`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/datenpannen`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: interneNotizen = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then(r => r.json()) : [],
@@ -604,6 +609,40 @@ function Dashboard() {
   const auditFollowUpsOhneAuditDashboard = auditFollowUpsDashboard.filter((item: any) => !item.verknuepftesAuditId);
   const pdcaFollowUpTasksDashboard = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
   const pdcaFollowUpTasksOffenDashboard = pdcaFollowUpTasksDashboard.filter((item: any) => String(item.status || "") !== "erledigt");
+  const parseIncidentDashboardDateTime = (item: any, fieldDate: string, fieldTime?: string) => {
+    const date = String(item?.[fieldDate] || "").trim();
+    if (!date) return null;
+    const time = String(fieldTime ? item?.[fieldTime] || "" : "").trim() || "00:00";
+    const normalized = time.length === 5 ? `${time}:00` : time;
+    const parsed = new Date(`${date}T${normalized}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const parseIncidentDashboardDeadline = (item: any) => {
+    const raw = String(item?.frist72h || "").trim();
+    if (!raw) return null;
+    const normalized = raw.length === 16 ? `${raw}:00` : raw;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const getIncidentDashboardMeta = (item: any) => {
+    const discoveredAt = parseIncidentDashboardDateTime(item, "entdecktAm", "entdecktUm");
+    const deadline = parseIncidentDashboardDeadline(item) || (discoveredAt ? new Date(discoveredAt.getTime() + 72 * 60 * 60 * 1000) : null);
+    const authorityReported = !!String(item?.behoerdeMeldung || item?.gemeldetAm || "").trim() || String(item?.status || "") === "gemeldet";
+    const isOpen = String(item?.status || "") !== "abgeschlossen";
+    const severity = String(item?.schwere || "").toLowerCase();
+    const isCritical = ["kritisch", "hoch"].includes(severity) || Number(item?.betroffenePersonen || 0) >= 500;
+    const shouldNotifyDataSubjects = !!item?.meldepflichtig && !item?.betroffenInformiert && ["kritisch", "hoch"].includes(severity);
+    const hoursLeft = deadline ? (deadline.getTime() - Date.now()) / (1000 * 60 * 60) : null;
+    const deadlineMissed = !!item?.meldepflichtig && isOpen && !authorityReported && hoursLeft !== null && hoursLeft < 0;
+    const deadlineSoon = !!item?.meldepflichtig && isOpen && !authorityReported && hoursLeft !== null && hoursLeft >= 0 && hoursLeft <= 72;
+    const reportableOpen = !!item?.meldepflichtig && isOpen && !authorityReported;
+    return { discoveredAt, deadline, authorityReported, isOpen, isCritical, shouldNotifyDataSubjects, deadlineMissed, deadlineSoon, reportableOpen };
+  };
+  const incidentCriticalItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).isCritical);
+  const incidentReportableOpenItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).reportableOpen);
+  const incidentDeadlineSoonItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).deadlineSoon);
+  const incidentDeadlineMissedItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).deadlineMissed);
+  const incidentNotifyArt34Items = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).shouldNotifyDataSubjects);
   const dashboardGovernanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const dashboardGovernanceFindings = [
     kritischeAufgaben.length > 0 ? { severity: "hoch", title: `${kritischeAufgaben.length} kritische offene Aufgaben`, recommendation: "Kritische Aufgaben sofort priorisieren und Verantwortliche mit Termin festziehen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch" } : null,
@@ -612,6 +651,11 @@ function Dashboard() {
     pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
+    incidentDeadlineMissedItems.length > 0 ? { severity: "hoch", title: `${incidentDeadlineMissedItems.length} Datenpannen mit überschrittener 72h-Frist`, recommendation: "Fristüberschreitungen rechtlich bewerten, Behördenkommunikation absichern und Begründung dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=deadline-missed" } : null,
+    incidentDeadlineSoonItems.length > 0 ? { severity: "hoch", title: `${incidentDeadlineSoonItems.length} Datenpannen innerhalb der 72h-Frist`, recommendation: "Meldewege, Freigaben und Nachweise sofort priorisieren, solange die Frist aktiv läuft.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=deadline-72h" } : null,
+    incidentReportableOpenItems.length > 0 ? { severity: "mittel", title: `${incidentReportableOpenItems.length} meldepflichtige Datenpannen ohne Abschluss`, recommendation: "Art.-33-Bewertung, Meldestatus und Dokumentation strukturiert nachziehen.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=reportable-open" } : null,
+    incidentNotifyArt34Items.length > 0 ? { severity: "mittel", title: `${incidentNotifyArt34Items.length} Datenpannen mit Art.-34-Prüfbedarf`, recommendation: "Benachrichtigung betroffener Personen rechtlich prüfen und Kommunikationsstatus dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=notify-art34" } : null,
+    incidentCriticalItems.length > 0 ? { severity: "mittel", title: `${incidentCriticalItems.length} kritische oder hohe Datenpannen`, recommendation: "Schwere Vorfälle mit Sofortmaßnahmen, Lagebewertung und Verbesserungssteuerung priorisieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=critical" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -890,6 +934,10 @@ function Dashboard() {
               {dsfaMitArt36 > 0 && <p className="text-red-400">DSFA mit Art.-36-Prüfbedarf: {dsfaMitArt36}</p>}
               {dsfaReviewFaellig > 0 && <p className="text-yellow-400">Überfällige DSFA-Reviews: {dsfaReviewFaellig}</p>}
               {dsfaMitHohemRestrisiko > 0 && <p className="text-red-400">DSFA mit hohem Restrisiko: {dsfaMitHohemRestrisiko}</p>}
+              {incidentDeadlineMissedItems.length > 0 && <p className="text-red-400">Datenpannen mit überschrittener 72h-Frist: {incidentDeadlineMissedItems.length}</p>}
+              {incidentDeadlineSoonItems.length > 0 && <p className="text-red-400">Datenpannen innerhalb der 72h-Frist: {incidentDeadlineSoonItems.length}</p>}
+              {incidentReportableOpenItems.length > 0 && <p className="text-yellow-400">Meldepflichtige Datenpannen ohne Abschluss: {incidentReportableOpenItems.length}</p>}
+              {incidentNotifyArt34Items.length > 0 && <p className="text-yellow-400">Datenpannen mit Art.-34-Prüfbedarf: {incidentNotifyArt34Items.length}</p>}
             </CardContent>
           </Card>
 
