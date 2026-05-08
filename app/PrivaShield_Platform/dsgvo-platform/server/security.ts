@@ -163,28 +163,23 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return res.status(403).json({ message: "Origin-Prüfung fehlgeschlagen" });
   }
 
+  const authCookie = readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
+  const secret = getJwtSecret();
+
+  if (authCookie && secret) {
+    try {
+      jwt.verify(authCookie, secret);
+      return next();
+    } catch {
+      // fall through to explicit csrf token validation
+    }
+  }
+
   const cookieToken = readNamedCookie(req, CSRF_COOKIE_NAME);
   const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers[CSRF_HEADER_NAME.toUpperCase()];
   const requestToken = Array.isArray(headerToken) ? headerToken[0] : headerToken;
 
-  let jwtCsrfToken: string | null = null;
-  const authCookie = readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
-  const secret = getJwtSecret();
-  if (authCookie && secret) {
-    try {
-      const payload = jwt.verify(authCookie, secret) as any;
-      if (payload && typeof payload.csrfToken === "string" && payload.csrfToken.trim()) {
-        jwtCsrfToken = payload.csrfToken.trim();
-      }
-    } catch {
-      jwtCsrfToken = null;
-    }
-  }
-
-  const matchesCookie = !!cookieToken && !!requestToken && cookieToken === requestToken;
-  const matchesJwt = !!jwtCsrfToken && !!requestToken && jwtCsrfToken === requestToken;
-
-  if (!requestToken || (!matchesCookie && !matchesJwt)) {
+  if (!cookieToken || !requestToken || cookieToken !== requestToken) {
     return res.status(403).json({ message: "CSRF-Prüfung fehlgeschlagen" });
   }
 
