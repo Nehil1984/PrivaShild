@@ -1966,66 +1966,328 @@ function AvvForm({ initial, onSave, onCancel }: any) {
 function AvvPage() {
   const { t } = useI18n();
   const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("avv");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
-  const [avvFilter, setAvvFilterState] = useState<"all" | "copilot" | "copilot-missing-review">("all");
+  const [avvFilter, setAvvFilterState] = useState<"all" | "copilot" | "copilot-missing-review" | "review-overdue" | "review-missing" | "inactive" | "scc-missing">("all");
+  const [avvSort, setAvvSortState] = useState<"review" | "name" | "status">("review");
   const { toast } = useToast();
+
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawFilter = route.searchParams.get("filter");
-    setAvvFilterState(rawFilter === "copilot" || rawFilter === "copilot-missing-review" ? rawFilter : "all");
+    const rawSort = route.searchParams.get("sort");
+    setAvvFilterState(rawFilter === "copilot" || rawFilter === "copilot-missing-review" || rawFilter === "review-overdue" || rawFilter === "review-missing" || rawFilter === "inactive" || rawFilter === "scc-missing" ? rawFilter : "all");
+    setAvvSortState(rawSort === "name" || rawSort === "status" ? rawSort : "review");
   }, [location]);
-  const setAvvFilter = (value: "all" | "copilot" | "copilot-missing-review") => {
-    setAvvFilterState(value);
+
+  const updateAvvRouteState = (nextFilter: "all" | "copilot" | "copilot-missing-review" | "review-overdue" | "review-missing" | "inactive" | "scc-missing", nextSort: "review" | "name" | "status") => {
     const next = new URL(location, "https://privashield.local");
-    if (value === "all") next.searchParams.delete("filter");
-    else next.searchParams.set("filter", value);
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "review") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
     setLocation(`${next.pathname}${next.search}`);
   };
+
+  const setAvvFilter = (value: "all" | "copilot" | "copilot-missing-review" | "review-overdue" | "review-missing" | "inactive" | "scc-missing") => {
+    setAvvFilterState(value);
+    updateAvvRouteState(value, avvSort);
+  };
+  const setAvvSort = (value: "review" | "name" | "status") => {
+    setAvvSortState(value);
+    updateAvvRouteState(avvFilter, value);
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
+
+  const today = new Date().toISOString().split("T")[0];
+  const isCopilotAvv = (item: any) => /microsoft/i.test(String(item?.auftragsverarbeiter || "")) || /copilot/i.test(String(item?.gegenstand || ""));
+  const needsScc = (item: any) => isCopilotAvv(item) || /usa|us|drittland|international|global/i.test(String(item?.gegenstand || "")) || /microsoft|aws|google|openai/i.test(String(item?.auftragsverarbeiter || ""));
+  const getAvvMeta = (item: any) => {
+    const reviewDate = String(item?.pruefFaellig || "").trim();
+    const reviewMissing = !reviewDate;
+    const reviewOverdue = !!reviewDate && reviewDate < today;
+    const inactive = ["entwurf", "gekündigt", "inaktiv", "abgelaufen"].includes(String(item?.status || "").toLowerCase());
+    const sccMissing = needsScc(item) && !item?.sccs;
+    return { reviewDate, reviewMissing, reviewOverdue, inactive, sccMissing, isCopilot: isCopilotAvv(item) };
+  };
+
+  const avvReviewOverdueItems = data.filter((item: any) => getAvvMeta(item).reviewOverdue);
+  const avvReviewMissingItems = data.filter((item: any) => getAvvMeta(item).reviewMissing);
+  const avvInactiveItems = data.filter((item: any) => getAvvMeta(item).inactive);
+  const avvSccMissingItems = data.filter((item: any) => getAvvMeta(item).sccMissing);
+  const copilotMissingReviewItems = data.filter((item: any) => getAvvMeta(item).isCopilot && getAvvMeta(item).reviewMissing);
+
+  const buildAvvTaskDraft = (item: any, kind: "review-overdue" | "review-missing" | "inactive" | "scc-missing" | "copilot-missing-review") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "review-overdue": {
+        title: `AVV-Review nachziehen: ${item.auftragsverarbeiter}`,
+        priority: "hoch",
+        description: `Der AVV mit "${item.auftragsverarbeiter}" ist zur Prüfung fällig oder überfällig. Bitte Vertrag, TOM-Nachweise, Subdienstleister und dokumentierte Prüfergebnisse kurzfristig aktualisieren.`,
+      },
+      "review-missing": {
+        title: `Prüffälligkeit für AVV ergänzen: ${item.auftragsverarbeiter}`,
+        priority: "mittel",
+        description: `Für den AVV mit "${item.auftragsverarbeiter}" fehlt bislang ein Reviewtermin. Bitte Prüffrist, Verantwortlichkeit und Prüfturnus verbindlich festlegen.`,
+      },
+      inactive: {
+        title: `AVV-Status klären: ${item.auftragsverarbeiter}`,
+        priority: "mittel",
+        description: `Der AVV mit "${item.auftragsverarbeiter}" ist nicht aktiv oder nur im Entwurfsstatus. Bitte Vertragslage, operative Nutzung und notwendige Folgeaktionen prüfen.`,
+      },
+      "scc-missing": {
+        title: `SCC-/Drittlandlage prüfen: ${item.auftragsverarbeiter}`,
+        priority: "hoch",
+        description: `Beim AVV mit "${item.auftragsverarbeiter}" besteht ein möglicher Drittland- oder internationaler Kontext, aber SCCs sind nicht dokumentiert. Bitte Transfergrundlage, DPA und Schutzmaßnahmen prüfen.`,
+      },
+      "copilot-missing-review": {
+        title: `Copilot-/Microsoft-AVV prüfen: ${item.auftragsverarbeiter}`,
+        priority: "hoch",
+        description: `Für den Copilot-/Microsoft-bezogenen AVV mit "${item.auftragsverarbeiter}" fehlt ein dokumentierter Reviewtermin. Bitte DPA, Product Terms, Subprozessoren und Prüffälligkeit nachziehen.`,
+      },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({
+      draftTitle: draft.title,
+      draftPriority: draft.priority,
+      draftDescription: draft.description,
+      draftSource: `avv:${kind}:${item.id}`,
+    });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `avv:${kind}:${item.id}` };
+  };
+
+  const createAvvFollowUpTask = async (item: any, kind: "review-overdue" | "review-missing" | "inactive" | "scc-missing" | "copilot-missing-review") => {
+    const draft = buildAvvTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: "review",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: getAvvMeta(item).reviewDate || "",
+      kategorie: "avv",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createAvvPdcaCycle = async (item: any, kind: "review-overdue" | "review-missing" | "inactive" | "scc-missing" | "copilot-missing-review") => {
+    const source = `avv-pdca:${kind}:${item.id}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "review-overdue" || kind === "scc-missing" || kind === "copilot-missing-review" ? 14 : 30));
+    const titleMap: Record<string, string> = {
+      "review-overdue": `PDCA AVV-Review: ${item.auftragsverarbeiter}`,
+      "review-missing": `PDCA Prüffälligkeit AVV: ${item.auftragsverarbeiter}`,
+      inactive: `PDCA AVV-Statusklärung: ${item.auftragsverarbeiter}`,
+      "scc-missing": `PDCA SCC-/Transferprüfung: ${item.auftragsverarbeiter}`,
+      "copilot-missing-review": `PDCA Copilot-/Microsoft-AVV: ${item.auftragsverarbeiter}`,
+    };
+    const measureMap: Record<string, string> = {
+      "review-overdue": "AVV, TOM-Nachweise, Subdienstleister und Prüfdokumentation kurzfristig aktualisieren.",
+      "review-missing": "Prüfturnus, Reviewdatum und Verantwortlichkeit verbindlich festlegen.",
+      inactive: "Vertragsstatus, operative Nutzung und etwaige Neuverhandlung oder Beendigung bewerten.",
+      "scc-missing": "Transfergrundlage, SCCs, Drittlandkontext und zusätzliche Schutzmaßnahmen bewerten.",
+      "copilot-missing-review": "DPA/Product Terms, Subprozessoren, EU-Data-Boundary-Kontext und Reviewturnus dokumentieren.",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: `Automatisch vorbereiteter Verbesserungszyklus für den AVV mit "${item.auftragsverarbeiter}".`,
+      zyklusTyp: "management_review",
+      status: "geplant",
+      prioritaet: kind === "review-overdue" || kind === "scc-missing" || kind === "copilot-missing-review" ? "hoch" : "mittel",
+      verantwortlicher: item.avKontaktName || "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `${item.gegenstand || ""}\n\nStatus: ${item.status || "—"}\nPrüffälligkeit: ${item.pruefFaellig || "offen"}`.trim(),
+      planMassnahmen: measureMap[kind],
+      planZiele: `AVV-Lage zu ${item.auftragsverarbeiter} belastbar dokumentieren und nachsteuern.`,
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum PDCA-Zyklus "${titleMap[kind]}" für den AVV mit "${item.auftragsverarbeiter}".`,
+      typ: "review",
+      prioritaet: kind === "review-overdue" || kind === "scc-missing" || kind === "copilot-missing-review" ? "hoch" : "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.avKontaktName || "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "avv",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
+
   const filteredData = data.filter((item: any) => {
-    const isCopilot = /microsoft/i.test(String(item?.auftragsverarbeiter || "")) || /copilot/i.test(String(item?.gegenstand || ""));
-    if (avvFilter === "copilot") return isCopilot;
-    if (avvFilter === "copilot-missing-review") return isCopilot && !String(item?.pruefFaellig || "").trim();
+    const meta = getAvvMeta(item);
+    if (avvFilter === "copilot") return meta.isCopilot;
+    if (avvFilter === "copilot-missing-review") return meta.isCopilot && meta.reviewMissing;
+    if (avvFilter === "review-overdue") return meta.reviewOverdue;
+    if (avvFilter === "review-missing") return meta.reviewMissing;
+    if (avvFilter === "inactive") return meta.inactive;
+    if (avvFilter === "scc-missing") return meta.sccMissing;
     return true;
+  }).slice().sort((a: any, b: any) => {
+    const metaA = getAvvMeta(a);
+    const metaB = getAvvMeta(b);
+    if (avvSort === "name") return String(a.auftragsverarbeiter || "").localeCompare(String(b.auftragsverarbeiter || ""), "de");
+    if (avvSort === "status") return String(a.status || "").localeCompare(String(b.status || ""), "de") || String(a.auftragsverarbeiter || "").localeCompare(String(b.auftragsverarbeiter || ""), "de");
+    const reviewA = metaA.reviewDate || "9999-12-31";
+    const reviewB = metaB.reviewDate || "9999-12-31";
+    return reviewA.localeCompare(reviewB, "de") || String(a.auftragsverarbeiter || "").localeCompare(String(b.auftragsverarbeiter || ""), "de");
   });
+
   return (
     <MandantGuard>
       <PageHeader title={t("avvTitle")} desc={t("avvDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neu</Button>} />
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <Button type="button" size="sm" variant={avvFilter === "all" ? "default" : "outline"} onClick={() => setAvvFilter("all")}>Alle</Button>
-        <Button type="button" size="sm" variant={avvFilter === "copilot" ? "default" : "outline"} onClick={() => setAvvFilter("copilot")}>Copilot / Microsoft</Button>
-        <Button type="button" size="sm" variant={avvFilter === "copilot-missing-review" ? "default" : "outline"} onClick={() => setAvvFilter("copilot-missing-review")}>Ohne Prüffälligkeit</Button>
-      </div>
-      {isLoading ? <Skeleton className="h-32 w-full" /> : (
-        <div className="space-y-2">
-          {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine AVV-Verträge in dieser Ansicht.</CardContent></Card>}
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine AVV-Verträge vorhanden.</CardContent></Card>}
-          {filteredData.map((item: any) => (
-            <Card key={item.id} className="group hover:border-border/80 transition-colors">
-              <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Shield className="h-4 w-4 text-blue-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.auftragsverarbeiter}</p>
-                    <p className="text-xs text-muted-foreground">{item.gegenstand || "—"}{item.vertragsdatum ? ` · ${item.vertragsdatum}` : ""}{item.sccs ? " · SCCs vorhanden" : ""}</p>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">AVV-Quick-Check</CardTitle>
+            <CardDescription>Schneller Blick auf Reviewlücken, SCC-/Transferfragen und inaktive Vertragsstände</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {data.length === 0 ? (
+              <p className="text-muted-foreground">Aktuell keine AVV-Verträge dokumentiert.</p>
+            ) : (
+              <>
+                {avvReviewOverdueItems.length > 0 && <p className="text-red-400">Überfällige AVV-Reviews: {avvReviewOverdueItems.length}</p>}
+                {avvSccMissingItems.length > 0 && <p className="text-red-400">AVV mit möglichem SCC-/Drittlandbedarf ohne SCC-Markierung: {avvSccMissingItems.length}</p>}
+                {copilotMissingReviewItems.length > 0 && <p className="text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit: {copilotMissingReviewItems.length}</p>}
+                {avvReviewMissingItems.length > 0 && <p className="text-yellow-400">AVV ohne Reviewtermin: {avvReviewMissingItems.length}</p>}
+                {avvInactiveItems.length > 0 && <p className="text-muted-foreground">AVV mit nicht aktivem Status: {avvInactiveItems.length}</p>}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">AVV-Fokusliste</CardTitle>
+            <CardDescription>Priorisierte Vertrags- und Reviewfälle mit unmittelbarem Governance-Bedarf</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {avvReviewOverdueItems.length === 0 && avvReviewMissingItems.length === 0 && avvSccMissingItems.length === 0 && copilotMissingReviewItems.length === 0 && avvInactiveItems.length === 0 ? (
+              <p className="text-muted-foreground">Aktuell keine priorisierten AVV-Fälle.</p>
+            ) : (
+              <>
+                {avvReviewOverdueItems.slice(0, 3).map((item: any) => (
+                  <div key={`review-overdue-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                    <p className="font-medium text-red-700 dark:text-red-400">AVV-Review überfällig: {item.auftragsverarbeiter}</p>
+                    <p className="text-xs text-muted-foreground">Empfehlung: Review, Nachweise und Prüfergebnis kurzfristig aktualisieren.</p>
+                    <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setAvvFilter("review-overdue")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvFollowUpTask(item, "review-overdue")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvPdcaCycle(item, "review-overdue")}>PDCA erzeugen</Button><Link href={buildAvvTaskDraft(item, "review-overdue").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
                   </div>
-                </div>
-                <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                  <StatusBadge value={item.status} />
-                  <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                ))}
+                {avvSccMissingItems.slice(0, 3).map((item: any) => (
+                  <div key={`scc-missing-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                    <p className="font-medium text-red-700 dark:text-red-400">SCC-/Transferprüfung offen: {item.auftragsverarbeiter}</p>
+                    <p className="text-xs text-muted-foreground">Empfehlung: Transfergrundlage, SCCs und zusätzliche Schutzmaßnahmen bewerten.</p>
+                    <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setAvvFilter("scc-missing")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvFollowUpTask(item, "scc-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvPdcaCycle(item, "scc-missing")}>PDCA erzeugen</Button><Link href={buildAvvTaskDraft(item, "scc-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                  </div>
+                ))}
+                {copilotMissingReviewItems.slice(0, 3).map((item: any) => (
+                  <div key={`copilot-missing-review-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">Copilot-/Microsoft-AVV ohne Prüftermin: {item.auftragsverarbeiter}</p>
+                    <p className="text-xs text-muted-foreground">Empfehlung: DPA/Product Terms, Subprozessoren und Reviewturnus strukturiert nachziehen.</p>
+                    <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setAvvFilter("copilot-missing-review")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvFollowUpTask(item, "copilot-missing-review")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvPdcaCycle(item, "copilot-missing-review")}>PDCA erzeugen</Button><Link href={buildAvvTaskDraft(item, "copilot-missing-review").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                  </div>
+                ))}
+                {avvReviewMissingItems.slice(0, 3).filter((item: any) => !getAvvMeta(item).isCopilot).map((item: any) => (
+                  <div key={`review-missing-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">AVV ohne Reviewtermin: {item.auftragsverarbeiter}</p>
+                    <p className="text-xs text-muted-foreground">Empfehlung: Prüffälligkeit, Turnus und Verantwortlichkeit festziehen.</p>
+                    <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setAvvFilter("review-missing")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvFollowUpTask(item, "review-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvPdcaCycle(item, "review-missing")}>PDCA erzeugen</Button><Link href={buildAvvTaskDraft(item, "review-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                  </div>
+                ))}
+                {avvInactiveItems.slice(0, 3).map((item: any) => (
+                  <div key={`inactive-${item.id}`} className="rounded-lg border border-slate-500/20 bg-slate-500/5 p-3">
+                    <p className="font-medium text-slate-700 dark:text-slate-300">AVV-Status nicht aktiv: {item.auftragsverarbeiter}</p>
+                    <p className="text-xs text-muted-foreground">Empfehlung: Vertragsstand, Nutzung und Folgeentscheidungen fachlich klären.</p>
+                    <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setAvvFilter("inactive")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvFollowUpTask(item, "inactive")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAvvPdcaCycle(item, "inactive")}>PDCA erzeugen</Button><Link href={buildAvvTaskDraft(item, "inactive").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                  </div>
+                ))}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-2 mb-1 flex-wrap">
+          <Button type="button" size="sm" variant={avvFilter === "all" ? "default" : "outline"} onClick={() => setAvvFilter("all")}>Alle</Button>
+          <Button type="button" size="sm" variant={avvFilter === "review-overdue" ? "default" : "outline"} onClick={() => setAvvFilter("review-overdue")}>Review überfällig</Button>
+          <Button type="button" size="sm" variant={avvFilter === "review-missing" ? "default" : "outline"} onClick={() => setAvvFilter("review-missing")}>Ohne Reviewtermin</Button>
+          <Button type="button" size="sm" variant={avvFilter === "scc-missing" ? "default" : "outline"} onClick={() => setAvvFilter("scc-missing")}>SCC prüfen</Button>
+          <Button type="button" size="sm" variant={avvFilter === "inactive" ? "default" : "outline"} onClick={() => setAvvFilter("inactive")}>Nicht aktiv</Button>
+          <Button type="button" size="sm" variant={avvFilter === "copilot" ? "default" : "outline"} onClick={() => setAvvFilter("copilot")}>Copilot / Microsoft</Button>
+          <Button type="button" size="sm" variant={avvFilter === "copilot-missing-review" ? "default" : "outline"} onClick={() => setAvvFilter("copilot-missing-review")}>Copilot ohne Prüftermin</Button>
         </div>
-      )}
+        <div className="flex gap-2 mb-4 flex-wrap items-center">
+          <span className="text-xs text-muted-foreground">Sortierung:</span>
+          <Button type="button" size="sm" variant={avvSort === "review" ? "default" : "outline"} onClick={() => setAvvSort("review")}>Review</Button>
+          <Button type="button" size="sm" variant={avvSort === "name" ? "default" : "outline"} onClick={() => setAvvSort("name")}>Name</Button>
+          <Button type="button" size="sm" variant={avvSort === "status" ? "default" : "outline"} onClick={() => setAvvSort("status")}>Status</Button>
+        </div>
+        {isLoading ? <Skeleton className="h-32 w-full" /> : (
+          <div className="space-y-2">
+            {filteredData.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine AVV-Verträge in dieser Ansicht.</CardContent></Card>}
+            {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine AVV-Verträge vorhanden.</CardContent></Card>}
+            {filteredData.map((item: any) => {
+              const meta = getAvvMeta(item);
+              return (
+                <Card key={item.id} className={`group hover:border-border/80 transition-colors ${meta.reviewOverdue || meta.sccMissing ? "border-red-500/30" : meta.reviewMissing ? "border-yellow-500/30" : ""}`}>
+                  <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Shield className={`h-4 w-4 shrink-0 ${meta.reviewOverdue || meta.sccMissing ? "text-red-400" : meta.reviewMissing ? "text-yellow-400" : "text-blue-400"}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.auftragsverarbeiter}</p>
+                        <p className="text-xs text-muted-foreground">{item.gegenstand || "—"}{item.vertragsdatum ? ` · ${item.vertragsdatum}` : ""}{item.sccs ? " · SCCs vorhanden" : " · SCCs nicht markiert"}</p>
+                        <p className="text-xs text-muted-foreground">Prüffälligkeit: {meta.reviewDate || "offen"}{meta.isCopilot ? " · Copilot/Microsoft" : ""}{meta.inactive ? " · Status prüfen" : ""}</p>
+                      </div>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {meta.reviewOverdue && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Review überfällig</Badge>}
+                        {meta.reviewMissing && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Review offen</Badge>}
+                        {meta.sccMissing && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">SCC prüfen</Badge>}
+                        {meta.isCopilot && <Badge variant="outline" className="text-xs border-blue-500/40 text-blue-600">Copilot</Badge>}
+                        <StatusBadge value={item.status} />
+                      </div>
+                      <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer AVV" : "AVV bearbeiten"}</DialogTitle></DialogHeader></div>
           {modal && <AvvForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}
