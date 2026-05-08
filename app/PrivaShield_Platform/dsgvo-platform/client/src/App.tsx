@@ -640,6 +640,10 @@ function Dashboard() {
   const aiCheckContent = (() => {
     try { return aiCheckDocument?.inhalt ? JSON.parse(aiCheckDocument.inhalt) : null; } catch { return null; }
   })();
+  const employeePrivacyCheckDocument = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "beschaeftigten_datenschutz_check");
+  const employeePrivacyContent = (() => {
+    try { return employeePrivacyCheckDocument?.inhalt ? JSON.parse(employeePrivacyCheckDocument.inhalt) : null; } catch { return null; }
+  })();
   const aiChecklistValues = Object.values(aiCheckContent?.dsgvoCheckliste || {});
   const aiChecklistDone = aiChecklistValues.filter(Boolean).length;
   const aiChecklistTotal = aiChecklistValues.length;
@@ -648,6 +652,13 @@ function Dashboard() {
   const aiIncompleteChecklistDashboard = !!aiCheckContent?.kiImEinsatz && aiChecklistTotal > 0 && aiChecklistDone < aiChecklistTotal;
   const aiDsfaGapDashboard = !!aiCheckContent?.kiImEinsatz && !!aiCheckContent?.dsfaErforderlich && (!aiCheckContent?.dsfaDurchgefuehrt || String(aiCheckContent?.verknuepfteDsfaId || "none") === "none");
   const aiToolInventoryGapDashboard = !!aiCheckContent?.kiImEinsatz && (!Array.isArray(aiCheckContent?.tools) || aiCheckContent.tools.length === 0);
+  const employeeTrainingOverdueDashboard = !!employeePrivacyContent?.naechsteSchulungAm && String(employeePrivacyContent.naechsteSchulungAm) < new Date().toISOString().split("T")[0];
+  const employeeMissingPrivacyNoticeDashboard = !employeePrivacyContent?.datenschutzerklaerungVorhanden;
+  const employeeMissingConfidentialityDashboard = !employeePrivacyContent?.verpflichtungVerschwiegenheit;
+  const employeeMissingTelecomDashboard = !employeePrivacyContent?.verpflichtungTelekommunikation;
+  const employeeMissingTrainingDashboard = !employeePrivacyContent?.schulungDurchgefuehrt;
+  const employeeMissingEvidenceDashboard = !String(employeePrivacyContent?.nachweise || "").trim();
+  const employeeMissingTargetGroupsDashboard = !Array.isArray(employeePrivacyContent?.zielgruppen) || employeePrivacyContent.zielgruppen.length === 0;
   const getAuditDashboardMeta = (item: any) => {
     const abweichungen = String(item?.abweichungen || "").split("\n").filter((line: string) => line.trim());
     const todos = String(item?.empfehlungen || "").split("\n").filter((line: string) => line.trim());
@@ -790,6 +801,13 @@ function Dashboard() {
     auditOverdueNextAuditDashboardItems.length > 0 ? { severity: "mittel", title: `${auditOverdueNextAuditDashboardItems.length} Audits mit überfälligem nächstem Termin`, recommendation: "Überfällige Auditzyklen terminlich neu aufsetzen und Verantwortliche festziehen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=overdue-next-audit" } : null,
     auditMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${auditMissingOwnerDashboardItems.length} Audits ohne klare Verantwortlichkeit`, recommendation: "Verantwortliche für offene Auditmaßnahmen und Empfehlungen verbindlich zuordnen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=missing-owner" } : null,
     auditInProgressNoTaskDashboardItems.length > 0 ? { severity: "mittel", title: `${auditInProgressNoTaskDashboardItems.length} Audit-Follow-ups ohne offene Folgeaufgabe`, recommendation: "Laufende Audit-Follow-ups operativ absichern und mit mindestens einer Folgeaufgabe hinterlegen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=in-progress-no-task" } : null,
+    employeeTrainingOverdueDashboard ? { severity: "hoch", title: "Beschäftigtenschulung überfällig", recommendation: "Überfällige Datenschutzschulung kurzfristig terminieren und Nachweise sichern.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=training-overdue" } : null,
+    employeeMissingPrivacyNoticeDashboard ? { severity: "hoch", title: "Beschäftigtendatenschutz ohne Datenschutzerklärung", recommendation: "Datenschutzerklärung für Beschäftigte und den Prüfzyklus kurzfristig dokumentieren.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-privacy-notice" } : null,
+    employeeMissingConfidentialityDashboard ? { severity: "hoch", title: "Beschäftigtendatenschutz ohne Vertraulichkeitsverpflichtung", recommendation: "Verpflichtung auf Vertraulichkeit/Verschwiegenheit für Beschäftigte operativ absichern.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-confidentiality" } : null,
+    employeeMissingTelecomDashboard ? { severity: "mittel", title: "Beschäftigtendatenschutz ohne Telekommunikationsverpflichtung", recommendation: "Fernmeldegeheimnis- bzw. Telekommunikationsverpflichtung dokumentieren und zuordnen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-telecom" } : null,
+    employeeMissingTrainingDashboard ? { severity: "mittel", title: "Beschäftigtendatenschutz ohne dokumentierte Schulung", recommendation: "Schulungspfad, Zielgruppen und Terminierung für Beschäftigte nachziehen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-training" } : null,
+    employeeMissingEvidenceDashboard ? { severity: "mittel", title: "Beschäftigtendatenschutz ohne Nachweise", recommendation: "Belastbare Nachweise zu Unterrichtung, Verpflichtung und Schulung ergänzen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-evidence" } : null,
+    employeeMissingTargetGroupsDashboard ? { severity: "niedrig", title: "Beschäftigtendatenschutz ohne definierte Zielgruppen", recommendation: "Relevante Beschäftigtengruppen für Unterrichtung und Schulung verbindlich festlegen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-target-groups" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -1105,6 +1123,13 @@ function Dashboard() {
               {auditOverdueNextAuditDashboardItems.length > 0 && <p className="text-yellow-400">Audits mit überfälligem nächstem Termin: {auditOverdueNextAuditDashboardItems.length}</p>}
               {auditMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">Audits ohne klare Verantwortlichkeit: {auditMissingOwnerDashboardItems.length}</p>}
               {auditInProgressNoTaskDashboardItems.length > 0 && <p className="text-yellow-400">Audit-Follow-ups ohne offene Folgeaufgabe: {auditInProgressNoTaskDashboardItems.length}</p>}
+              {employeeTrainingOverdueDashboard && <p className="text-red-400">Beschäftigtenschulung überfällig</p>}
+              {employeeMissingPrivacyNoticeDashboard && <p className="text-red-400">Beschäftigtendatenschutz ohne Datenschutzerklärung</p>}
+              {employeeMissingConfidentialityDashboard && <p className="text-red-400">Beschäftigtendatenschutz ohne Vertraulichkeitsverpflichtung</p>}
+              {employeeMissingTelecomDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne Telekommunikationsverpflichtung</p>}
+              {employeeMissingTrainingDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne dokumentierte Schulung</p>}
+              {employeeMissingEvidenceDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne Nachweise</p>}
+              {employeeMissingTargetGroupsDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne definierte Zielgruppen</p>}
             </CardContent>
           </Card>
 
@@ -6229,7 +6254,13 @@ function BackupsPage() {
 
 function BeschaeftigtenDatenschutzPage() {
   const { t } = useI18n();
+  const [location] = useLocation();
+  const rawEmployeeFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "";
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data: dokumente, create, update } = useModuleData("dokumente");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const { data: schulungsMeta = [] } = useQuery({
     queryKey: ["/api/meta/beschaeftigten-datenschutz"],
     queryFn: () => apiRequest("GET", "/api/meta/beschaeftigten-datenschutz").then(r => r.json()),
@@ -6242,7 +6273,7 @@ function BeschaeftigtenDatenschutzPage() {
     try { return JSON.parse(raw); } catch { return fallback; }
   };
 
-  const [form, setForm] = useState<any>({
+  const baseForm = {
     datenschutzerklaerungVorhanden: false,
     datenschutzerklaerungStand: "",
     datenschutzerklaerungNaechstePruefung: "",
@@ -6259,21 +6290,131 @@ function BeschaeftigtenDatenschutzPage() {
     nachweise: "",
     offeneMassnahmen: "",
     notes: "",
-  });
+  };
+
+  const [form, setForm] = useState<any>(baseForm);
 
   useEffect(() => {
-    const parsed = parseJson(existingCheck?.inhalt, form);
+    const parsed = parseJson(existingCheck?.inhalt, baseForm);
     setForm((prev: any) => ({ ...prev, ...parsed, zielgruppen: Array.isArray(parsed.zielgruppen) ? parsed.zielgruppen : (prev.zielgruppen || []) }));
   }, [existingCheck?.id]);
 
   const set = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }));
   const toggleZielgruppe = (value: string) => setForm((prev: any) => ({ ...prev, zielgruppen: prev.zielgruppen.includes(value) ? prev.zielgruppen.filter((x: string) => x !== value) : [...prev.zielgruppen, value] }));
 
+  const todayIso = new Date().toISOString().split("T")[0];
   const status = form.datenschutzerklaerungVorhanden && form.verpflichtungVerschwiegenheit && form.verpflichtungTelekommunikation && form.schulungDurchgefuehrt
     ? { label: "Strukturiert", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
     : form.datenschutzerklaerungVorhanden || form.verpflichtungVerschwiegenheit || form.verpflichtungTelekommunikation || form.schulungDurchgefuehrt
       ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" }
       : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+
+  const trainingOverdue = !!form.naechsteSchulungAm && form.naechsteSchulungAm < todayIso;
+  const missingPrivacyNotice = !form.datenschutzerklaerungVorhanden;
+  const missingConfidentiality = !form.verpflichtungVerschwiegenheit;
+  const missingTelecomCommitment = !form.verpflichtungTelekommunikation;
+  const missingTraining = !form.schulungDurchgefuehrt;
+  const missingEvidence = !String(form.nachweise || "").trim();
+  const missingTargetGroups = !Array.isArray(form.zielgruppen) || form.zielgruppen.length === 0;
+
+  const matchesEmployeeFilter =
+    (rawEmployeeFilter === "training-overdue" && trainingOverdue) ||
+    (rawEmployeeFilter === "missing-privacy-notice" && missingPrivacyNotice) ||
+    (rawEmployeeFilter === "missing-confidentiality" && missingConfidentiality) ||
+    (rawEmployeeFilter === "missing-telecom" && missingTelecomCommitment) ||
+    (rawEmployeeFilter === "missing-training" && missingTraining) ||
+    (rawEmployeeFilter === "missing-evidence" && missingEvidence) ||
+    (rawEmployeeFilter === "missing-target-groups" && missingTargetGroups) ||
+    !rawEmployeeFilter;
+
+  const buildEmployeeTaskDraft = (kind: "training-overdue" | "missing-privacy-notice" | "missing-confidentiality" | "missing-telecom" | "missing-training" | "missing-evidence" | "missing-target-groups") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "training-overdue": { title: "Beschäftigtenschulung überfällig nachziehen", priority: "hoch", description: "Die nächste Datenschutzschulung für Beschäftigte ist überfällig. Bitte Termin, Zielgruppen und Nachweise kurzfristig nachziehen." },
+      "missing-privacy-notice": { title: "Datenschutzerklärung für Beschäftigte dokumentieren", priority: "hoch", description: "Für den Beschäftigtendatenschutz fehlt die dokumentierte Datenschutzerklärung. Bitte Rechtsinformation und Prüfzyklus ergänzen." },
+      "missing-confidentiality": { title: "Verpflichtung auf Vertraulichkeit nachziehen", priority: "hoch", description: "Die Verpflichtung auf Verschwiegenheit/Vertraulichkeit ist noch nicht dokumentiert. Bitte Verpflichtung operativ absichern." },
+      "missing-telecom": { title: "Telekommunikationsverpflichtung dokumentieren", priority: "mittel", description: "Die Verpflichtung zu Telekommunikation/Fernmeldegeheimnis ist offen. Bitte dokumentarisch und organisatorisch schließen." },
+      "missing-training": { title: "Beschäftigtendatenschutz-Schulung durchführen", priority: "hoch", description: "Für Beschäftigte ist noch keine Datenschutzschulung dokumentiert. Bitte Schulung terminieren und Nachweise erfassen." },
+      "missing-evidence": { title: "Nachweise im Beschäftigtendatenschutz ergänzen", priority: "mittel", description: "Es fehlen belastbare Nachweise oder Dokumentationsstände zu Unterrichtung, Verpflichtung oder Schulung." },
+      "missing-target-groups": { title: "Zielgruppen für Beschäftigtendatenschutz definieren", priority: "mittel", description: "Die relevanten Zielgruppen für Schulung und Information sind noch nicht dokumentiert. Bitte Rollen und Gruppen nachziehen." },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `employee:${kind}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `employee:${kind}` };
+  };
+
+  const createEmployeeFollowUpTask = async (kind: "training-overdue" | "missing-privacy-notice" | "missing-confidentiality" | "missing-telecom" | "missing-training" | "missing-evidence" | "missing-target-groups") => {
+    const draft = buildEmployeeTaskDraft(kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "training-overdue" || kind === "missing-training" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: kind === "training-overdue" ? todayIso : "",
+      kategorie: "beschaeftigtendatenschutz",
+      referenzId: existingCheck?.id || null,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createEmployeePdcaCycle = async (kind: "training-overdue" | "missing-privacy-notice" | "missing-confidentiality" | "missing-telecom" | "missing-training" | "missing-evidence" | "missing-target-groups") => {
+    const source = `employee-pdca:${kind}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "training-overdue" || kind === "missing-training" ? 7 : 14));
+    const titleMap: Record<string, string> = {
+      "training-overdue": "PDCA Beschäftigtenschulung",
+      "missing-privacy-notice": "PDCA Beschäftigtendatenschutzerklärung",
+      "missing-confidentiality": "PDCA Verpflichtung Vertraulichkeit",
+      "missing-telecom": "PDCA Telekommunikationsverpflichtung",
+      "missing-training": "PDCA Datenschutzschulung Beschäftigte",
+      "missing-evidence": "PDCA Nachweise Beschäftigtendatenschutz",
+      "missing-target-groups": "PDCA Zielgruppen Beschäftigtendatenschutz",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: "Automatisch vorbereiteter Verbesserungszyklus für Beschäftigtendatenschutz und Schulungsgovernance.",
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: ["training-overdue", "missing-training", "missing-privacy-notice", "missing-confidentiality"].includes(kind) ? "hoch" : "mittel",
+      verantwortlicher: "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `Status: ${status.label}\nZielgruppen: ${(form.zielgruppen || []).join(", ") || "keine dokumentiert"}`,
+      planMassnahmen: buildEmployeeTaskDraft(kind).description,
+      planZiele: "Beschäftigtendatenschutz dokumentiert, nachweisbar und wiederkehrend gesteuert aufsetzen.",
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum Verbesserungszyklus ${titleMap[kind]}.`,
+      typ: kind === "training-overdue" || kind === "missing-training" ? "review" : "task",
+      prioritaet: ["training-overdue", "missing-training", "missing-privacy-notice", "missing-confidentiality"].includes(kind) ? "hoch" : "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "beschaeftigtendatenschutz",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
 
   const save = async () => {
     const payload = {
@@ -6295,6 +6436,16 @@ function BeschaeftigtenDatenschutzPage() {
   };
 
   const meta = schulungsMeta || {};
+  if (!matchesEmployeeFilter) {
+    return (
+      <MandantGuard>
+        <div className="space-y-6">
+          <PageHeader title={t("employeePrivacyTitle")} desc={t("employeePrivacyDesc")} />
+          <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für diesen Beschäftigtendatenschutz-Fokus liegt aktuell kein Treffer vor.</CardContent></Card>
+        </div>
+      </MandantGuard>
+    );
+  }
   return (
     <MandantGuard>
       <div className="space-y-6">
@@ -6310,18 +6461,39 @@ function BeschaeftigtenDatenschutzPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
+            <Card className="border-border/60 bg-muted/20">
+              <CardContent className="p-4 space-y-2 text-sm">
+                {trainingOverdue && <p className="text-red-400">Beschäftigtenschulung überfällig</p>}
+                {missingPrivacyNotice && <p className="text-red-400">Datenschutzerklärung für Beschäftigte fehlt</p>}
+                {missingConfidentiality && <p className="text-red-400">Verpflichtung auf Vertraulichkeit fehlt</p>}
+                {missingTelecomCommitment && <p className="text-yellow-400">Telekommunikationsverpflichtung fehlt</p>}
+                {missingTraining && <p className="text-yellow-400">Datenschutzschulung für Beschäftigte fehlt</p>}
+                {missingEvidence && <p className="text-yellow-400">Nachweise / Dokumentationsstand fehlen</p>}
+                {missingTargetGroups && <p className="text-yellow-400">Zielgruppen für Unterrichtung/Schulung fehlen</p>}
+              </CardContent>
+            </Card>
+            {(trainingOverdue || missingPrivacyNotice || missingConfidentiality || missingTelecomCommitment || missingTraining || missingEvidence || missingTargetGroups) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Fokusliste Beschäftigtendatenschutz</CardTitle>
+                  <CardDescription>Operative Folgeaktionen für die aktuell wichtigsten Lücken</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {trainingOverdue && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">Schulung überfällig</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeeFollowUpTask("training-overdue")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeePdcaCycle("training-overdue")}>PDCA erzeugen</Button><Link href={buildEmployeeTaskDraft("training-overdue").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                  {missingPrivacyNotice && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">Datenschutzerklärung fehlt</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeeFollowUpTask("missing-privacy-notice")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeePdcaCycle("missing-privacy-notice")}>PDCA erzeugen</Button><Link href={buildEmployeeTaskDraft("missing-privacy-notice").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                  {missingConfidentiality && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">Vertraulichkeitsverpflichtung fehlt</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeeFollowUpTask("missing-confidentiality")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createEmployeePdcaCycle("missing-confidentiality")}>PDCA erzeugen</Button><Link href={buildEmployeeTaskDraft("missing-confidentiality").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                </CardContent>
+              </Card>
+            )}
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.datenschutzerklaerungVorhanden} onChange={e => set("datenschutzerklaerungVorhanden", e.target.checked)} className="rounded" /><span>Datenschutzerklärung für Beschäftigte vorhanden</span></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Stand Datenschutzerklärung</Label><Input type="date" value={form.datenschutzerklaerungStand || ""} onChange={e => set("datenschutzerklaerungStand", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.datenschutzerklaerungNaechstePruefung || ""} onChange={e => set("datenschutzerklaerungNaechstePruefung", e.target.value)} className="h-8 text-sm" /></div>
             </div>
-
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.verpflichtungVerschwiegenheit} onChange={e => set("verpflichtungVerschwiegenheit", e.target.checked)} className="rounded" /><span>Verpflichtung auf Vertraulichkeit / Verschwiegenheit dokumentiert</span></label>
             <div className="space-y-1"><Label className="text-xs">Stand Verpflichtung Verschwiegenheit</Label><Input type="date" value={form.verpflichtungVerschwiegenheitStand || ""} onChange={e => set("verpflichtungVerschwiegenheitStand", e.target.value)} className="h-8 text-sm" /></div>
-
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.verpflichtungTelekommunikation} onChange={e => set("verpflichtungTelekommunikation", e.target.checked)} className="rounded" /><span>Verpflichtung Telekommunikation / Fernmeldegeheimnis dokumentiert</span></label>
             <div className="space-y-1"><Label className="text-xs">Stand Verpflichtung Telekommunikation</Label><Input type="date" value={form.verpflichtungTelekommunikationStand || ""} onChange={e => set("verpflichtungTelekommunikationStand", e.target.value)} className="h-8 text-sm" /></div>
-
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.schulungDurchgefuehrt} onChange={e => set("schulungDurchgefuehrt", e.target.checked)} className="rounded" /><span>Datenschutzschulung durchgeführt</span></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Letzte Schulung</Label><Input type="date" value={form.letzteSchulungAm || ""} onChange={e => set("letzteSchulungAm", e.target.value)} className="h-8 text-sm" /></div>
@@ -6331,7 +6503,6 @@ function BeschaeftigtenDatenschutzPage() {
               <div className="space-y-1"><Label className="text-xs">Wiederholung in Monaten</Label><Input type="number" value={form.schulungsintervallMonate || 12} onChange={e => set("schulungsintervallMonate", Number(e.target.value || 0))} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Schulungsformat</Label><Select value={form.schulungsformat || "praesenz"} onValueChange={v => set("schulungsformat", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{(meta.schulungsformate || ["praesenz", "online", "hybrid"]).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-xs">Zielgruppen</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -6343,7 +6514,6 @@ function BeschaeftigtenDatenschutzPage() {
                 ))}
               </div>
             </div>
-
             <div className="space-y-1"><Label className="text-xs">Nachweise / Dokumentationsstand</Label><Textarea value={form.nachweise || ""} onChange={e => set("nachweise", e.target.value)} className="text-sm min-h-20" /></div>
             <div className="space-y-1"><Label className="text-xs">Offene Maßnahmen / Wiederschulungshinweise</Label><Textarea value={form.offeneMassnahmen || ""} onChange={e => set("offeneMassnahmen", e.target.value)} className="text-sm min-h-20" /></div>
             <div className="space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} className="text-sm min-h-20" /></div>
