@@ -157,6 +157,11 @@ sqlite.exec(`
     av_kontakt_telefon TEXT,
     genehmigte_subdienstleister TEXT DEFAULT '[]',
     pruef_faellig TEXT,
+    datenarten TEXT,
+    betroffene_personen TEXT,
+    technische_massnahmen TEXT,
+    pruefintervall TEXT,
+    subauftragnehmer_hinweis TEXT,
     notizen TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -427,3 +432,8 @@ safeAlter("ALTER TABLE vvt ADD COLUMN risikostufe TEXT DEFAULT 'niedrig';");
 safeAlter("ALTER TABLE vvt ADD COLUMN risikobegruendung TEXT;");
 safeAlter("ALTER TABLE vvt ADD COLUMN risiko_triggers TEXT DEFAULT '[]';");
 safeAlter("ALTER TABLE vvt ADD COLUMN risikopruefung_am TEXT;");
+safeAlter("ALTER TABLE avv ADD COLUMN datenarten TEXT;");
+safeAlter("ALTER TABLE avv ADD COLUMN betroffene_personen TEXT;");
+safeAlter("ALTER TABLE avv ADD COLUMN technische_massnahmen TEXT;");
+safeAlter("ALTER TABLE avv ADD COLUMN pruefintervall TEXT;");
+safeAlter("ALTER TABLE avv ADD COLUMN subauftragnehmer_hinweis TEXT;");
