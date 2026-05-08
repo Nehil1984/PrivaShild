@@ -95,7 +95,7 @@ function setAuthCookie(res: Response, token: string) {
     `privashield_auth=${encodeURIComponent(token)}`,
     "Path=/",
     "HttpOnly",
-    "SameSite=Strict",
+    "SameSite=Lax",
     `Max-Age=${8 * 60 * 60}`,
     isProduction ? "Secure" : "",
   ].filter(Boolean).join("; ");
@@ -108,7 +108,7 @@ function clearAuthCookie(res: Response) {
     "privashield_auth=",
     "Path=/",
     "HttpOnly",
-    "SameSite=Strict",
+    "SameSite=Lax",
     "Max-Age=0",
     isProduction ? "Secure" : "",
   ].filter(Boolean).join("; ");
@@ -489,11 +489,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         lastFailedLoginAt: null,
       } as any);
     }
-    const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "8h" });
-    setAuthCookie(res, token);
     const refreshedUser = await storage.getUserById(user.id);
     const safeUser = sanitizeUser(refreshedUser || user);
     const authPayload = attachCsrfToken(safeUser);
+    const token = jwt.sign({ userId: user.id, role: user.role, csrfToken: authPayload.csrfToken }, getJwtSecret(), { expiresIn: "8h" });
+    setAuthCookie(res, token);
     setCsrfCookie(res, authPayload.csrfToken);
     await auditLog({
       mandantId: null,

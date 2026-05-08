@@ -8,6 +8,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 
 const loginAttempts = new Map<string, { count: number; firstAt: number; blockedUntil: number }>();
 
@@ -18,6 +19,11 @@ const CSRF_COOKIE_NAME = "privashield_csrf";
 const CSRF_HEADER_NAME = "x-csrf-token";
 const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const TRUSTED_PROXY_HEADERS = ["x-forwarded-host", "x-forwarded-proto"] as const;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+function getJwtSecret(): string | null {
+  return JWT_SECRET || null;
+}
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -161,7 +167,24 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers[CSRF_HEADER_NAME.toUpperCase()];
   const requestToken = Array.isArray(headerToken) ? headerToken[0] : headerToken;
 
-  if (!cookieToken || !requestToken || cookieToken !== requestToken) {
+  let jwtCsrfToken: string | null = null;
+  const authCookie = readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
+  const secret = getJwtSecret();
+  if (authCookie && secret) {
+    try {
+      const payload = jwt.verify(authCookie, secret) as any;
+      if (payload && typeof payload.csrfToken === "string" && payload.csrfToken.trim()) {
+        jwtCsrfToken = payload.csrfToken.trim();
+      }
+    } catch {
+      jwtCsrfToken = null;
+    }
+  }
+
+  const matchesCookie = !!cookieToken && !!requestToken && cookieToken === requestToken;
+  const matchesJwt = !!jwtCsrfToken && !!requestToken && jwtCsrfToken === requestToken;
+
+  if (!requestToken || (!matchesCookie && !matchesJwt)) {
     return res.status(403).json({ message: "CSRF-Prüfung fehlgeschlagen" });
   }
 
