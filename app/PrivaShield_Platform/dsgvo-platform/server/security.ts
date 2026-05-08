@@ -17,6 +17,7 @@ const BLOCK_MS = 15 * 60 * 1000;
 const CSRF_COOKIE_NAME = "privashield_csrf";
 const CSRF_HEADER_NAME = "x-csrf-token";
 const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const TRUSTED_PROXY_HEADERS = ["x-forwarded-host", "x-forwarded-proto"] as const;
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -118,8 +119,43 @@ export function clearCsrfCookie(res: Response) {
   res.append("Set-Cookie", cookie);
 }
 
+function normalizeOrigin(value: string | undefined | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function getRequestOrigin(req: Request) {
+  const originHeader = req.headers.origin;
+  const refererHeader = req.headers.referer;
+  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
+  const referer = Array.isArray(refererHeader) ? refererHeader[0] : refererHeader;
+  return normalizeOrigin(origin) || normalizeOrigin(referer) || null;
+}
+
+function getExpectedOrigin(req: Request) {
+  const forwardedHost = req.headers[TRUSTED_PROXY_HEADERS[0]];
+  const forwardedProto = req.headers[TRUSTED_PROXY_HEADERS[1]];
+  const hostHeader = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || req.headers.host;
+  const protoHeader = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const protocol = String(protoHeader || req.protocol || (process.env.NODE_ENV === "production" ? "https" : "http"));
+  const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
+  if (!host) return null;
+  return `${protocol}://${host}`;
+}
+
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (CSRF_SAFE_METHODS.has(req.method.toUpperCase())) return next();
+
+  const requestOrigin = getRequestOrigin(req);
+  const expectedOrigin = getExpectedOrigin(req);
+  if (requestOrigin && expectedOrigin && requestOrigin !== expectedOrigin) {
+    return res.status(403).json({ message: "Origin-Prüfung fehlgeschlagen" });
+  }
 
   const cookieToken = readNamedCookie(req, CSRF_COOKIE_NAME);
   const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers[CSRF_HEADER_NAME.toUpperCase()];
