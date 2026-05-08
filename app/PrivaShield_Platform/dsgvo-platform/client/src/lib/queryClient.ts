@@ -13,6 +13,21 @@ const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 let authToken: string | null = null;
 let csrfToken: string | null = null;
 
+function readBrowserCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  if (!match) return null;
+  const value = match.slice(name.length + 1);
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function setApiAuthToken(token: string | null) {
   authToken = token;
 }
@@ -24,8 +39,9 @@ export function setApiCsrfToken(token: string | null) {
 function buildAuthHeaders(headers: Record<string, string>, method?: string) {
   const nextHeaders: Record<string, string> = authToken ? { ...headers, Authorization: `Bearer ${authToken}` } : { ...headers };
   const upperMethod = String(method || "GET").toUpperCase();
-  if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(upperMethod)) {
-    nextHeaders["X-CSRF-Token"] = csrfToken;
+  const liveCsrfToken = csrfToken || readBrowserCookie("privashield_csrf");
+  if (liveCsrfToken && !["GET", "HEAD", "OPTIONS"].includes(upperMethod)) {
+    nextHeaders["X-CSRF-Token"] = liveCsrfToken;
   }
   return nextHeaders;
 }
@@ -65,6 +81,9 @@ export async function apiRequest(
     body,
     credentials: "same-origin",
   });
+
+  const refreshedCsrf = readBrowserCookie("privashield_csrf");
+  if (refreshedCsrf) csrfToken = refreshedCsrf;
 
   await throwIfResNotOk(res);
   return res;
