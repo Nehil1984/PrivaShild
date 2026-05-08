@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      pull: true
     image: privashield:latest
     restart: unless-stopped
     environment:
@@ -20,6 +21,10 @@ services:
       - "5000:5000"
     volumes:
       - /mnt/user/appdata/privashield/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+      - /run:size=16m,nosuid,nodev
     labels:
       - "com.unraid.managed=true"
       - "com.unraid.name=PrivaShield"

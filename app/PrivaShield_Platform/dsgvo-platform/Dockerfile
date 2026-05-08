@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-alpine3.22 AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build
 
 # ─── Stage 2: Production ───────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20-alpine3.22 AS runner
 
 LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.description="Open-Source-Plattform für Datenschutzmanagement und DSGVO-Compliance" \
@@ -22,7 +22,8 @@ LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 # su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
-RUN apk add --no-cache su-exec libc-utils
+# plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen
+RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils
 
 # Non-root User anlegen
 # GID/UID 1099 (1000 ist auf Unraid oft bereits belegt)
