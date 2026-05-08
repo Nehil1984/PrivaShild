@@ -1767,7 +1767,7 @@ function VvtPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const vvtMitFehlenderDsfa = data.filter((item: any) => item.dsfa && !dsfa.some((entry: any) => entry.vvtId === item.id));
@@ -2245,7 +2245,7 @@ function AvvPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -2915,7 +2915,7 @@ function DsfaPage() {
   const { toast } = useToast();
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
   const getRisks = (item: any) => {
     try {
@@ -3267,7 +3267,7 @@ function DatenpannenPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const now = Date.now();
@@ -3671,7 +3671,7 @@ function DsrPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const getDsrMeta = (item: any) => {
@@ -4099,7 +4099,7 @@ function TomPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -4677,7 +4677,7 @@ function LoeschkonzeptPage() {
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
 
   const getRetentionMeta = (item: any) => {
@@ -6948,7 +6948,7 @@ function DokumentePage() {
   const { toast } = useToast();
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
-    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
+    p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
   };
   const catIcons: Record<string, string> = { leitlinie: "🛡️", leitlinie_datenschutz: "🛡️", leitlinie_informationssicherheit: "🛡️", richtlinie: "📋", prozessbeschreibung: "🧭", risikobewertung: "⚠️", verfahrensdokumentation: "🗂️", vorlage: "📄", vertrag: "📝", protokoll: "📒", sonstige: "📁" };
   const filtered = filter === "alle" ? data : data.filter((item: any) => item.kategorie === filter);

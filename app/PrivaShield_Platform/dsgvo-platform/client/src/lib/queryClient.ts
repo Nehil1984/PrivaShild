@@ -49,7 +49,22 @@ function buildAuthHeaders(headers: Record<string, string>, method?: string) {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object") {
+        if (typeof parsed.message === "string" && parsed.message.trim()) message = parsed.message.trim();
+        else if (Array.isArray((parsed as any).issues) && (parsed as any).issues.length) {
+          message = (parsed as any).issues
+            .map((issue: any) => issue?.message || issue?.path?.join?.(".") || "Ungültige Eingabe")
+            .filter(Boolean)
+            .join(" | ");
+        }
+      }
+    } catch {
+      // ignore JSON parse failure and keep raw text
+    }
+    throw new Error(`${res.status}: ${message}`);
   }
 }
 
