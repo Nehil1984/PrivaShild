@@ -100,7 +100,7 @@ export function setCsrfCookie(res: Response, token: string) {
   const cookie = [
     `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}`,
     "Path=/",
-    "SameSite=Strict",
+    "SameSite=Lax",
     `Max-Age=${8 * 60 * 60}`,
     isProduction ? "Secure" : "",
   ].filter(Boolean).join("; ");
@@ -112,7 +112,7 @@ export function clearCsrfCookie(res: Response) {
   const cookie = [
     `${CSRF_COOKIE_NAME}=`,
     "Path=/",
-    "SameSite=Strict",
+    "SameSite=Lax",
     "Max-Age=0",
     isProduction ? "Secure" : "",
   ].filter(Boolean).join("; ");
