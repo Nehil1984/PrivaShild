@@ -11,14 +11,23 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
 let authToken: string | null = null;
+let csrfToken: string | null = null;
 
 export function setApiAuthToken(token: string | null) {
   authToken = token;
 }
 
-function buildAuthHeaders(headers: Record<string, string>) {
-  if (!authToken) return headers;
-  return { ...headers, Authorization: `Bearer ${authToken}` };
+export function setApiCsrfToken(token: string | null) {
+  csrfToken = token;
+}
+
+function buildAuthHeaders(headers: Record<string, string>, method?: string) {
+  const nextHeaders: Record<string, string> = authToken ? { ...headers, Authorization: `Bearer ${authToken}` } : { ...headers };
+  const upperMethod = String(method || "GET").toUpperCase();
+  if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(upperMethod)) {
+    nextHeaders["X-CSRF-Token"] = csrfToken;
+  }
+  return nextHeaders;
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -52,7 +61,7 @@ export async function apiRequest(
 
   const res = await fetch(`${API_BASE}${url}`, {
     method,
-    headers: buildAuthHeaders(headers),
+    headers: buildAuthHeaders(headers, method),
     body,
     credentials: "same-origin",
   });
@@ -68,7 +77,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(`${API_BASE}${queryKey.join("/")}`, {
-      headers: buildAuthHeaders({}),
+      headers: buildAuthHeaders({}, "GET"),
       credentials: "same-origin",
     });
 

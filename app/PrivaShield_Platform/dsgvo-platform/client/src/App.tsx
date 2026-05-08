@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useComplianceMeta } from "@/hooks/useComplianceMeta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, setApiAuthToken } from "@/lib/queryClient";
+import { apiRequest, setApiAuthToken, setApiCsrfToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { useState, createContext, useContext, useEffect } from "react";
@@ -41,7 +41,7 @@ import {
 
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
-type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string; failedLoginAttempts?: number; temporaryLockUntil?: string | null; adminLocked?: boolean; adminLockedAt?: string | null; lastFailedLoginAt?: string | null };
+type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string; csrfToken?: string; failedLoginAttempts?: number; temporaryLockUntil?: string | null; adminLocked?: boolean; adminLockedAt?: string | null; lastFailedLoginAt?: string | null };
 const AuthCtx = createContext<{ user: AuthUser | null; token: string | null; login: (u: AuthUser, t: string) => void; logout: () => void }>({
   user: null, token: null, login: () => {}, logout: () => {}
 });
@@ -5801,19 +5801,22 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (u: AuthUser, t: string) => {
     setUser(u); setToken(t); setRestoring(false);
+    setApiAuthToken(t);
+    setApiCsrfToken(u.csrfToken || null);
     localStorage.setItem("privashield_token", t);
   };
   const logout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout", {});
     } catch {}
-    setUser(null); setToken(null); setRestoring(false); queryClient.clear();
+    setUser(null); setToken(null); setRestoring(false); setApiCsrfToken(null); queryClient.clear();
     localStorage.removeItem("privashield_token");
     localStorage.removeItem("privashield_active_mandant_id");
   };
 
   useEffect(() => {
     setApiAuthToken(token);
+    setApiCsrfToken(user?.csrfToken || null);
     if (!token) {
       setRestoring(false);
       return;
@@ -5831,6 +5834,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((safeUser) => {
         if (cancelled) return;
         setUser(safeUser);
+        setApiCsrfToken(safeUser?.csrfToken || null);
       })
       .catch(() => {
         if (cancelled) return;
@@ -5838,6 +5842,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("privashield_active_mandant_id");
         setToken(null);
         setUser(null);
+        setApiCsrfToken(null);
         queryClient.clear();
       })
       .finally(() => {

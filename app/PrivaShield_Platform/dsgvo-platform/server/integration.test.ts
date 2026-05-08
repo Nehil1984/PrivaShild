@@ -8,6 +8,13 @@
 
 import { describe, expect, it } from "vitest";
 
+function csrfCheck(method: string, cookieToken?: string | null, headerToken?: string | null) {
+  const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+  if (safeMethods.has(method.toUpperCase())) return 200;
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) return 403;
+  return 200;
+}
+
 function parseMandantIds(raw?: string) {
   try {
     return JSON.parse(raw || "[]");
@@ -88,5 +95,12 @@ describe("integration-like access flows", () => {
     ];
 
     expect(visibleGruppenForUser("user", "[1,3]", mandanten, gruppen)).toEqual([{ id: 10, name: "Gruppe A" }]);
+  });
+
+  it("blocks state-changing requests without matching csrf token", () => {
+    expect(csrfCheck("POST", "abc", undefined)).toBe(403);
+    expect(csrfCheck("DELETE", "abc", "def")).toBe(403);
+    expect(csrfCheck("PUT", "abc", "abc")).toBe(200);
+    expect(csrfCheck("GET", undefined, undefined)).toBe(200);
   });
 });

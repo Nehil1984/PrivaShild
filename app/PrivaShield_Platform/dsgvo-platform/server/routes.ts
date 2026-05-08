@@ -12,7 +12,7 @@ import { storage, reloadStorage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
-import { clearLoginFailures, loginRateLimit, registerLoginFailure } from "./security";
+import { clearCsrfCookie, clearLoginFailures, csrfProtection, issueCsrfToken, loginRateLimit, registerLoginFailure, setCsrfCookie } from "./security";
 import { inspectBackup, inspectUploadedBackup, listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
 import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertPdcaSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestPdcaSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
@@ -82,6 +82,11 @@ function readNamedCookie(req: Request, name: string): string | null {
 
 function readCookieToken(req: Request): string | null {
   return readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
+}
+
+function attachCsrfToken(user: any) {
+  const csrfToken = issueCsrfToken();
+  return { user: { ...user, csrfToken }, csrfToken };
 }
 
 function setAuthCookie(res: Response, token: string) {
@@ -488,6 +493,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     setAuthCookie(res, token);
     const refreshedUser = await storage.getUserById(user.id);
     const safeUser = sanitizeUser(refreshedUser || user);
+    const authPayload = attachCsrfToken(safeUser);
+    setCsrfCookie(res, authPayload.csrfToken);
     await auditLog({
       mandantId: null,
       userId: user.id,
@@ -499,20 +506,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       beschreibung: "Erfolgreicher Login",
       details: { email, role: user.role },
     });
-    res.json({ token, user: safeUser });
+    res.json({ token, user: authPayload.user });
   });
 
-  app.post("/api/auth/logout", authMiddleware, async (_req, res) => {
+  app.post("/api/auth/logout", authMiddleware, csrfProtection, async (_req, res) => {
     clearAuthCookie(res);
+    clearCsrfCookie(res);
     res.json({ ok: true });
   });
 
   app.get("/api/auth/me", authMiddleware, async (req: any, res) => {
     const user = await storage.getUserById(req.userId);
     if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
-    res.json(sanitizeUser(user));
+    const authPayload = attachCsrfToken(sanitizeUser(user));
+    setCsrfCookie(res, authPayload.csrfToken);
+    res.json(authPayload.user);
   });
 
+
+  app.use("/api", csrfProtection);
 
   // ─── META APIs ───────────────────────────────────────────────────────────
   app.get("/api/meta/loeschfristen", authMiddleware, async (_req, res) => {

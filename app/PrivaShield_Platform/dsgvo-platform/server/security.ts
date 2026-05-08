@@ -7,12 +7,16 @@
 //  http://www.apache.org/licenses/LICENSE-2.0
 
 import type { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 
 const loginAttempts = new Map<string, { count: number; firstAt: number; blockedUntil: number }>();
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const BLOCK_MS = 15 * 60 * 1000;
+const CSRF_COOKIE_NAME = "privashield_csrf";
+const CSRF_HEADER_NAME = "x-csrf-token";
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -65,4 +69,65 @@ export function registerLoginFailure(req: Request) {
 
 export function clearLoginFailures(req: Request) {
   loginAttempts.delete(clientKey(req));
+}
+
+function readNamedCookie(req: Request, name: string): string | null {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+
+  for (const part of cookieHeader.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${name}=`)) continue;
+    const rawValue = trimmed.slice(name.length + 1);
+    if (!rawValue) return null;
+    try {
+      return decodeURIComponent(rawValue);
+    } catch {
+      return rawValue;
+    }
+  }
+
+  return null;
+}
+
+export function issueCsrfToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+export function setCsrfCookie(res: Response, token: string) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookie = [
+    `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    "Path=/",
+    "SameSite=Strict",
+    `Max-Age=${8 * 60 * 60}`,
+    isProduction ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.append("Set-Cookie", cookie);
+}
+
+export function clearCsrfCookie(res: Response) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookie = [
+    `${CSRF_COOKIE_NAME}=`,
+    "Path=/",
+    "SameSite=Strict",
+    "Max-Age=0",
+    isProduction ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.append("Set-Cookie", cookie);
+}
+
+export function csrfProtection(req: Request, res: Response, next: NextFunction) {
+  if (CSRF_SAFE_METHODS.has(req.method.toUpperCase())) return next();
+
+  const cookieToken = readNamedCookie(req, CSRF_COOKIE_NAME);
+  const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers[CSRF_HEADER_NAME.toUpperCase()];
+  const requestToken = Array.isArray(headerToken) ? headerToken[0] : headerToken;
+
+  if (!cookieToken || !requestToken || cookieToken !== requestToken) {
+    return res.status(403).json({ message: "CSRF-Prüfung fehlgeschlagen" });
+  }
+
+  next();
 }

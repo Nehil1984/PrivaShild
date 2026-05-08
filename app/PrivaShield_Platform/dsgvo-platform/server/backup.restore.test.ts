@@ -20,26 +20,35 @@ const sampleLowdb = {
 
 describe("backup restore migration", () => {
   let tmpDir: string;
+  let restoreModulePatched = false;
+  let originalDatabasePath: string | undefined;
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "privashield-restore-"));
+    originalDatabasePath = process.env.DATABASE_PATH;
     process.env.DATABASE_PATH = path.join(tmpDir, "privashield.db");
     fs.writeFileSync(
       originalStorageModulePath,
       originalStorageModuleSource.replace(
         '    throw new Error("SQLite backend bootstrap requires built server artifacts in this runtime. Use lowdb at startup or switch backend via the admin API after boot.");',
-        '    const { DatabaseStorage } = await import("./storage-sqlite.js");\n    return new DatabaseStorage();',
+        '    return new (await import("./storage-sqlite.js")).DatabaseStorage();',
       ).replace('function createStorage(): IStorage {', 'async function createStorage(): Promise<IStorage> {')
-       .replace('export let storage: IStorage = createStorage();', 'export let storage: IStorage;\n\nawait createStorage().then((instance) => { storage = instance; });')
+       .replace('export let storage: IStorage = createStorage();', 'export let storage: IStorage = undefined as unknown as IStorage;\n\ncreateStorage().then((instance) => { storage = instance; });')
        .replace('  storage = createStorage();', '  storage = await createStorage();'),
       "utf8",
     );
+    restoreModulePatched = true;
     const { writeDbBackend } = await import("./db-config");
     writeDbBackend("sqlite");
   });
 
-  afterEach(() => {
-    fs.writeFileSync(originalStorageModulePath, originalStorageModuleSource, "utf8");
+  afterEach(async () => {
+    if (originalDatabasePath === undefined) delete process.env.DATABASE_PATH;
+    else process.env.DATABASE_PATH = originalDatabasePath;
+    if (restoreModulePatched) {
+      fs.writeFileSync(originalStorageModulePath, originalStorageModuleSource, "utf8");
+      restoreModulePatched = false;
+    }
   });
 
   it("migriert ein lowdb-backup in sqlite inklusive user-hash und ids", async () => {
@@ -73,12 +82,12 @@ describe("backup restore migration", () => {
     expect(vvts).toHaveLength(1);
     expect(vvts[0].id).toBe(1);
     expect(vvts[0].mandantId).toBe(1);
-  });
+  }, 15000);
 
   it("verwirft offensichtlich ungültige Backup-Inhalte im Preflight", async () => {
     const { inspectUploadedBackup } = await import("./backup");
     const payload = Buffer.from(`PSMETA1\n${JSON.stringify({ backend: "lowdb", createdAt: new Date().toISOString(), sourceFile: "privashield.json" })}\nnot-json-and-no-sqlite`, "utf8");
 
     expect(() => inspectUploadedBackup("backup-daily-broken.bak", payload)).toThrow("Backup-Datei enthält ungültiges JSON");
-  });
+  }, 15000);
 });

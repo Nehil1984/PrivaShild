@@ -125,6 +125,10 @@ sqlite.exec(`
     betroffene_personen TEXT DEFAULT '[]',
     empfaenger TEXT,
     drittlandtransfer INTEGER DEFAULT 0,
+    risikostufe TEXT DEFAULT 'niedrig',
+    risikobegruendung TEXT,
+    risiko_triggers TEXT DEFAULT '[]',
+    risikopruefung_am TEXT,
     loeschfrist TEXT,
     loeschklasse TEXT,
     aufbewahrungsgrund TEXT,
@@ -408,3 +412,18 @@ sqlite.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+const safeAlter = (statement: string) => {
+  try {
+    sqlite.exec(statement);
+  } catch (error: any) {
+    if (!String(error?.message || error).includes("duplicate column name")) {
+      throw error;
+    }
+  }
+};
+
+safeAlter("ALTER TABLE vvt ADD COLUMN risikostufe TEXT DEFAULT 'niedrig';");
+safeAlter("ALTER TABLE vvt ADD COLUMN risikobegruendung TEXT;");
+safeAlter("ALTER TABLE vvt ADD COLUMN risiko_triggers TEXT DEFAULT '[]';");
+safeAlter("ALTER TABLE vvt ADD COLUMN risikopruefung_am TEXT;");
