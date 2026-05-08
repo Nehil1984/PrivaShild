@@ -1445,22 +1445,37 @@ function Dashboard() {
 function useModuleData(endpoint: string) {
   const { activeMandantId } = useMandant();
   const qc = useQueryClient();
+  const moduleBase = `/api/mandanten/${activeMandantId}/${endpoint}`;
   const { data = [], isLoading } = useQuery({
-    queryKey: [`/api/mandanten/${activeMandantId}/${endpoint}`],
-    queryFn: () => apiRequest("GET", `/api/mandanten/${activeMandantId}/${endpoint}`).then(r => r.json()),
+    queryKey: [moduleBase],
+    queryFn: () => apiRequest("GET", moduleBase).then(r => r.json()),
     enabled: !!activeMandantId,
   });
+  const invalidate = async () => {
+    await qc.invalidateQueries({ queryKey: [moduleBase] });
+  };
   const create = useMutation({
-    mutationFn: (body: any) => apiRequest("POST", `/api/mandanten/${activeMandantId}/${endpoint}`, body).then(r => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/${endpoint}`] }),
+    mutationFn: async (body: any) => {
+      if (!activeMandantId) throw new Error("Kein aktiver Mandant ausgewählt.");
+      const res = await apiRequest("POST", moduleBase, body);
+      return res.status === 204 ? null : res.json();
+    },
+    onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, ...body }: any) => apiRequest("PUT", `/api/${endpoint}/${id}`, body).then(r => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/${endpoint}`] }),
+    mutationFn: async ({ id, ...body }: any) => {
+      if (!id) throw new Error(`Fehlende ID für Update in ${endpoint}.`);
+      const res = await apiRequest("PUT", `/api/${endpoint}/${id}`, body);
+      return res.status === 204 ? null : res.json();
+    },
+    onSuccess: invalidate,
   });
   const remove = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/${endpoint}/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/${endpoint}`] }),
+    mutationFn: async (id: number) => {
+      if (!id) throw new Error(`Fehlende ID für Delete in ${endpoint}.`);
+      return apiRequest("DELETE", `/api/${endpoint}/${id}`);
+    },
+    onSuccess: invalidate,
   });
   return { data, isLoading, create, update, remove };
 }
