@@ -681,11 +681,11 @@ function Dashboard() {
     pdcaReviewFaelligItems.length > 0 ? { severity: pdcaReviewFaelligItems.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaelligItems.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig ansetzen und Wirksamkeitsstatus aktualisieren.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=review" } : null,
     auditFollowUpsOhneAuditDashboard.length > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditDashboard.length} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Audit-Verknüpfungen nachziehen, damit Nachverfolgung und Export vollständig bleiben.", actionLabel: "Zu Audit/PDCA", actionHref: "/pdca?filter=audit-follow-up-ohne-audit" } : null,
     pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
-    pdcaFollowUpTasksUeberfaelligDashboard.length > 0 ? { severity: pdcaFollowUpTasksUeberfaelligDashboard.length >= 3 ? "hoch" : "mittel", title: `${pdcaFollowUpTasksUeberfaelligDashboard.length} überfällige PDCA-Folgeaufgaben`, recommendation: "Überfällige Folgeaufgaben sofort terminlich und personell nachsteuern, damit Zyklen nicht hängen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
+    pdcaFollowUpTasksUeberfaelligDashboard.length > 0 ? { severity: pdcaFollowUpTasksUeberfaelligDashboard.length >= 3 ? "hoch" : "mittel", title: `${pdcaFollowUpTasksUeberfaelligDashboard.length} überfällige PDCA-Folgeaufgaben`, recommendation: "Überfällige Folgeaufgaben sofort terminlich und personell nachsteuern, damit Zyklen nicht hängen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-ueberfaellig" } : null,
     pdcaKritischOderHochOffenDashboard.length > 0 ? { severity: "hoch", title: `${pdcaKritischOderHochOffenDashboard.length} offene PDCA-Zyklen mit hoher Priorität`, recommendation: "Kritische Verbesserungszyklen aktiv steuern und ihre Folgeaufgaben eng nachhalten.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=priority-high" } : null,
     pdcaOhneNaechstePruefungDashboard.length > 0 ? { severity: "mittel", title: `${pdcaOhneNaechstePruefungDashboard.length} offene PDCA-Zyklen ohne nächsten Prüftermin`, recommendation: "Nächste Prüfung und Review-Takt für offene Zyklen verbindlich setzen.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=review-missing" } : null,
     pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length > 0 ? { severity: "mittel", title: `${pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length} laufende PDCA-Zyklen ohne offene Folgeaufgabe`, recommendation: "Laufende Zyklen operativ absichern und mindestens eine verknüpfte Folgeaufgabe nachziehen.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=in-progress-no-task" } : null,
-    kritischeAufgabenOhneTerminDashboard.length > 0 ? { severity: "hoch", title: `${kritischeAufgabenOhneTerminDashboard.length} kritische Aufgaben ohne Fälligkeit`, recommendation: "Kritische Aufgaben sofort mit Termin und Verantwortung versehen, damit keine blinden Risiken offen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch" } : null,
+    kritischeAufgabenOhneTerminDashboard.length > 0 ? { severity: "hoch", title: `${kritischeAufgabenOhneTerminDashboard.length} kritische Aufgaben ohne Fälligkeit`, recommendation: "Kritische Aufgaben sofort mit Termin und Verantwortung versehen, damit keine blinden Risiken offen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch-ohne-faelligkeit" } : null,
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
     incidentDeadlineMissedItems.length > 0 ? { severity: "hoch", title: `${incidentDeadlineMissedItems.length} Datenpannen mit überschrittener 72h-Frist`, recommendation: "Fristüberschreitungen rechtlich bewerten, Behördenkommunikation absichern und Begründung dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=deadline-missed" } : null,
@@ -4839,7 +4839,7 @@ function AufgabenPage() {
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawFilter = route.searchParams.get("filter");
-    if (rawFilter === "copilot-open" || rawFilter === "kritisch" || rawFilter === "pdca-follow-up-offen") {
+    if (rawFilter === "copilot-open" || rawFilter === "kritisch" || rawFilter === "pdca-follow-up-offen" || rawFilter === "kritisch-ohne-faelligkeit" || rawFilter === "pdca-follow-up-ueberfaellig") {
       setFilter("offen");
       setTypFilter("alle");
     }
@@ -4906,11 +4906,15 @@ function AufgabenPage() {
   }, [location, modal, setLocation]);
   const taskFilterHint = rawTaskFilter === "kritisch"
     ? "Du siehst gerade: kritische offene Aufgaben."
-    : rawTaskFilter === "pdca-follow-up-offen"
-      ? "Du siehst gerade: offene PDCA-Folgeaufgaben."
-      : rawTaskFilter === "copilot-open"
-        ? "Du siehst gerade: offene Aufgaben mit Copilot-Bezug."
-        : "";
+    : rawTaskFilter === "kritisch-ohne-faelligkeit"
+      ? "Du siehst gerade: kritische offene Aufgaben ohne Fälligkeit."
+      : rawTaskFilter === "pdca-follow-up-offen"
+        ? "Du siehst gerade: offene PDCA-Folgeaufgaben."
+        : rawTaskFilter === "pdca-follow-up-ueberfaellig"
+          ? "Du siehst gerade: überfällige PDCA-Folgeaufgaben."
+          : rawTaskFilter === "copilot-open"
+            ? "Du siehst gerade: offene Aufgaben mit Copilot-Bezug."
+            : "";
   const filtered = data.filter((a: any) => {
     if (rawTaskFilter === "copilot-open") {
       if (!/copilot/i.test(String(a?.titel || ""))) return false;
@@ -4920,9 +4924,19 @@ function AufgabenPage() {
       if (String(a?.prioritaet || "") !== "kritisch") return false;
       if (a.status === "erledigt") return false;
     }
+    if (rawTaskFilter === "kritisch-ohne-faelligkeit") {
+      if (String(a?.prioritaet || "") !== "kritisch") return false;
+      if (a.status === "erledigt") return false;
+      if (String(a?.faelligAm || "").trim()) return false;
+    }
     if (rawTaskFilter === "pdca-follow-up-offen") {
       if (String(a?.vorlagenBezug || "") !== "pdca_follow_up") return false;
       if (a.status === "erledigt") return false;
+    }
+    if (rawTaskFilter === "pdca-follow-up-ueberfaellig") {
+      if (String(a?.vorlagenBezug || "") !== "pdca_follow_up") return false;
+      if (a.status === "erledigt") return false;
+      if (!(String(a?.faelligAm || "").trim() && String(a.faelligAm) < today)) return false;
     }
     return (filter === "alle" || a.status === filter) && (typFilter === "alle" || a.typ === typFilter);
   }).slice().sort((a: any, b: any) => {
@@ -4930,7 +4944,7 @@ function AufgabenPage() {
     const statusOrder: Record<string, number> = { offen: 0, in_bearbeitung: 1, erledigt: 2 };
     const aDue = a.faelligAm || "9999-12-31";
     const bDue = b.faelligAm || "9999-12-31";
-    if (rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "copilot-open") {
+    if (rawTaskFilter === "kritisch" || rawTaskFilter === "kritisch-ohne-faelligkeit" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "pdca-follow-up-ueberfaellig" || rawTaskFilter === "copilot-open") {
       return (prioOrder[String(a.prioritaet || "mittel")] ?? 9) - (prioOrder[String(b.prioritaet || "mittel")] ?? 9)
         || aDue.localeCompare(bDue)
         || (statusOrder[String(a.status || "offen")] ?? 9) - (statusOrder[String(b.status || "offen")] ?? 9)
@@ -4949,7 +4963,7 @@ function AufgabenPage() {
         setFilter("alle");
         setTypFilter("alle");
       }}>Filter zurücksetzen</Button><Link href="/export"><a className="text-xs text-primary hover:underline self-center">Export öffnen</a></Link></div></CardContent></Card>}
-      {(rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen") && <Card className="mb-4 border-border/60 bg-muted/20"><CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3"><div><p className="text-xs text-muted-foreground">Kritische Aufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.prioritaet || "") === "kritisch" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">PDCA-Folgeaufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">Davon in Bearbeitung</p><p className="font-semibold">{filtered.filter((a: any) => a.status === "in_bearbeitung").length}</p></div></CardContent></Card>}
+      {(rawTaskFilter === "kritisch" || rawTaskFilter === "kritisch-ohne-faelligkeit" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "pdca-follow-up-ueberfaellig") && <Card className="mb-4 border-border/60 bg-muted/20"><CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-4"><div><p className="text-xs text-muted-foreground">Kritische Aufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.prioritaet || "") === "kritisch" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">Kritisch ohne Fälligkeit</p><p className="font-semibold">{data.filter((a: any) => String(a?.prioritaet || "") === "kritisch" && a.status !== "erledigt" && !String(a?.faelligAm || "").trim()).length}</p></div><div><p className="text-xs text-muted-foreground">PDCA-Folgeaufgaben offen</p><p className="font-semibold">{data.filter((a: any) => String(a?.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt").length}</p></div><div><p className="text-xs text-muted-foreground">PDCA-Folgeaufgaben überfällig</p><p className="font-semibold">{data.filter((a: any) => String(a?.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt" && String(a?.faelligAm || "").trim() && String(a.faelligAm) < today).length}</p></div></CardContent></Card>}
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button type="button" size="sm" variant={new URL(location, "https://privashield.local").searchParams.get("filter") === "copilot-open" ? "default" : "outline"} onClick={() => {
           const next = new URL(location, "https://privashield.local");
@@ -5000,7 +5014,7 @@ function AufgabenPage() {
                     <div className="min-w-0">
                       <p className={`text-sm font-medium truncate ${item.status === "erledigt" ? "line-through text-muted-foreground" : ""}`}>{item.titel}</p>
                       <p className="text-xs text-muted-foreground">{item.typ || "task"} · {item.verantwortlicher || "—"}{item.faelligAm ? ` · Fällig: ${item.faelligAm}` : ""}{ueberfaellig ? " ⚠ Überfällig" : ""}</p>
-                      {(rawTaskFilter === "kritisch" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "copilot-open") && <p className="text-xs text-muted-foreground">Arbeitszustand: {item.status === "in_bearbeitung" ? "in Bearbeitung" : item.prioritaet === "kritisch" ? "heute erledigen" : "neu"}</p>}
+                      {(rawTaskFilter === "kritisch" || rawTaskFilter === "kritisch-ohne-faelligkeit" || rawTaskFilter === "pdca-follow-up-offen" || rawTaskFilter === "pdca-follow-up-ueberfaellig" || rawTaskFilter === "copilot-open") && <p className="text-xs text-muted-foreground">Arbeitszustand: {item.status === "in_bearbeitung" ? "in Bearbeitung" : rawTaskFilter === "kritisch-ohne-faelligkeit" ? "Termin setzen" : rawTaskFilter === "pdca-follow-up-ueberfaellig" ? "sofort nachsteuern" : item.prioritaet === "kritisch" ? "heute erledigen" : "neu"}</p>}
                       <div className="mt-2 h-2 w-full rounded bg-secondary overflow-hidden">
                         <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, item.fortschritt || 0))}%` }} />
                       </div>
