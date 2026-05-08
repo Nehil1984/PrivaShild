@@ -570,6 +570,7 @@ function Dashboard() {
   const webDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const datenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
+  const { data: audits = [] } = useModuleData("audits");
   const beschaeftigtenDok = dokumente.find((d: any) => d.dokumentTyp === "beschaeftigten_datenschutz_check");
   const leitlinieVorhanden = leitlinien.length > 0;
   const offeneReviews = aufgaben.filter((a: any) => a.typ === "review" && a.status !== "erledigt");
@@ -635,6 +636,39 @@ function Dashboard() {
   const retentionMissingProofDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).missingProof);
   const retentionLk5ControlDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).lk5Control);
   const retentionFreePeriodDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).freePeriod);
+  const aiCheckDocument = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
+  const aiCheckContent = (() => {
+    try { return aiCheckDocument?.inhalt ? JSON.parse(aiCheckDocument.inhalt) : null; } catch { return null; }
+  })();
+  const aiChecklistValues = Object.values(aiCheckContent?.dsgvoCheckliste || {});
+  const aiChecklistDone = aiChecklistValues.filter(Boolean).length;
+  const aiChecklistTotal = aiChecklistValues.length;
+  const aiMissingPolicyDashboard = !!aiCheckContent?.kiImEinsatz && !aiCheckContent?.kiRichtlinieVorhanden;
+  const aiMissingAiActDashboard = !!aiCheckContent?.kiImEinsatz && !aiCheckContent?.kiVoGeprueft;
+  const aiIncompleteChecklistDashboard = !!aiCheckContent?.kiImEinsatz && aiChecklistTotal > 0 && aiChecklistDone < aiChecklistTotal;
+  const aiDsfaGapDashboard = !!aiCheckContent?.kiImEinsatz && !!aiCheckContent?.dsfaErforderlich && (!aiCheckContent?.dsfaDurchgefuehrt || String(aiCheckContent?.verknuepfteDsfaId || "none") === "none");
+  const aiToolInventoryGapDashboard = !!aiCheckContent?.kiImEinsatz && (!Array.isArray(aiCheckContent?.tools) || aiCheckContent.tools.length === 0);
+  const getAuditDashboardMeta = (item: any) => {
+    const abweichungen = String(item?.abweichungen || "").split("\n").filter((line: string) => line.trim());
+    const todos = String(item?.empfehlungen || "").split("\n").filter((line: string) => line.trim());
+    const linkedPdcaIds = (() => {
+      try { return JSON.parse(item?.verknuepftePdcaIds || "[]"); } catch { return []; }
+    })();
+    const linkedPdca = pdca.filter((entry: any) => linkedPdcaIds.includes(entry.id));
+    const linkedTasks = aufgaben.filter((task: any) => String(task?.vorlagenBezug || "") === "pdca_follow_up" && linkedPdca.some((entry: any) => Number(entry.id) === Number(task?.referenzId)));
+    const offeneLinkedTasks = linkedTasks.filter((task: any) => String(task?.status || "") !== "erledigt");
+    const missingFollowUp = abweichungen.length > 0 && linkedPdca.length === 0;
+    const overdueNextAudit = !!item?.naechstesAuditAm && String(item.naechstesAuditAm) < new Date().toISOString().split("T")[0] && String(item?.status || "") !== "abgeschlossen";
+    const criticalOpen = ["kritisch", "hoch"].includes(String(item?.ergebnis || "").toLowerCase()) && String(item?.status || "") !== "abgeschlossen";
+    const missingOwner = (abweichungen.length > 0 || todos.length > 0) && !String(item?.auditor || item?.verantwortlicher || "").trim();
+    const inProgressNoTask = linkedPdca.some((entry: any) => String(entry?.status || "") === "in_bearbeitung") && offeneLinkedTasks.length === 0;
+    return { missingFollowUp, overdueNextAudit, criticalOpen, missingOwner, inProgressNoTask };
+  };
+  const auditMissingFollowUpDashboardItems = audits.filter((item: any) => getAuditDashboardMeta(item).missingFollowUp);
+  const auditOverdueNextAuditDashboardItems = audits.filter((item: any) => getAuditDashboardMeta(item).overdueNextAudit);
+  const auditCriticalOpenDashboardItems = audits.filter((item: any) => getAuditDashboardMeta(item).criticalOpen);
+  const auditMissingOwnerDashboardItems = audits.filter((item: any) => getAuditDashboardMeta(item).missingOwner);
+  const auditInProgressNoTaskDashboardItems = audits.filter((item: any) => getAuditDashboardMeta(item).inProgressNoTask);
   const pdcaOffenItems = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const pdcaReviewFaelligItems = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
   const auditFollowUpsDashboard = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
@@ -746,6 +780,16 @@ function Dashboard() {
     retentionMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${retentionMissingOwnerDashboardItems.length} Löschkonzept-Einträge ohne Löschverantwortung`, recommendation: "Operative Löschverantwortung und Zuständigkeiten in offenen Einträgen festlegen.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=missing-owner" } : null,
     retentionMissingProofDashboardItems.length > 0 ? { severity: "mittel", title: `${retentionMissingProofDashboardItems.length} Löschkonzept-Einträge ohne Nachweis oder Kontrolle`, recommendation: "Nachweis- und Kontrolllogik dokumentieren, damit Löschung belastbar auditiert werden kann.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=missing-proof" } : null,
     retentionFreePeriodDashboardItems.length > 0 ? { severity: "niedrig", title: `${retentionFreePeriodDashboardItems.length} Löschkonzept-Einträge mit freier Fristkategorie`, recommendation: "Freie Fristen fachlich und rechtlich begründen, damit die Löschlogik belastbar bleibt.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=free-period" } : null,
+    aiMissingPolicyDashboard ? { severity: "hoch", title: "KI-Einsatz ohne KI-Richtlinie", recommendation: "Governance, zulässige Nutzung und Verbote für eingesetzte KI-Tools kurzfristig verbindlich dokumentieren.", actionLabel: "Zu KI-Compliance", actionHref: "/ki-compliance?filter=missing-policy" } : null,
+    aiMissingAiActDashboard ? { severity: "hoch", title: "KI-Einsatz ohne dokumentierte KI-VO-Prüfung", recommendation: "Regulatorische Einordnung und Pflichten aus der KI-VO für den KI-Einsatz strukturiert nachziehen.", actionLabel: "Zu KI-Compliance", actionHref: "/ki-compliance?filter=missing-ai-act" } : null,
+    aiDsfaGapDashboard ? { severity: "hoch", title: "KI-Einsatz mit offener DSFA-Lücke", recommendation: "Erforderliche DSFA sofort durchführen oder sauber mit dem KI-Einsatz verknüpfen.", actionLabel: "Zu KI-Compliance", actionHref: "/ki-compliance?filter=dsfa-gap" } : null,
+    aiIncompleteChecklistDashboard ? { severity: "mittel", title: "KI-Einsatz mit unvollständiger DSGVO-Checkliste", recommendation: "Offene DSGVO-Prüfpunkte für den KI-Einsatz systematisch vervollständigen.", actionLabel: "Zu KI-Compliance", actionHref: "/ki-compliance?filter=incomplete-checklist" } : null,
+    aiToolInventoryGapDashboard ? { severity: "mittel", title: "KI-Einsatz ohne dokumentiertes Toolinventar", recommendation: "Eingesetzte KI-Systeme und Anbieter belastbar erfassen, damit Governance und Nachweise tragfähig bleiben.", actionLabel: "Zu KI-Compliance", actionHref: "/ki-compliance?filter=tool-inventory-gap" } : null,
+    auditMissingFollowUpDashboardItems.length > 0 ? { severity: "hoch", title: `${auditMissingFollowUpDashboardItems.length} Audits ohne PDCA-Follow-up`, recommendation: "Abweichungen mit fehlendem Audit-Follow-up operativ nachziehen und mit PDCA verknüpfen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=missing-follow-up" } : null,
+    auditCriticalOpenDashboardItems.length > 0 ? { severity: "hoch", title: `${auditCriticalOpenDashboardItems.length} offene Audits mit hohem oder kritischem Ergebnis`, recommendation: "Kritische Auditergebnisse priorisiert steuern und Folgeaktivitäten verbindlich hinterlegen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=critical-open" } : null,
+    auditOverdueNextAuditDashboardItems.length > 0 ? { severity: "mittel", title: `${auditOverdueNextAuditDashboardItems.length} Audits mit überfälligem nächstem Termin`, recommendation: "Überfällige Auditzyklen terminlich neu aufsetzen und Verantwortliche festziehen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=overdue-next-audit" } : null,
+    auditMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${auditMissingOwnerDashboardItems.length} Audits ohne klare Verantwortlichkeit`, recommendation: "Verantwortliche für offene Auditmaßnahmen und Empfehlungen verbindlich zuordnen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=missing-owner" } : null,
+    auditInProgressNoTaskDashboardItems.length > 0 ? { severity: "mittel", title: `${auditInProgressNoTaskDashboardItems.length} Audit-Follow-ups ohne offene Folgeaufgabe`, recommendation: "Laufende Audit-Follow-ups operativ absichern und mit mindestens einer Folgeaufgabe hinterlegen.", actionLabel: "Zu Audits", actionHref: "/audits?filter=in-progress-no-task" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -1051,6 +1095,16 @@ function Dashboard() {
               {retentionMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept ohne Löschverantwortung: {retentionMissingOwnerDashboardItems.length}</p>}
               {retentionMissingProofDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept ohne Nachweis/Kontrolle: {retentionMissingProofDashboardItems.length}</p>}
               {retentionFreePeriodDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept mit freier Fristkategorie: {retentionFreePeriodDashboardItems.length}</p>}
+              {aiMissingPolicyDashboard && <p className="text-red-400">KI-Einsatz ohne KI-Richtlinie</p>}
+              {aiMissingAiActDashboard && <p className="text-red-400">KI-Einsatz ohne KI-VO-Prüfung</p>}
+              {aiDsfaGapDashboard && <p className="text-red-400">KI-Einsatz mit offener DSFA-Lücke</p>}
+              {aiIncompleteChecklistDashboard && <p className="text-yellow-400">KI-Einsatz mit unvollständiger DSGVO-Checkliste</p>}
+              {aiToolInventoryGapDashboard && <p className="text-yellow-400">KI-Einsatz ohne dokumentiertes Toolinventar</p>}
+              {auditMissingFollowUpDashboardItems.length > 0 && <p className="text-red-400">Audits ohne PDCA-Follow-up: {auditMissingFollowUpDashboardItems.length}</p>}
+              {auditCriticalOpenDashboardItems.length > 0 && <p className="text-red-400">Offene Audits mit hohem/kritischem Ergebnis: {auditCriticalOpenDashboardItems.length}</p>}
+              {auditOverdueNextAuditDashboardItems.length > 0 && <p className="text-yellow-400">Audits mit überfälligem nächstem Termin: {auditOverdueNextAuditDashboardItems.length}</p>}
+              {auditMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">Audits ohne klare Verantwortlichkeit: {auditMissingOwnerDashboardItems.length}</p>}
+              {auditInProgressNoTaskDashboardItems.length > 0 && <p className="text-yellow-400">Audit-Follow-ups ohne offene Folgeaufgabe: {auditInProgressNoTaskDashboardItems.length}</p>}
             </CardContent>
           </Card>
 
@@ -4718,6 +4772,8 @@ function LoeschkonzeptPage() {
 
 function AuditsPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
+  const rawAuditFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "";
   const { activeMandantId } = useMandant();
   const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("audits");
@@ -4786,11 +4842,76 @@ function AuditsPage() {
   const auditFollowUps = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
   const auditFollowUpsOffen = auditFollowUps.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const offeneAuditFolgeaufgaben = aufgaben.filter((a: any) => String(a.vorlagenBezug || "") === "pdca_follow_up" && a.status !== "erledigt");
-  const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + (String(item.abweichungen || "").split("\n").filter((line: string) => line.trim()).length || 0), 0);
+  const todayIso = new Date().toISOString().split("T")[0];
+  const getAuditMeta = (item: any) => {
+    const abweichungen = String(item.abweichungen || "").split("\n").filter((line: string) => line.trim());
+    const todos = String(item.empfehlungen || "").split("\n").filter((line: string) => line.trim());
+    const linkedPdcaIds = (() => {
+      try { return JSON.parse(item.verknuepftePdcaIds || "[]"); } catch { return []; }
+    })();
+    const linkedPdca = pdca.filter((entry: any) => linkedPdcaIds.includes(entry.id));
+    const linkedTasks = aufgaben.filter((task: any) => String(task.vorlagenBezug || "") === "pdca_follow_up" && linkedPdca.some((entry: any) => Number(entry.id) === Number(task.referenzId)));
+    const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
+    const missingFollowUp = abweichungen.length > 0 && linkedPdca.length === 0;
+    const overdueNextAudit = !!item.naechstesAuditAm && item.naechstesAuditAm < todayIso && String(item.status || "") !== "abgeschlossen";
+    const criticalOpen = ["kritisch", "hoch"].includes(String(item.ergebnis || "").toLowerCase()) && String(item.status || "") !== "abgeschlossen";
+    const missingOwner = (abweichungen.length > 0 || todos.length > 0) && !String(item.auditor || item.verantwortlicher || "").trim();
+    const inProgressNoTask = linkedPdca.some((entry: any) => String(entry.status || "") === "in_bearbeitung") && offeneLinkedTasks.length === 0;
+    return { abweichungen, todos, linkedPdca, linkedTasks, offeneLinkedTasks, missingFollowUp, overdueNextAudit, criticalOpen, missingOwner, inProgressNoTask };
+  };
+  const filteredAudits = data.filter((item: any) => {
+    const meta = getAuditMeta(item);
+    if (rawAuditFilter === "missing-follow-up") return meta.missingFollowUp;
+    if (rawAuditFilter === "overdue-next-audit") return meta.overdueNextAudit;
+    if (rawAuditFilter === "critical-open") return meta.criticalOpen;
+    if (rawAuditFilter === "missing-owner") return meta.missingOwner;
+    if (rawAuditFilter === "in-progress-no-task") return meta.inProgressNoTask;
+    return true;
+  }).sort((a: any, b: any) => {
+    const metaA = getAuditMeta(a);
+    const metaB = getAuditMeta(b);
+    const aScore = (metaA.missingFollowUp ? 120 : 0) + (metaA.criticalOpen ? 90 : 0) + (metaA.overdueNextAudit ? 70 : 0) + (metaA.missingOwner ? 60 : 0) + (metaA.inProgressNoTask ? 50 : 0) + metaA.abweichungen.length * 5;
+    const bScore = (metaB.missingFollowUp ? 120 : 0) + (metaB.criticalOpen ? 90 : 0) + (metaB.overdueNextAudit ? 70 : 0) + (metaB.missingOwner ? 60 : 0) + (metaB.inProgressNoTask ? 50 : 0) + metaB.abweichungen.length * 5;
+    if (rawAuditFilter) return bScore - aScore || String(a.naechstesAuditAm || "9999-12-31").localeCompare(String(b.naechstesAuditAm || "9999-12-31")) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+    return String(a.auditdatum || "9999-12-31").localeCompare(String(b.auditdatum || "9999-12-31")) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
+  });
+  const auditMissingFollowUp = data.filter((item: any) => getAuditMeta(item).missingFollowUp);
+  const auditOverdueNextAudit = data.filter((item: any) => getAuditMeta(item).overdueNextAudit);
+  const auditCriticalOpen = data.filter((item: any) => getAuditMeta(item).criticalOpen);
+  const auditMissingOwner = data.filter((item: any) => getAuditMeta(item).missingOwner);
+  const auditInProgressNoTask = data.filter((item: any) => getAuditMeta(item).inProgressNoTask);
+  const gesamtAbweichungen = data.reduce((sum: number, item: any) => sum + getAuditMeta(item).abweichungen.length, 0);
+  const auditFilterHint = rawAuditFilter === "missing-follow-up"
+    ? "Du siehst gerade: Audits mit Abweichungen, aber ohne verknüpften PDCA-Follow-up."
+    : rawAuditFilter === "overdue-next-audit"
+      ? "Du siehst gerade: Audits mit überfälligem nächstem Audit-Termin."
+      : rawAuditFilter === "critical-open"
+        ? "Du siehst gerade: offene kritische oder hohe Auditergebnisse."
+        : rawAuditFilter === "missing-owner"
+          ? "Du siehst gerade: Audits mit Maßnahmenbedarf ohne klare Verantwortlichkeit."
+          : rawAuditFilter === "in-progress-no-task"
+            ? "Du siehst gerade: Audit-Follow-ups in Bearbeitung ohne offene Folgeaufgabe."
+            : "";
   return (
     <MandantGuard>
       <PageHeader title={t("auditsTitle")} desc={t("auditsDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Audit</Button>} />
+      {auditFilterHint && <Card className="mb-4 border-primary/30 bg-primary/5"><CardContent className="py-3 px-4 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{auditFilterHint} <span className="font-medium text-foreground">({filteredAudits.length})</span></span><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => {
+        const next = new URL(location, "https://privashield.local");
+        next.searchParams.delete("filter");
+        setLocation(`${next.pathname}${next.search}`);
+      }}>Filter zurücksetzen</Button><Link href="/pdca?filter=audit-follow-up-ohne-audit"><a className="text-xs text-primary hover:underline self-center">Zu PDCA</a></Link></div></CardContent></Card>}
+      {(rawAuditFilter === "missing-follow-up" || rawAuditFilter === "critical-open" || rawAuditFilter === "overdue-next-audit" || rawAuditFilter === "missing-owner" || rawAuditFilter === "in-progress-no-task") && (
+        <Card className="mb-4 border-border/60 bg-muted/20">
+          <CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-5">
+            <div><p className="text-xs text-muted-foreground">Ohne Follow-up</p><p className="font-semibold">{auditMissingFollowUp.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Kritisch/hoch offen</p><p className="font-semibold">{auditCriticalOpen.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Nächstes Audit überfällig</p><p className="font-semibold">{auditOverdueNextAudit.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Ohne Verantwortliche</p><p className="font-semibold">{auditMissingOwner.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">In Bearbeitung ohne Aufgabe</p><p className="font-semibold">{auditInProgressNoTask.length}</p></div>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Audits gesamt</p><p className="text-2xl font-bold">{data.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Abweichungen gesamt</p><p className="text-2xl font-bold">{gesamtAbweichungen}</p></CardContent></Card>
@@ -4798,6 +4919,21 @@ function AuditsPage() {
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">PDCA Audit-Follow-ups offen</p><p className="text-2xl font-bold">{auditFollowUpsOffen.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Folgeaufgaben</p><p className="text-2xl font-bold">{offeneAuditFolgeaufgaben.length}</p></CardContent></Card>
       </div>
+      {(auditMissingFollowUp.length > 0 || auditCriticalOpen.length > 0 || auditOverdueNextAudit.length > 0 || auditMissingOwner.length > 0 || auditInProgressNoTask.length > 0) && (
+        <Card className="mb-4 border-amber-500/40 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-sm">Audit-Fokusliste</CardTitle>
+            <CardDescription>Diese Punkte sind aktuell im Audit-Workflow am wichtigsten.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            {auditMissingFollowUp.length > 0 && <p>• {auditMissingFollowUp.length} Audit(s) mit Abweichungen haben noch keinen verknüpften PDCA-Follow-up.</p>}
+            {auditCriticalOpen.length > 0 && <p>• {auditCriticalOpen.length} Audit(s) sind mit hohem oder kritischem Ergebnis noch offen.</p>}
+            {auditOverdueNextAudit.length > 0 && <p>• {auditOverdueNextAudit.length} Audit(s) haben einen überfälligen nächsten Audit-Termin.</p>}
+            {auditMissingOwner.length > 0 && <p>• {auditMissingOwner.length} Audit(s) mit Maßnahmenbedarf haben keine klare Verantwortlichkeit.</p>}
+            {auditInProgressNoTask.length > 0 && <p>• {auditInProgressNoTask.length} Audit-Follow-ups laufen ohne offene Folgeaufgabe.</p>}
+          </CardContent>
+        </Card>
+      )}
       <Card className="mb-4">
         <CardHeader>
           <CardTitle className="text-sm">Audit-zu-PDCA-Verzahnung</CardTitle>
@@ -4815,23 +4951,22 @@ function AuditsPage() {
       </Card>
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine Audits dokumentiert.</CardContent></Card>}
-          {data.map((item: any) => {
-            const abweichungen = String(item.abweichungen || "").split("\n").filter((line: string) => line.trim());
-            const todos = String(item.empfehlungen || "").split("\n").filter((line: string) => line.trim());
-            const linkedPdcaIds = (() => {
-              try { return JSON.parse(item.verknuepftePdcaIds || "[]"); } catch { return []; }
-            })();
-            const linkedPdca = pdca.filter((entry: any) => linkedPdcaIds.includes(entry.id));
-            const linkedTasks = aufgaben.filter((task: any) => String(task.vorlagenBezug || "") === "pdca_follow_up" && linkedPdca.some((entry: any) => Number(entry.id) === Number(task.referenzId)));
-            const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
+          {filteredAudits.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{auditFilterHint || "Noch keine Audits dokumentiert."}{auditFilterHint ? " Aktuell gibt es dafür keine Treffer." : ""}</CardContent></Card>}
+          {filteredAudits.map((item: any) => {
+            const meta = getAuditMeta(item);
+            const abweichungen = meta.abweichungen;
+            const todos = meta.todos;
+            const linkedPdca = meta.linkedPdca;
+            const linkedTasks = meta.linkedTasks;
+            const offeneLinkedTasks = meta.offeneLinkedTasks;
             return (
               <Card key={item.id} className="group hover:border-border/80 transition-colors">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                     <div>
                       <p className="text-sm font-semibold">{item.titel}</p>
-                      <p className="text-xs text-muted-foreground">{item.pruefbereich || "Allgemeiner Prüfbereich"} · {item.auditdatum}{item.auditor ? ` · Auditor: ${item.auditor}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{item.pruefbereich || "Allgemeiner Prüfbereich"} · {item.auditdatum}{item.auditor ? ` · Auditor: ${item.auditor}` : ""}{item.naechstesAuditAm ? ` · nächstes Audit ${item.naechstesAuditAm}` : ""}</p>
+                      {rawAuditFilter && <p className="text-xs text-muted-foreground">Arbeitszustand: {meta.missingFollowUp ? "heute nachziehen" : meta.criticalOpen ? "priorisiert" : meta.overdueNextAudit ? "Termin eskaliert" : meta.missingOwner ? "Verantwortung klären" : meta.inProgressNoTask ? "blockiert" : "beobachten"}</p>}
                     </div>
                     <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                       <StatusBadge value={item.ergebnis} />
@@ -4850,6 +4985,11 @@ function AuditsPage() {
                     }).map((fallbackPdca: any) => `${fallbackPdca.titel} (${fallbackPdca.status})`).join("\n") || "—"}</p></div>
                     <div className="rounded-lg border p-3"><p className="font-medium mb-1">Folgeaufgaben</p><p className="text-muted-foreground whitespace-pre-wrap">{linkedTasks.length ? linkedTasks.map((task: any) => `${task.titel} (${task.status}, ${Number(task.fortschritt || 0)}%)`).join("\n") : "—"}{offeneLinkedTasks.length ? `\n\nOffen: ${offeneLinkedTasks.length}` : ""}</p></div>
                   </div>
+                  {(meta.missingFollowUp || meta.criticalOpen || meta.overdueNextAudit || meta.missingOwner || meta.inProgressNoTask) && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                      {meta.missingFollowUp ? "Für dieses Audit bestehen Abweichungen, aber noch kein verknüpfter PDCA-Follow-up." : meta.criticalOpen ? "Dieses Audit ist mit hohem oder kritischem Ergebnis noch offen und sollte priorisiert nachgesteuert werden." : meta.overdueNextAudit ? "Der nächste Audit-Termin ist überfällig und sollte neu geplant oder durchgeführt werden." : meta.missingOwner ? "Für Audit-Abweichungen oder Empfehlungen fehlt aktuell eine klare Verantwortlichkeit." : "Dieser Audit-Follow-up läuft ohne offene Folgeaufgabe und sollte operativ abgesichert werden."}
+                    </div>
+                  )}
                   {(item.feststellungen || item.positiveAspekte) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div className="rounded-lg border p-3"><p className="font-medium mb-1">Feststellungen</p><p className="text-muted-foreground whitespace-pre-wrap">{item.feststellungen || "—"}</p></div>
@@ -5576,8 +5716,12 @@ function DokumentForm({ initial, onSave, onCancel }: any) {
 
 function KiCompliancePage() {
   const { t } = useI18n();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data: dokumente, create, update } = useModuleData("dokumente");
   const { data: dsfas = [] } = useModuleData("dsfa");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const { toast } = useToast();
   const existingCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
 
@@ -5586,7 +5730,7 @@ function KiCompliancePage() {
     try { return JSON.parse(raw); } catch { return fallback; }
   };
 
-  const [form, setForm] = useState<any>({
+  const baseForm = {
     kiImEinsatz: false,
     tools: [],
     toolInput: "",
@@ -5606,10 +5750,12 @@ function KiCompliancePage() {
     dsfaDurchgefuehrt: false,
     verknuepfteDsfaId: "none",
     notes: "",
-  });
+  };
+
+  const [form, setForm] = useState<any>(baseForm);
 
   useEffect(() => {
-    const parsed = parseJson(existingCheck?.inhalt, form);
+    const parsed = parseJson(existingCheck?.inhalt, baseForm);
     setForm((prev: any) => ({ ...prev, ...parsed, dsgvoCheckliste: { ...prev.dsgvoCheckliste, ...(parsed.dsgvoCheckliste || {}) } }));
   }, [existingCheck?.id]);
 
@@ -5633,6 +5779,101 @@ function KiCompliancePage() {
       : form.kiRichtlinieVorhanden || form.kiVoGeprueft || checklistDone > 0
         ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" }
         : { label: "Kritisch", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+
+  const getAiMeta = () => {
+    const missingPolicy = !!form.kiImEinsatz && !form.kiRichtlinieVorhanden;
+    const missingAiAct = !!form.kiImEinsatz && !form.kiVoGeprueft;
+    const incompleteChecklist = !!form.kiImEinsatz && checklistDone < checklistTotal;
+    const dsfaGap = !!form.kiImEinsatz && !!form.dsfaErforderlich && (!form.dsfaDurchgefuehrt || String(form.verknuepfteDsfaId || "none") === "none");
+    const toolInventoryGap = !!form.kiImEinsatz && (!Array.isArray(form.tools) || form.tools.length === 0);
+    return { missingPolicy, missingAiAct, incompleteChecklist, dsfaGap, toolInventoryGap };
+  };
+  const aiMeta = getAiMeta();
+
+  const buildAiTaskDraft = (kind: "missing-policy" | "missing-ai-act" | "incomplete-checklist" | "dsfa-gap" | "tool-inventory-gap") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "missing-policy": { title: "KI-Richtlinie für eingesetzte KI-Tools festlegen", priority: "kritisch", description: "Es werden KI-Tools eingesetzt, aber eine dokumentierte KI-Richtlinie fehlt. Bitte Governance, zulässige Nutzung und Verbote verbindlich festlegen." },
+      "missing-ai-act": { title: "KI-VO-Prüfung für eingesetzte KI-Tools nachziehen", priority: "hoch", description: "Der KI-Einsatz ist dokumentiert, aber die Prüfung der geltenden KI-VO-Vorgaben fehlt. Bitte regulatorische Einordnung und Pflichtenbewertung ergänzen." },
+      "incomplete-checklist": { title: "DSGVO-Checkliste für KI-Einsatz vervollständigen", priority: "hoch", description: "Die DSGVO-Prüfstruktur für den KI-Einsatz ist noch nicht vollständig abgearbeitet. Bitte offene Prüfpunkte systematisch schließen." },
+      "dsfa-gap": { title: "DSFA-Lücke im KI-Einsatz schließen", priority: "kritisch", description: "Für den KI-Einsatz ist eine DSFA erforderlich, aber noch nicht belastbar durchgeführt oder verknüpft. Bitte DSFA unverzüglich nachziehen." },
+      "tool-inventory-gap": { title: "KI-Toolinventar vervollständigen", priority: "mittel", description: "KI-Einsatz ist markiert, aber es sind keine konkreten Tools dokumentiert. Bitte eingesetzte KI-Systeme belastbar erfassen." },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `ki:${kind}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `ki:${kind}` };
+  };
+
+  const createAiFollowUpTask = async (kind: "missing-policy" | "missing-ai-act" | "incomplete-checklist" | "dsfa-gap" | "tool-inventory-gap") => {
+    const draft = buildAiTaskDraft(kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "incomplete-checklist" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: "",
+      kategorie: "ki-compliance",
+      referenzId: existingCheck?.id || null,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createAiPdcaCycle = async (kind: "missing-policy" | "missing-ai-act" | "incomplete-checklist" | "dsfa-gap" | "tool-inventory-gap") => {
+    const source = `ki-pdca:${kind}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "dsfa-gap" || kind === "missing-policy" ? 7 : 14));
+    const titleMap: Record<string, string> = {
+      "missing-policy": "PDCA KI-Governance / Richtlinie",
+      "missing-ai-act": "PDCA KI-VO-Prüfung",
+      "incomplete-checklist": "PDCA DSGVO-Prüfstruktur KI",
+      "dsfa-gap": "PDCA DSFA für KI-Einsatz",
+      "tool-inventory-gap": "PDCA KI-Toolinventar",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: "Automatisch vorbereiteter Verbesserungszyklus für den dokumentierten KI-Einsatz.",
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "dsfa-gap" || kind === "missing-policy" ? "kritisch" : "hoch",
+      verantwortlicher: "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `KI im Einsatz: ${form.kiImEinsatz ? "ja" : "nein"}\nTools: ${(form.tools || []).join(", ") || "keine dokumentiert"}\nStatus: ${status.label}`,
+      planMassnahmen: kind === "missing-policy" ? "KI-Richtlinie mit zulässiger Nutzung, Verboten und Governance definieren." : kind === "missing-ai-act" ? "KI-VO-relevante Anforderungen prüfen und dokumentieren." : kind === "incomplete-checklist" ? "Offene DSGVO-Prüfpunkte systematisch vervollständigen." : kind === "dsfa-gap" ? "DSFA erstellen bzw. sauber verknüpfen und abschließen." : "Eingesetzte KI-Tools und Einsatzszenarien belastbar inventarisieren.",
+      planZiele: "KI-Einsatz belastbar, dokumentiert und regulatorisch abgesichert steuern.",
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum KI-Verbesserungszyklus ${titleMap[kind]}.`,
+      typ: kind === "incomplete-checklist" ? "review" : "task",
+      prioritaet: kind === "dsfa-gap" || kind === "missing-policy" ? "kritisch" : "hoch",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "ki-compliance",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
 
   const save = async () => {
     const payload = {
@@ -5668,6 +5909,29 @@ function KiCompliancePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
+            <Card className="border-border/60 bg-muted/20">
+              <CardContent className="p-4 space-y-2 text-sm">
+                {aiMeta.missingPolicy && <p className="text-red-400">KI-Einsatz ohne KI-Richtlinie</p>}
+                {aiMeta.missingAiAct && <p className="text-red-400">KI-Einsatz ohne dokumentierte KI-VO-Prüfung</p>}
+                {aiMeta.dsfaGap && <p className="text-red-400">KI-Einsatz mit offener DSFA-Lücke</p>}
+                {aiMeta.incompleteChecklist && <p className="text-yellow-400">DSGVO-Checkliste für KI-Einsatz noch unvollständig</p>}
+                {aiMeta.toolInventoryGap && <p className="text-yellow-400">KI-Einsatz ohne dokumentiertes Toolinventar</p>}
+                {!aiMeta.missingPolicy && !aiMeta.missingAiAct && !aiMeta.dsfaGap && !aiMeta.incompleteChecklist && !aiMeta.toolInventoryGap && <p className="text-muted-foreground">Aktuell keine priorisierten KI-Compliance-Hinweise.</p>}
+              </CardContent>
+            </Card>
+            {(aiMeta.missingPolicy || aiMeta.missingAiAct || aiMeta.dsfaGap || aiMeta.incompleteChecklist || aiMeta.toolInventoryGap) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">KI-Fokusliste</CardTitle>
+                  <CardDescription>Operative Folgeaktionen für die aktuell wichtigsten KI-Compliance-Lücken</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {aiMeta.missingPolicy && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">KI-Richtlinie fehlt</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createAiFollowUpTask("missing-policy")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAiPdcaCycle("missing-policy")}>PDCA erzeugen</Button><Link href={buildAiTaskDraft("missing-policy").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                  {aiMeta.missingAiAct && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">KI-VO-Prüfung fehlt</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createAiFollowUpTask("missing-ai-act")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAiPdcaCycle("missing-ai-act")}>PDCA erzeugen</Button><Link href={buildAiTaskDraft("missing-ai-act").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                  {aiMeta.dsfaGap && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">DSFA-Lücke im KI-Einsatz</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createAiFollowUpTask("dsfa-gap")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createAiPdcaCycle("dsfa-gap")}>PDCA erzeugen</Button><Link href={buildAiTaskDraft("dsfa-gap").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+                </CardContent>
+              </Card>
+            )}
             <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-secondary/30"><input type="checkbox" checked={!!form.kiImEinsatz} onChange={e => set("kiImEinsatz", e.target.checked)} className="rounded" /><span>Es werden KI-Tools eingesetzt</span></label>
 
             {form.kiImEinsatz && (
