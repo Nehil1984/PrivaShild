@@ -621,6 +621,20 @@ function Dashboard() {
   const vvtMitHohemRisikoItems = vvt.filter((entry: any) => String(entry?.risikostufe || "").toLowerCase() === "hoch");
   const vvtMitReviewBedarfItems = vvt.filter((entry: any) => String(entry?.risikostufe || "").toLowerCase() === "mittel" || !!entry?.drittlandtransfer);
   const vvtOhneLoeschkonzept = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
+  const getRetentionDashboardMeta = (item: any) => {
+    const loeschklasse = String(item?.loeschklasse || "");
+    const missingTrigger = !String(item?.loeschereignis || "").trim();
+    const missingOwner = !String(item?.loeschverantwortlicher || item?.verantwortlicher || "").trim();
+    const missingProof = !String(item?.nachweis || item?.kontrolle || "").trim();
+    const lk5Control = loeschklasse === "LK5" && (!String(item?.kontrolle || "").trim() || !String(item?.nachweis || "").trim());
+    const freePeriod = String(item?.fristKategorie || "") === "frei" || !String(item?.fristKategorie || "").trim();
+    return { missingTrigger, missingOwner, missingProof, lk5Control, freePeriod };
+  };
+  const retentionMissingTriggerDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).missingTrigger);
+  const retentionMissingOwnerDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).missingOwner);
+  const retentionMissingProofDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).missingProof);
+  const retentionLk5ControlDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).lk5Control);
+  const retentionFreePeriodDashboardItems = loeschkonzept.filter((item: any) => getRetentionDashboardMeta(item).freePeriod);
   const pdcaOffenItems = pdca.filter((item: any) => String(item.status || "") !== "abgeschlossen");
   const pdcaReviewFaelligItems = pdca.filter((item: any) => item.naechstePruefungAm && new Date(item.naechstePruefungAm).getTime() < Date.now() && String(item.status || "") !== "abgeschlossen");
   const auditFollowUpsDashboard = pdca.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up");
@@ -727,6 +741,11 @@ function Dashboard() {
     tomReviewMissingDashboardItems.length > 0 ? { severity: "mittel", title: `${tomReviewMissingDashboardItems.length} TOM ohne Prüftermin`, recommendation: "Prüffälligkeiten und Reviewintervalle für TOM verbindlich festlegen.", actionLabel: "Zu TOM", actionHref: "/tom?filter=review-missing" } : null,
     tomWeakEffectivenessDashboardItems.length > 0 ? { severity: "mittel", title: `${tomWeakEffectivenessDashboardItems.length} TOM mit schwacher oder offener Wirksamkeit`, recommendation: "Wirksamkeitsbewertung, Nachweise und Verbesserungsbedarf der TOM fachlich nachsteuern.", actionLabel: "Zu TOM", actionHref: "/tom?filter=weak-effectiveness" } : null,
     tomMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${tomMissingOwnerDashboardItems.length} TOM ohne Verantwortlichkeit`, recommendation: "Verantwortliche Rollen für TOM eindeutig festlegen und Reviewverantwortung zuordnen.", actionLabel: "Zu TOM", actionHref: "/tom?filter=missing-owner" } : null,
+    retentionLk5ControlDashboardItems.length > 0 ? { severity: "hoch", title: `${retentionLk5ControlDashboardItems.length} Löschkonzept-Einträge mit LK5-Kontrollbedarf`, recommendation: "Hochrisiko-Einträge mit Nachweis-, Kontroll- und Verantwortungslogik kurzfristig absichern.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=lk5-control" } : null,
+    retentionMissingTriggerDashboardItems.length > 0 ? { severity: "mittel", title: `${retentionMissingTriggerDashboardItems.length} Löschkonzept-Einträge ohne Löschereignis`, recommendation: "Löschtrigger und operative Auslöser für offene Einträge verbindlich ergänzen.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=missing-trigger" } : null,
+    retentionMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${retentionMissingOwnerDashboardItems.length} Löschkonzept-Einträge ohne Löschverantwortung`, recommendation: "Operative Löschverantwortung und Zuständigkeiten in offenen Einträgen festlegen.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=missing-owner" } : null,
+    retentionMissingProofDashboardItems.length > 0 ? { severity: "mittel", title: `${retentionMissingProofDashboardItems.length} Löschkonzept-Einträge ohne Nachweis oder Kontrolle`, recommendation: "Nachweis- und Kontrolllogik dokumentieren, damit Löschung belastbar auditiert werden kann.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=missing-proof" } : null,
+    retentionFreePeriodDashboardItems.length > 0 ? { severity: "niedrig", title: `${retentionFreePeriodDashboardItems.length} Löschkonzept-Einträge mit freier Fristkategorie`, recommendation: "Freie Fristen fachlich und rechtlich begründen, damit die Löschlogik belastbar bleibt.", actionLabel: "Zum Löschkonzept", actionHref: "/loeschkonzept?filter=free-period" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -1027,6 +1046,11 @@ function Dashboard() {
               {tomReviewMissingDashboardItems.length > 0 && <p className="text-yellow-400">TOM ohne Prüftermin: {tomReviewMissingDashboardItems.length}</p>}
               {tomWeakEffectivenessDashboardItems.length > 0 && <p className="text-yellow-400">TOM mit schwacher oder offener Wirksamkeit: {tomWeakEffectivenessDashboardItems.length}</p>}
               {tomMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">TOM ohne Verantwortlichkeit: {tomMissingOwnerDashboardItems.length}</p>}
+              {retentionLk5ControlDashboardItems.length > 0 && <p className="text-red-400">Löschkonzept mit LK5-Kontrollbedarf: {retentionLk5ControlDashboardItems.length}</p>}
+              {retentionMissingTriggerDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept ohne Löschereignis: {retentionMissingTriggerDashboardItems.length}</p>}
+              {retentionMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept ohne Löschverantwortung: {retentionMissingOwnerDashboardItems.length}</p>}
+              {retentionMissingProofDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept ohne Nachweis/Kontrolle: {retentionMissingProofDashboardItems.length}</p>}
+              {retentionFreePeriodDashboardItems.length > 0 && <p className="text-yellow-400">Löschkonzept mit freier Fristkategorie: {retentionFreePeriodDashboardItems.length}</p>}
             </CardContent>
           </Card>
 
@@ -4495,29 +4519,184 @@ function LoeschkonzeptForm({ initial, onSave, onCancel }: any) {
 
 function LoeschkonzeptPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("loeschkonzept");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const { fristen: gesetzlicheAufbewahrungsfristen } = useComplianceMeta();
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [quickFilter, setQuickFilterState] = useState<"all" | "missing-trigger" | "missing-owner" | "missing-proof" | "lk5-control" | "free-period">("all");
   const [filterFrist, setFilterFrist] = useState("alle");
   const [filterKlasse, setFilterKlasse] = useState("alle");
   const [filterStatus, setFilterStatus] = useState("alle");
   const { toast } = useToast();
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    setQuickFilterState(rawFilter === "missing-trigger" || rawFilter === "missing-owner" || rawFilter === "missing-proof" || rawFilter === "lk5-control" || rawFilter === "free-period" ? rawFilter : "all");
+  }, [location]);
+
+  const setQuickFilter = (value: "all" | "missing-trigger" | "missing-owner" | "missing-proof" | "lk5-control" | "free-period") => {
+    setQuickFilterState(value);
+    const next = new URL(location, "https://privashield.local");
+    if (value === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", value);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
-  const filtered = data.filter((item: any) => (
-    (filterFrist === "alle" || item.fristKategorie === filterFrist) &&
-    (filterKlasse === "alle" || item.loeschklasse === filterKlasse) &&
-    (filterStatus === "alle" || item.status === filterStatus)
-  ));
+
+  const getRetentionMeta = (item: any) => {
+    const loeschklasse = String(item?.loeschklasse || "");
+    const missingTrigger = !String(item?.loeschereignis || "").trim();
+    const missingOwner = !String(item?.loeschverantwortlicher || item?.verantwortlicher || "").trim();
+    const missingProof = !String(item?.nachweis || item?.kontrolle || "").trim();
+    const lk5Control = loeschklasse === "LK5" && (!String(item?.kontrolle || "").trim() || !String(item?.nachweis || "").trim());
+    const freePeriod = String(item?.fristKategorie || "") === "frei" || !String(item?.fristKategorie || "").trim();
+    return { missingTrigger, missingOwner, missingProof, lk5Control, freePeriod };
+  };
+
+  const retentionMissingTriggerItems = data.filter((item: any) => getRetentionMeta(item).missingTrigger);
+  const retentionMissingOwnerItems = data.filter((item: any) => getRetentionMeta(item).missingOwner);
+  const retentionMissingProofItems = data.filter((item: any) => getRetentionMeta(item).missingProof);
+  const retentionLk5ControlItems = data.filter((item: any) => getRetentionMeta(item).lk5Control);
+  const retentionFreePeriodItems = data.filter((item: any) => getRetentionMeta(item).freePeriod);
+
+  const buildRetentionTaskDraft = (item: any, kind: "missing-trigger" | "missing-owner" | "missing-proof" | "lk5-control" | "free-period") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "missing-trigger": { title: `Löschereignis ergänzen: ${item.bezeichnung}`, priority: "hoch", description: `Für den Löschkonzept-Eintrag "${item.bezeichnung}" fehlt ein dokumentiertes Löschereignis. Bitte Trigger und Ablauf fachlich ergänzen.` },
+      "missing-owner": { title: `Löschverantwortung festlegen: ${item.bezeichnung}`, priority: "hoch", description: `Für den Löschkonzept-Eintrag "${item.bezeichnung}" fehlt eine klare Löschverantwortung. Bitte operative Zuständigkeit festlegen.` },
+      "missing-proof": { title: `Nachweis/Kontrolle ergänzen: ${item.bezeichnung}`, priority: "mittel", description: `Für den Löschkonzept-Eintrag "${item.bezeichnung}" fehlt eine belastbare Dokumentation von Nachweis oder Kontrolle.` },
+      "lk5-control": { title: `LK5-Kontrollnachweis absichern: ${item.bezeichnung}`, priority: "kritisch", description: `Für den Hochrisiko-Eintrag "${item.bezeichnung}" fehlen Kontrolle oder Nachweis. Bitte die erhöhten Löschanforderungen nachziehen.` },
+      "free-period": { title: `Freie Löschfrist begründen: ${item.bezeichnung}`, priority: "mittel", description: `Der Löschkonzept-Eintrag "${item.bezeichnung}" nutzt eine freie Fristkategorie. Bitte rechtliche/fachliche Begründung und Fristlogik absichern.` },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `loeschkonzept:${kind}:${item.id}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `loeschkonzept:${kind}:${item.id}` };
+  };
+
+  const createRetentionFollowUpTask = async (item: any, kind: "missing-trigger" | "missing-owner" | "missing-proof" | "lk5-control" | "free-period") => {
+    const draft = buildRetentionTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.loeschverantwortlicher || item.verantwortlicher || "",
+      faelligAm: "",
+      kategorie: "loeschkonzept",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createRetentionPdcaCycle = async (item: any, kind: "missing-trigger" | "missing-owner" | "missing-proof" | "lk5-control" | "free-period") => {
+    const source = `loeschkonzept-pdca:${kind}:${item.id}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "lk5-control" ? 7 : 21));
+    const pdcaTitle = `PDCA Löschkonzept: ${item.bezeichnung}`;
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: pdcaTitle,
+      beschreibung: `Verbesserungszyklus für den Löschkonzept-Eintrag "${item.bezeichnung}".`,
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "lk5-control" ? "kritisch" : "hoch",
+      verantwortlicher: item.loeschverantwortlicher || item.verantwortlicher || "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `Löschklasse: ${item.loeschklasse || "—"}\nFrist: ${item.aufbewahrungsfrist || "—"}\nGesetzliche Frist: ${item.gesetzlicheFrist || "—"}`,
+      planMassnahmen: kind === "missing-trigger" ? "Löschereignis und operative Auslösebedingungen definieren." : kind === "missing-owner" ? "Löschverantwortung und Zuständigkeit verbindlich festlegen." : kind === "missing-proof" ? "Nachweis- und Kontrolllogik dokumentieren." : kind === "lk5-control" ? "Für LK5 Kontrollen, Nachweise und Verantwortlichkeiten hochprioritär absichern." : "Freie Fristkategorie fachlich und rechtlich belastbar begründen.",
+      planZiele: "Löschkonzept belastbar, nachweisbar und operativ steuerbar halten.",
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${pdcaTitle} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum Verbesserungszyklus für "${item.bezeichnung}".`,
+      typ: "task",
+      prioritaet: kind === "lk5-control" ? "kritisch" : "hoch",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.loeschverantwortlicher || item.verantwortlicher || "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "loeschkonzept",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: pdcaTitle });
+  };
+
+  const filtered = data.filter((item: any) => {
+    const meta = getRetentionMeta(item);
+    if (quickFilter === "missing-trigger" && !meta.missingTrigger) return false;
+    if (quickFilter === "missing-owner" && !meta.missingOwner) return false;
+    if (quickFilter === "missing-proof" && !meta.missingProof) return false;
+    if (quickFilter === "lk5-control" && !meta.lk5Control) return false;
+    if (quickFilter === "free-period" && !meta.freePeriod) return false;
+    return (filterFrist === "alle" || item.fristKategorie === filterFrist) && (filterKlasse === "alle" || item.loeschklasse === filterKlasse) && (filterStatus === "alle" || item.status === filterStatus);
+  });
+
   return (
     <MandantGuard>
       <PageHeader title={t("retentionTitle")} desc={t("retentionDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neuer Eintrag</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Löschkonzept-Quick-Check</CardTitle>
+              <CardDescription>Schneller Blick auf Pflichtfelder, Nachweise und erhöhte Anforderungen je Löschklasse</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {retentionMissingTriggerItems.length > 0 && <p className="text-yellow-400">Einträge ohne Löschereignis: {retentionMissingTriggerItems.length}</p>}
+              {retentionMissingOwnerItems.length > 0 && <p className="text-yellow-400">Einträge ohne Löschverantwortung: {retentionMissingOwnerItems.length}</p>}
+              {retentionMissingProofItems.length > 0 && <p className="text-yellow-400">Einträge ohne Nachweis/Kontrolle: {retentionMissingProofItems.length}</p>}
+              {retentionLk5ControlItems.length > 0 && <p className="text-red-400">LK5-Einträge mit offenem Kontroll-/Nachweisbedarf: {retentionLk5ControlItems.length}</p>}
+              {retentionFreePeriodItems.length > 0 && <p className="text-yellow-400">Einträge mit freier Fristkategorie: {retentionFreePeriodItems.length}</p>}
+              {data.length === 0 && <p className="text-muted-foreground">Noch keine Löschkonzept-Einträge dokumentiert.</p>}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Löschkonzept-Fokusliste</CardTitle>
+              <CardDescription>Priorisierte Einträge mit Handlungsbedarf bei Trigger, Verantwortung, Nachweis oder Hochrisiko-Anforderungen</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {retentionLk5ControlItems.slice(0, 3).map((item: any) => <div key={`lk5-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">LK5-Kontrollbedarf: {item.bezeichnung}</p><p className="text-xs text-muted-foreground">Empfehlung: Kontrolle, Nachweis und Verantwortlichkeit sofort absichern.</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("lk5-control")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionFollowUpTask(item, "lk5-control")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionPdcaCycle(item, "lk5-control")}>PDCA erzeugen</Button><Link href={buildRetentionTaskDraft(item, "lk5-control").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>)}
+              {retentionMissingTriggerItems.slice(0, 2).map((item: any) => <div key={`trigger-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3"><p className="font-medium text-yellow-700 dark:text-yellow-400">Löschereignis fehlt: {item.bezeichnung}</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-trigger")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionFollowUpTask(item, "missing-trigger")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionPdcaCycle(item, "missing-trigger")}>PDCA erzeugen</Button></div></div>)}
+              {retentionMissingOwnerItems.slice(0, 2).map((item: any) => <div key={`owner-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3"><p className="font-medium text-yellow-700 dark:text-yellow-400">Löschverantwortung fehlt: {item.bezeichnung}</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setQuickFilter("missing-owner")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionFollowUpTask(item, "missing-owner")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createRetentionPdcaCycle(item, "missing-owner")}>PDCA erzeugen</Button></div></div>)}
+            </CardContent>
+          </Card>
+          <div className="flex gap-2 mb-2 flex-wrap">
+            <Button type="button" size="sm" variant={quickFilter === "all" ? "default" : "outline"} onClick={() => setQuickFilter("all")}>Alle</Button>
+            <Button type="button" size="sm" variant={quickFilter === "missing-trigger" ? "default" : "outline"} onClick={() => setQuickFilter("missing-trigger")}>Ohne Löschereignis</Button>
+            <Button type="button" size="sm" variant={quickFilter === "missing-owner" ? "default" : "outline"} onClick={() => setQuickFilter("missing-owner")}>Ohne Verantwortung</Button>
+            <Button type="button" size="sm" variant={quickFilter === "missing-proof" ? "default" : "outline"} onClick={() => setQuickFilter("missing-proof")}>Ohne Nachweis</Button>
+            <Button type="button" size="sm" variant={quickFilter === "lk5-control" ? "default" : "outline"} onClick={() => setQuickFilter("lk5-control")}>LK5-Kontrollbedarf</Button>
+            <Button type="button" size="sm" variant={quickFilter === "free-period" ? "default" : "outline"} onClick={() => setQuickFilter("free-period")}>Freie Frist</Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {loeschklassen.map((k) => <Card key={k.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{k.key}</p><p className="text-sm font-semibold">{k.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.loeschklasse === k.key).length}</p></CardContent></Card>)}
             {gesetzlicheAufbewahrungsfristen.filter((f: any) => f.key !== "frei").slice(0,3).map((f: any) => <Card key={f.key}><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fristgruppe</p><p className="text-sm font-semibold">{f.frist}</p><p className="text-xs text-muted-foreground mt-1">{f.label}</p><p className="text-2xl font-bold mt-2">{data.filter((x:any) => x.fristKategorie === f.key).length}</p></CardContent></Card>)}
@@ -4525,7 +4704,10 @@ function LoeschkonzeptPage() {
           <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end"><div className="space-y-1"><Label className="text-xs">Fristgruppe</Label><Select value={filterFrist} onValueChange={setFilterFrist}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem>{gesetzlicheAufbewahrungsfristen.map((f: any) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label className="text-xs">Löschklasse</Label><Select value={filterKlasse} onValueChange={setFilterKlasse}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem>{loeschklassen.map((k) => <SelectItem key={k.key} value={k.key}>{k.label}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label className="text-xs">Status</Label><Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alle">Alle</SelectItem><SelectItem value="aktiv">Aktiv</SelectItem><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="archiviert">Archiviert</SelectItem></SelectContent></Select></div></CardContent></Card>
           <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Gefilterte Einträge</p><p className="text-2xl font-bold">{filtered.length}</p></div><div><p className="text-xs text-muted-foreground">Davon aktiv</p><p className="text-2xl font-bold">{filtered.filter((x:any) => x.status === "aktiv").length}</p></div><div><p className="text-xs text-muted-foreground">Mit gesetzlicher Frist</p><p className="text-2xl font-bold">{filtered.filter((x:any) => x.fristKategorie && x.fristKategorie !== "frei").length}</p></div></CardContent></Card>
           {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine Einträge für die aktuelle Filterung.</CardContent></Card>}
-          {filtered.map((item:any) => <Card key={item.id} className="group hover:border-border/80 transition-colors"><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><StatusBadge value={item.status} /><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p><p className="font-medium mt-3 mb-1">Löschverantwortlicher</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschverantwortlicher || item.verantwortlicher || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>)}
+          {filtered.map((item:any) => {
+            const meta = getRetentionMeta(item);
+            return <Card key={item.id} className={`group hover:border-border/80 transition-colors ${meta.lk5Control ? "border-red-500/30" : meta.missingTrigger || meta.missingOwner || meta.missingProof ? "border-yellow-500/30" : ""}`}><CardContent className="p-4 space-y-2"><div className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><p className="text-sm font-semibold">{item.bezeichnung}</p><p className="text-xs text-muted-foreground">{item.loeschklasse} · {item.aufbewahrungsfrist || "keine Frist"}{item.gesetzlicheFrist ? ` · ${item.gesetzlicheFrist}` : ""}{item.quelleVvtBezeichnung ? ` · aus VVT: ${item.quelleVvtBezeichnung}` : ""}</p><p className="text-xs text-muted-foreground">{meta.missingTrigger ? "Löschereignis offen · " : ""}{meta.missingOwner ? "Verantwortung offen · " : ""}{meta.missingProof ? "Nachweis offen" : ""}</p></div><div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end"><div className="flex items-center gap-2 flex-wrap justify-end">{meta.lk5Control && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">LK5-Kontrollbedarf</Badge>}{meta.missingTrigger && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Trigger fehlt</Badge>}{meta.missingOwner && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Owner fehlt</Badge>}{meta.missingProof && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Nachweis fehlt</Badge>}<StatusBadge value={item.status} /></div><button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"><div className="rounded-lg border p-3"><p className="font-medium mb-1">Löschereignis</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschereignis || "—"}</p><p className="font-medium mt-3 mb-1">Löschverantwortlicher</p><p className="text-muted-foreground whitespace-pre-wrap">{item.loeschverantwortlicher || item.verantwortlicher || "—"}</p></div><div className="rounded-lg border p-3"><p className="font-medium mb-1">Nachweis / Kontrolle</p><p className="text-muted-foreground whitespace-pre-wrap">{item.nachweis || item.kontrolle || "—"}</p></div></div></CardContent></Card>;
+          })}
         </div>
       )}
       <Dialog open={!!modal} onOpenChange={o => !o && setModal(null)}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto"><div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 pb-3 pt-1"><DialogHeader><DialogTitle>{modal === "new" ? "Neuer Löschkonzept-Eintrag" : "Löschkonzept bearbeiten"}</DialogTitle></DialogHeader></div>{modal && <LoeschkonzeptForm initial={modal === "new" ? {} : modal} onSave={save} onCancel={() => setModal(null)} />}</DialogContent></Dialog>
