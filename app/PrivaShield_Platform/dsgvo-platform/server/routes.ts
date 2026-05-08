@@ -524,8 +524,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
 
-  app.use("/api", csrfProtection);
-
   // ─── META APIs ───────────────────────────────────────────────────────────
   app.get("/api/meta/loeschfristen", authMiddleware, async (_req, res) => {
     res.json(metaLoeschfristen);
