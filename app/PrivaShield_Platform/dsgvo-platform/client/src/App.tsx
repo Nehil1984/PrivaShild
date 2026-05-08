@@ -541,6 +541,11 @@ function Dashboard() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/datenpannen`).then(r => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: dsr = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/dsr`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/dsr`).then(r => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: interneNotizen = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then(r => r.json()) : [],
@@ -675,6 +680,21 @@ function Dashboard() {
   const incidentDeadlineSoonItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).deadlineSoon);
   const incidentDeadlineMissedItems = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).deadlineMissed);
   const incidentNotifyArt34Items = datenpannen.filter((item: any) => getIncidentDashboardMeta(item).shouldNotifyDataSubjects);
+  const getDsrDashboardMeta = (item: any) => {
+    const deadline = String(item?.fristDatum || "").trim();
+    const status = String(item?.status || "");
+    const isClosed = status === "abgeschlossen" || status === "abgelehnt";
+    const deadlineMissed = !!deadline && deadline < new Date().toISOString().split("T")[0] && !isClosed;
+    const deadlineSoon = !!deadline && deadline >= new Date().toISOString().split("T")[0] && ((new Date(`${deadline}T00:00:00`).getTime() - new Date(`${new Date().toISOString().split("T")[0]}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24)) <= 7 && !isClosed;
+    const missingDeadline = !deadline && !isClosed;
+    const verification = status === "in_pruefung" || status === "wartet_auf_identifikation";
+    const open = !isClosed;
+    return { deadlineMissed, deadlineSoon, missingDeadline, verification, open };
+  };
+  const dsrDeadlineMissedDashboardItems = dsr.filter((item: any) => getDsrDashboardMeta(item).deadlineMissed);
+  const dsrDeadlineSoonDashboardItems = dsr.filter((item: any) => getDsrDashboardMeta(item).deadlineSoon);
+  const dsrMissingDeadlineDashboardItems = dsr.filter((item: any) => getDsrDashboardMeta(item).missingDeadline);
+  const dsrVerificationDashboardItems = dsr.filter((item: any) => getDsrDashboardMeta(item).verification);
   const dashboardGovernanceSeverityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
   const dashboardGovernanceFindings = [
     kritischeAufgaben.length > 0 ? { severity: "hoch", title: `${kritischeAufgaben.length} kritische offene Aufgaben`, recommendation: "Kritische Aufgaben sofort priorisieren und Verantwortliche mit Termin festziehen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch" } : null,
@@ -693,6 +713,10 @@ function Dashboard() {
     incidentReportableOpenItems.length > 0 ? { severity: "mittel", title: `${incidentReportableOpenItems.length} meldepflichtige Datenpannen ohne Abschluss`, recommendation: "Art.-33-Bewertung, Meldestatus und Dokumentation strukturiert nachziehen.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=reportable-open" } : null,
     incidentNotifyArt34Items.length > 0 ? { severity: "mittel", title: `${incidentNotifyArt34Items.length} Datenpannen mit Art.-34-Prüfbedarf`, recommendation: "Benachrichtigung betroffener Personen rechtlich prüfen und Kommunikationsstatus dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=notify-art34" } : null,
     incidentCriticalItems.length > 0 ? { severity: "mittel", title: `${incidentCriticalItems.length} kritische oder hohe Datenpannen`, recommendation: "Schwere Vorfälle mit Sofortmaßnahmen, Lagebewertung und Verbesserungssteuerung priorisieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=critical" } : null,
+    dsrDeadlineMissedDashboardItems.length > 0 ? { severity: "hoch", title: `${dsrDeadlineMissedDashboardItems.length} DSR-Fristen überschritten`, recommendation: "Betroffenenanfragen mit Fristverletzung sofort rechtlich und operativ absichern.", actionLabel: "Zu DSR", actionHref: "/dsr?filter=deadline-missed" } : null,
+    dsrDeadlineSoonDashboardItems.length > 0 ? { severity: "mittel", title: `${dsrDeadlineSoonDashboardItems.length} DSR-Fristen laufen in den nächsten 7 Tagen ab`, recommendation: "Offene Betroffenenanfragen kurzfristig priorisieren und Rückmeldungen absichern.", actionLabel: "Zu DSR", actionHref: "/dsr?filter=deadline-soon" } : null,
+    dsrMissingDeadlineDashboardItems.length > 0 ? { severity: "mittel", title: `${dsrMissingDeadlineDashboardItems.length} DSR ohne dokumentierte Frist`, recommendation: "Fristberechnung, Zuständigkeit und Bearbeitungssteuerung für offene Anfragen nachziehen.", actionLabel: "Zu DSR", actionHref: "/dsr?filter=missing-deadline" } : null,
+    dsrVerificationDashboardItems.length > 0 ? { severity: "mittel", title: `${dsrVerificationDashboardItems.length} DSR im Prüf- oder Identifikationsstatus`, recommendation: "Identifikation, Umfang und Bearbeitungsstand dieser Anfragen verbindlich klären.", actionLabel: "Zu DSR", actionHref: "/dsr?filter=verification" } : null,
     avvReviewOverdueDashboardItems.length > 0 ? { severity: "hoch", title: `${avvReviewOverdueDashboardItems.length} AVV-Reviews überfällig`, recommendation: "Vertrags- und Nachweisprüfungen kurzfristig nachziehen und dokumentieren.", actionLabel: "Zu AVV", actionHref: "/avv?filter=review-overdue" } : null,
     avvSccMissingDashboardItems.length > 0 ? { severity: "hoch", title: `${avvSccMissingDashboardItems.length} AVV mit offenem SCC-/Transferprüfbedarf`, recommendation: "Drittland- und Transfergrundlagen mit SCC-/DPA-Prüfung priorisiert bewerten.", actionLabel: "Zu AVV", actionHref: "/avv?filter=scc-missing" } : null,
     copilotAvvOhnePruefungItems.length > 0 ? { severity: "mittel", title: `${copilotAvvOhnePruefungItems.length} Copilot-/Microsoft-AVV ohne Prüffälligkeit`, recommendation: "Microsoft-/Copilot-Verträge mit DPA, Product Terms und Prüffristen strukturiert nachziehen.", actionLabel: "Zu AVV", actionHref: "/avv?filter=copilot-missing-review" } : null,
@@ -990,6 +1014,10 @@ function Dashboard() {
               {incidentDeadlineSoonItems.length > 0 && <p className="text-red-400">Datenpannen innerhalb der 72h-Frist: {incidentDeadlineSoonItems.length}</p>}
               {incidentReportableOpenItems.length > 0 && <p className="text-yellow-400">Meldepflichtige Datenpannen ohne Abschluss: {incidentReportableOpenItems.length}</p>}
               {incidentNotifyArt34Items.length > 0 && <p className="text-yellow-400">Datenpannen mit Art.-34-Prüfbedarf: {incidentNotifyArt34Items.length}</p>}
+              {dsrDeadlineMissedDashboardItems.length > 0 && <p className="text-red-400">DSR-Fristen überschritten: {dsrDeadlineMissedDashboardItems.length}</p>}
+              {dsrDeadlineSoonDashboardItems.length > 0 && <p className="text-yellow-400">DSR-Fristen innerhalb von 7 Tagen: {dsrDeadlineSoonDashboardItems.length}</p>}
+              {dsrMissingDeadlineDashboardItems.length > 0 && <p className="text-yellow-400">DSR ohne dokumentierte Frist: {dsrMissingDeadlineDashboardItems.length}</p>}
+              {dsrVerificationDashboardItems.length > 0 && <p className="text-yellow-400">DSR im Prüf-/Identifikationsstatus: {dsrVerificationDashboardItems.length}</p>}
               {avvReviewOverdueDashboardItems.length > 0 && <p className="text-red-400">AVV-Reviews überfällig: {avvReviewOverdueDashboardItems.length}</p>}
               {avvSccMissingDashboardItems.length > 0 && <p className="text-red-400">AVV mit offenem SCC-/Transferprüfbedarf: {avvSccMissingDashboardItems.length}</p>}
               {copilotAvvOhnePruefungItems.length > 0 && <p className="text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit: {copilotAvvOhnePruefungItems.length}</p>}
@@ -3452,37 +3480,283 @@ function DsrForm({ initial, onSave, onCancel }: any) {
 
 function DsrPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("dsr");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [dsrFilter, setDsrFilterState] = useState<"all" | "deadline-missed" | "deadline-soon" | "missing-deadline" | "open" | "verification">("all");
+  const [dsrSort, setDsrSortState] = useState<"deadline" | "newest" | "type">("deadline");
   const { toast } = useToast();
+  const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    const rawSort = route.searchParams.get("sort");
+    setDsrFilterState(rawFilter === "deadline-missed" || rawFilter === "deadline-soon" || rawFilter === "missing-deadline" || rawFilter === "open" || rawFilter === "verification" ? rawFilter : "all");
+    setDsrSortState(rawSort === "newest" || rawSort === "type" ? rawSort : "deadline");
+  }, [location]);
+
+  const updateDsrRouteState = (nextFilter: "all" | "deadline-missed" | "deadline-soon" | "missing-deadline" | "open" | "verification", nextSort: "deadline" | "newest" | "type") => {
+    const next = new URL(location, "https://privashield.local");
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "deadline") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+  const setDsrFilter = (value: "all" | "deadline-missed" | "deadline-soon" | "missing-deadline" | "open" | "verification") => {
+    setDsrFilterState(value);
+    updateDsrRouteState(value, dsrSort);
+  };
+  const setDsrSort = (value: "deadline" | "newest" | "type") => {
+    setDsrSortState(value);
+    updateDsrRouteState(dsrFilter, value);
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
-  const today = new Date().toISOString().split("T")[0];
+
+  const getDsrMeta = (item: any) => {
+    const deadline = String(item?.fristDatum || "").trim();
+    const status = String(item?.status || "");
+    const isClosed = status === "abgeschlossen" || status === "abgelehnt";
+    const deadlineMissed = !!deadline && deadline < today && !isClosed;
+    const deadlineSoon = !!deadline && deadline >= today && ((new Date(`${deadline}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24)) <= 7 && !isClosed;
+    const missingDeadline = !deadline && !isClosed;
+    const open = !isClosed;
+    const verification = status === "in_pruefung" || status === "wartet_auf_identifikation";
+    return { deadline, isClosed, deadlineMissed, deadlineSoon, missingDeadline, open, verification };
+  };
+
+  const dsrDeadlineMissedItems = data.filter((item: any) => getDsrMeta(item).deadlineMissed);
+  const dsrDeadlineSoonItems = data.filter((item: any) => getDsrMeta(item).deadlineSoon);
+  const dsrMissingDeadlineItems = data.filter((item: any) => getDsrMeta(item).missingDeadline);
+  const dsrOpenItems = data.filter((item: any) => getDsrMeta(item).open);
+  const dsrVerificationItems = data.filter((item: any) => getDsrMeta(item).verification);
+
+  const buildDsrTaskDraft = (item: any, kind: "deadline-missed" | "deadline-soon" | "missing-deadline" | "verification") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "deadline-missed": {
+        title: `DSR-Frist überschritten: ${dsrArten[item.art] || item.art}`,
+        priority: "kritisch",
+        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} hat ihre Frist überschritten. Bitte Rechtslage, Kommunikationsstand und Sofortmaßnahmen dokumentieren.`,
+      },
+      "deadline-soon": {
+        title: `DSR-Frist absichern: ${dsrArten[item.art] || item.art}`,
+        priority: "hoch",
+        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} läuft kurzfristig aus. Bitte Bearbeitung, Rückmeldung und Nachweise priorisieren.`,
+      },
+      "missing-deadline": {
+        title: `DSR-Frist ergänzen: ${dsrArten[item.art] || item.art}`,
+        priority: "mittel",
+        description: `Für die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} fehlt eine dokumentierte Frist. Bitte Fristberechnung und Bearbeitungssteuerung nachziehen.`,
+      },
+      verification: {
+        title: `DSR-Identitäts-/Prüfstatus klären: ${dsrArten[item.art] || item.art}`,
+        priority: "hoch",
+        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} befindet sich im Prüfstatus. Bitte Identifikation, Umfang und Bearbeitungsstand verbindlich klären.`,
+      },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `dsr:${kind}:${item.id}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `dsr:${kind}:${item.id}` };
+  };
+
+  const createDsrFollowUpTask = async (item: any, kind: "deadline-missed" | "deadline-soon" | "missing-deadline" | "verification") => {
+    const draft = buildDsrTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "verification" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: getDsrMeta(item).deadline || "",
+      kategorie: "dsr",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createDsrPdcaCycle = async (item: any, kind: "deadline-missed" | "deadline-soon" | "missing-deadline" | "verification") => {
+    const source = `dsr-pdca:${kind}:${item.id}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "deadline-missed" ? 3 : kind === "deadline-soon" ? 7 : 14));
+    const titleMap: Record<string, string> = {
+      "deadline-missed": `PDCA DSR-Fristverletzung: ${dsrArten[item.art] || item.art}`,
+      "deadline-soon": `PDCA DSR-Fristsicherung: ${dsrArten[item.art] || item.art}`,
+      "missing-deadline": `PDCA DSR-Friststeuerung: ${dsrArten[item.art] || item.art}`,
+      verification: `PDCA DSR-Prüfstatus: ${dsrArten[item.art] || item.art}`,
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: `Verbesserungszyklus zur Bearbeitung der Betroffenenanfrage von ${item.antragsteller || "unbekannt"}.`,
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "deadline-missed" ? "kritisch" : "hoch",
+      verantwortlicher: "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `DSR-Anfrage: ${dsrArten[item.art] || item.art}\nAntragsteller: ${item.antragsteller || "unbekannt"}\nStatus: ${item.status || "offen"}`,
+      planMassnahmen: kind === "deadline-missed" ? "Fristverletzung rechtlich und operativ aufarbeiten, Rückmeldung absichern und Nachweisführung schließen." : kind === "deadline-soon" ? "Bearbeitung priorisieren, Rückmeldung vorbereiten und Nachweise bündeln." : kind === "missing-deadline" ? "Fristberechnung und Zuständigkeit verbindlich festlegen." : "Identitätsprüfung, Umfang und Bearbeitungsweg rechtssicher klären.",
+      planZiele: "Betroffenenanfragen fristgerecht, nachvollziehbar und rechtskonform steuern.",
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum DSR-PDCA-Zyklus für ${item.antragsteller || "unbekannt"}.`,
+      typ: kind === "verification" ? "review" : "task",
+      prioritaet: kind === "deadline-missed" ? "kritisch" : "hoch",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "dsr",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
+
+  const filtered = data.filter((item: any) => {
+    const meta = getDsrMeta(item);
+    if (dsrFilter === "deadline-missed") return meta.deadlineMissed;
+    if (dsrFilter === "deadline-soon") return meta.deadlineSoon;
+    if (dsrFilter === "missing-deadline") return meta.missingDeadline;
+    if (dsrFilter === "open") return meta.open;
+    if (dsrFilter === "verification") return meta.verification;
+    return true;
+  }).slice().sort((a: any, b: any) => {
+    const metaA = getDsrMeta(a);
+    const metaB = getDsrMeta(b);
+    if (dsrSort === "newest") return String(b.eingangsdatum || "").localeCompare(String(a.eingangsdatum || "")) || String(a.antragsteller || "").localeCompare(String(b.antragsteller || ""), "de");
+    if (dsrSort === "type") return String(dsrArten[a.art] || a.art || "").localeCompare(String(dsrArten[b.art] || b.art || ""), "de") || String(a.eingangsdatum || "").localeCompare(String(b.eingangsdatum || ""));
+    return (metaA.deadline || "9999-12-31").localeCompare(metaB.deadline || "9999-12-31") || String(a.eingangsdatum || "").localeCompare(String(b.eingangsdatum || ""));
+  });
+
   return (
     <MandantGuard>
       <PageHeader title={t("dsrTitle")} desc={t("dsrDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue Anfrage</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">DSR-Quick-Check</CardTitle>
+              <CardDescription>Schneller Blick auf Fristen, offene Fälle und Prüfbedarfe bei Betroffenenanfragen</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {data.length === 0 ? <p className="text-muted-foreground">Keine DSR-Anfragen dokumentiert.</p> : <>
+                {dsrDeadlineMissedItems.length > 0 && <p className="text-red-400">DSR-Fristen überschritten: {dsrDeadlineMissedItems.length}</p>}
+                {dsrDeadlineSoonItems.length > 0 && <p className="text-yellow-400">DSR-Fristen innerhalb von 7 Tagen: {dsrDeadlineSoonItems.length}</p>}
+                {dsrMissingDeadlineItems.length > 0 && <p className="text-yellow-400">DSR ohne dokumentierte Frist: {dsrMissingDeadlineItems.length}</p>}
+                {dsrVerificationItems.length > 0 && <p className="text-yellow-400">DSR im Prüf-/Identifikationsstatus: {dsrVerificationItems.length}</p>}
+              </>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">DSR-Fokusliste</CardTitle>
+              <CardDescription>Priorisierte Betroffenenanfragen mit unmittelbarem Frist-, Prüf- oder Steuerungsbedarf</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {dsrDeadlineMissedItems.length === 0 && dsrDeadlineSoonItems.length === 0 && dsrMissingDeadlineItems.length === 0 && dsrVerificationItems.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine priorisierten DSR-Fälle.</p>
+              ) : (
+                <>
+                  {dsrDeadlineMissedItems.slice(0, 3).map((item: any) => (
+                    <div key={`deadline-missed-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">Frist überschritten: {item.antragsteller || "Anonym"}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Rechtslage, Rückmeldung und Nachweisführung sofort absichern.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDsrFilter("deadline-missed")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrFollowUpTask(item, "deadline-missed")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrPdcaCycle(item, "deadline-missed")}>PDCA erzeugen</Button><Link href={buildDsrTaskDraft(item, "deadline-missed").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {dsrDeadlineSoonItems.slice(0, 3).map((item: any) => (
+                    <div key={`deadline-soon-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Frist läuft bald ab: {item.antragsteller || "Anonym"}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Bearbeitung und Rückmeldung kurzfristig priorisieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDsrFilter("deadline-soon")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrFollowUpTask(item, "deadline-soon")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrPdcaCycle(item, "deadline-soon")}>PDCA erzeugen</Button><Link href={buildDsrTaskDraft(item, "deadline-soon").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {dsrMissingDeadlineItems.slice(0, 3).map((item: any) => (
+                    <div key={`missing-deadline-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Frist fehlt: {item.antragsteller || "Anonym"}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Fristberechnung und Zuständigkeit verbindlich ergänzen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDsrFilter("missing-deadline")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrFollowUpTask(item, "missing-deadline")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrPdcaCycle(item, "missing-deadline")}>PDCA erzeugen</Button><Link href={buildDsrTaskDraft(item, "missing-deadline").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {dsrVerificationItems.slice(0, 3).map((item: any) => (
+                    <div key={`verification-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Prüfstatus klären: {item.antragsteller || "Anonym"}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Identifikation, Umfang und Bearbeitungsstatus verbindlich klären.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDsrFilter("verification")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrFollowUpTask(item, "verification")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createDsrPdcaCycle(item, "verification")}>PDCA erzeugen</Button><Link href={buildDsrTaskDraft(item, "verification").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-2 mb-1 flex-wrap">
+            <Button type="button" size="sm" variant={dsrFilter === "all" ? "default" : "outline"} onClick={() => setDsrFilter("all")}>Alle</Button>
+            <Button type="button" size="sm" variant={dsrFilter === "deadline-missed" ? "default" : "outline"} onClick={() => setDsrFilter("deadline-missed")}>Frist überschritten</Button>
+            <Button type="button" size="sm" variant={dsrFilter === "deadline-soon" ? "default" : "outline"} onClick={() => setDsrFilter("deadline-soon")}>Frist bald</Button>
+            <Button type="button" size="sm" variant={dsrFilter === "missing-deadline" ? "default" : "outline"} onClick={() => setDsrFilter("missing-deadline")}>Ohne Frist</Button>
+            <Button type="button" size="sm" variant={dsrFilter === "verification" ? "default" : "outline"} onClick={() => setDsrFilter("verification")}>Prüfstatus</Button>
+            <Button type="button" size="sm" variant={dsrFilter === "open" ? "default" : "outline"} onClick={() => setDsrFilter("open")}>Offen</Button>
+          </div>
+          <div className="flex gap-2 mb-4 flex-wrap items-center">
+            <span className="text-xs text-muted-foreground">Sortierung:</span>
+            <Button type="button" size="sm" variant={dsrSort === "deadline" ? "default" : "outline"} onClick={() => setDsrSort("deadline")}>Frist</Button>
+            <Button type="button" size="sm" variant={dsrSort === "newest" ? "default" : "outline"} onClick={() => setDsrSort("newest")}>Neueste</Button>
+            <Button type="button" size="sm" variant={dsrSort === "type" ? "default" : "outline"} onClick={() => setDsrSort("type")}>Art</Button>
+          </div>
+
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSR-Anfragen vorhanden.</CardContent></Card>}
-          {data.map((item: any) => {
-            const ueberfaellig = item.fristDatum && item.fristDatum < today && item.status !== "abgeschlossen" && item.status !== "abgelehnt";
+          {filtered.map((item: any) => {
+            const meta = getDsrMeta(item);
             return (
-              <Card key={item.id} className={`group hover:border-border/80 transition-colors ${ueberfaellig ? "border-red-500/30" : ""}`}>
+              <Card key={item.id} className={`group hover:border-border/80 transition-colors ${meta.deadlineMissed ? "border-red-500/30" : meta.deadlineSoon || meta.missingDeadline || meta.verification ? "border-yellow-500/30" : ""}`}>
                 <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <UserCheck className="h-4 w-4 text-purple-400 shrink-0" />
+                    <UserCheck className={`h-4 w-4 shrink-0 ${meta.deadlineMissed ? "text-red-400" : meta.deadlineSoon || meta.missingDeadline || meta.verification ? "text-yellow-400" : "text-purple-400"}`} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{dsrArten[item.art] || item.art}</p>
-                      <p className="text-xs text-muted-foreground">{item.antragsteller || "Anonym"} · Eingang: {item.eingangsdatum}{item.fristDatum ? ` · Frist: ${item.fristDatum}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{item.antragsteller || "Anonym"} · Eingang: {item.eingangsdatum}{meta.deadline ? ` · Frist: ${meta.deadline}` : " · Frist offen"}</p>
+                      <p className="text-xs text-muted-foreground">{item.status || "offen"}{meta.deadlineMissed ? " · Frist überschritten" : meta.deadlineSoon ? " · Frist läuft" : meta.missingDeadline ? " · Frist ergänzen" : ""}</p>
                     </div>
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                    {ueberfaellig && <StatusBadge value="kritisch" className="animate-pulse" />}
-                    <StatusBadge value={item.status} />
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {meta.deadlineMissed && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Überfällig</Badge>}
+                      {meta.deadlineSoon && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Frist bald</Badge>}
+                      {meta.missingDeadline && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Frist fehlt</Badge>}
+                      {meta.verification && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Prüfstatus</Badge>}
+                      <StatusBadge value={item.status} />
+                    </div>
                     <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
                     <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
