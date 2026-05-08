@@ -644,6 +644,14 @@ function Dashboard() {
   const employeePrivacyContent = (() => {
     try { return employeePrivacyCheckDocument?.inhalt ? JSON.parse(employeePrivacyCheckDocument.inhalt) : null; } catch { return null; }
   })();
+  const webPrivacyDashboardDocument = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
+  const webPrivacyDashboardContent = (() => {
+    try { return webPrivacyDashboardDocument?.inhalt ? JSON.parse(webPrivacyDashboardDocument.inhalt) : null; } catch { return null; }
+  })();
+  const webNoticeDashboardDocument = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
+  const webNoticeDashboardContent = (() => {
+    try { return webNoticeDashboardDocument?.inhalt ? JSON.parse(webNoticeDashboardDocument.inhalt) : null; } catch { return null; }
+  })();
   const aiChecklistValues = Object.values(aiCheckContent?.dsgvoCheckliste || {});
   const aiChecklistDone = aiChecklistValues.filter(Boolean).length;
   const aiChecklistTotal = aiChecklistValues.length;
@@ -659,6 +667,17 @@ function Dashboard() {
   const employeeMissingTrainingDashboard = !employeePrivacyContent?.schulungDurchgefuehrt;
   const employeeMissingEvidenceDashboard = !String(employeePrivacyContent?.nachweise || "").trim();
   const employeeMissingTargetGroupsDashboard = !Array.isArray(employeePrivacyContent?.zielgruppen) || employeePrivacyContent.zielgruppen.length === 0;
+  const webDashboardConsentReasons = Array.isArray(webPrivacyDashboardContent?.consentToolNotRequiredReasons) ? webPrivacyDashboardContent.consentToolNotRequiredReasons : [];
+  const webDashboardHasManualConsentReason = webDashboardConsentReasons.includes("manual") && !!String(webPrivacyDashboardContent?.consentToolNotRequiredReason || "").trim();
+  const webDashboardHasPresetConsentReason = webDashboardConsentReasons.some((reason: string) => reason !== "manual");
+  const webDashboardConsentRequirementDocumented = webPrivacyDashboardContent?.consentToolRequired || (!webPrivacyDashboardContent?.consentToolRequired && (webDashboardHasPresetConsentReason || webDashboardHasManualConsentReason));
+  const webDashboardConsentMissing = !!webPrivacyDashboardContent?.consentToolRequired && !webPrivacyDashboardContent?.consentTool;
+  const webDashboardConsentReasonMissing = !webPrivacyDashboardContent?.consentToolRequired && !webDashboardConsentRequirementDocumented;
+  const webDashboardPrivacyNoticeMissing = !webPrivacyDashboardContent?.datenschutzerklaerungGeprueft;
+  const webDashboardImpressumMissing = !webPrivacyDashboardContent?.impressumGeprueft;
+  const webDashboardNoticeGroupsMissing = Object.values(webNoticeDashboardContent?.groups || {}).filter(Boolean).length === 0;
+  const webDashboardNoticeDistributionMissing = [webNoticeDashboardContent?.distributionEmail, webNoticeDashboardContent?.distributionQr, webNoticeDashboardContent?.websiteSubpage].filter(Boolean).length === 0;
+  const webDashboardNotesMissing = !String(webNoticeDashboardContent?.notes || "").trim() && !String(webPrivacyDashboardContent?.notes || "").trim();
   const getAuditDashboardMeta = (item: any) => {
     const abweichungen = String(item?.abweichungen || "").split("\n").filter((line: string) => line.trim());
     const todos = String(item?.empfehlungen || "").split("\n").filter((line: string) => line.trim());
@@ -808,6 +827,13 @@ function Dashboard() {
     employeeMissingTrainingDashboard ? { severity: "mittel", title: "Beschäftigtendatenschutz ohne dokumentierte Schulung", recommendation: "Schulungspfad, Zielgruppen und Terminierung für Beschäftigte nachziehen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-training" } : null,
     employeeMissingEvidenceDashboard ? { severity: "mittel", title: "Beschäftigtendatenschutz ohne Nachweise", recommendation: "Belastbare Nachweise zu Unterrichtung, Verpflichtung und Schulung ergänzen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-evidence" } : null,
     employeeMissingTargetGroupsDashboard ? { severity: "niedrig", title: "Beschäftigtendatenschutz ohne definierte Zielgruppen", recommendation: "Relevante Beschäftigtengruppen für Unterrichtung und Schulung verbindlich festlegen.", actionLabel: "Zu Beschäftigtendatenschutz", actionHref: "/beschaeftigtendatenschutz?filter=missing-target-groups" } : null,
+    webDashboardConsentMissing ? { severity: "hoch", title: "Webseite ohne erforderliches Consent-Tool", recommendation: "Consent-Management kurzfristig nachziehen, wenn zustimmungspflichtige Dienste oder Cookies im Einsatz sind.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=consent-missing" } : null,
+    webDashboardConsentReasonMissing ? { severity: "mittel", title: "Webseite ohne belastbare Consent-Begründung", recommendation: "Begründung für ein entbehrliches Consent-Tool dokumentieren und technisch verifizieren.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=consent-reason-missing" } : null,
+    webDashboardPrivacyNoticeMissing ? { severity: "hoch", title: "Webseite ohne geprüfte Datenschutzerklärung", recommendation: "Datenschutzerklärung inhaltlich und rechtlich kurzfristig nachziehen.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=privacy-notice-missing" } : null,
+    webDashboardImpressumMissing ? { severity: "mittel", title: "Webseite ohne geprüften Impressumsstatus", recommendation: "Impressum rechtlich prüfen und den dokumentierten Prüfstatus ergänzen.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=impressum-missing" } : null,
+    webDashboardNoticeGroupsMissing ? { severity: "mittel", title: "Datenschutzhinweise ohne definierte Personengruppen", recommendation: "Betroffene Gruppen der Datenschutzhinweise fachlich festlegen und dokumentieren.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=groups-missing" } : null,
+    webDashboardNoticeDistributionMissing ? { severity: "mittel", title: "Datenschutzhinweise ohne Bereitstellungsweg", recommendation: "Verbindlichen Ausspielweg für Datenschutzhinweise festlegen und absichern.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=distribution-missing" } : null,
+    webDashboardNotesMissing ? { severity: "niedrig", title: "Web-Datenschutz ohne ergänzende Dokumentationsnotizen", recommendation: "Prüfvermerke, Entscheidungsgründe und Notizen ergänzen, damit der Prüfpfad belastbar bleibt.", actionLabel: "Zu Web-Datenschutz", actionHref: "/web-datenschutz?filter=notes-missing" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -1130,6 +1156,13 @@ function Dashboard() {
               {employeeMissingTrainingDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne dokumentierte Schulung</p>}
               {employeeMissingEvidenceDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne Nachweise</p>}
               {employeeMissingTargetGroupsDashboard && <p className="text-yellow-400">Beschäftigtendatenschutz ohne definierte Zielgruppen</p>}
+              {webDashboardConsentMissing && <p className="text-red-400">Webseite ohne erforderliches Consent-Tool</p>}
+              {webDashboardConsentReasonMissing && <p className="text-yellow-400">Webseite ohne belastbare Consent-Begründung</p>}
+              {webDashboardPrivacyNoticeMissing && <p className="text-red-400">Webseite ohne geprüfte Datenschutzerklärung</p>}
+              {webDashboardImpressumMissing && <p className="text-yellow-400">Webseite ohne geprüften Impressumsstatus</p>}
+              {webDashboardNoticeGroupsMissing && <p className="text-yellow-400">Datenschutzhinweise ohne definierte Personengruppen</p>}
+              {webDashboardNoticeDistributionMissing && <p className="text-yellow-400">Datenschutzhinweise ohne Bereitstellungsweg</p>}
+              {webDashboardNotesMissing && <p className="text-yellow-400">Web-Datenschutz ohne ergänzende Dokumentationsnotizen</p>}
             </CardContent>
           </Card>
 
@@ -6527,7 +6560,13 @@ function BeschaeftigtenDatenschutzPage() {
 
 function WebDatenschutzPage() {
   const { t } = useI18n();
+  const [location] = useLocation();
+  const rawWebPrivacyFilter = new URLSearchParams(location.split("?")[1] || "").get("filter") || "";
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data: dokumente, create, update } = useModuleData("dokumente");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const { toast } = useToast();
   const websitePrivacy = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const companyNotice = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
@@ -6625,11 +6664,142 @@ function WebDatenschutzPage() {
   const selectedGroupCount = Object.values(noticeForm.groups || {}).filter(Boolean).length;
   const noticeDistributionCount = [noticeForm.distributionEmail, noticeForm.distributionQr, noticeForm.websiteSubpage].filter(Boolean).length;
   const noticeStatus = selectedGroupCount > 0 && noticeDistributionCount > 0 ? { label: "Vollständig", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" } : selectedGroupCount > 0 || noticeDistributionCount > 0 ? { label: "Teilweise", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" } : { label: "Offen", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+  const webConsentMissing = !!websiteForm.consentToolRequired && !websiteForm.consentTool;
+  const webConsentReasonMissing = !websiteForm.consentToolRequired && !consentRequirementDocumented;
+  const webPrivacyNoticeMissing = !websiteForm.datenschutzerklaerungGeprueft;
+  const webImpressumMissing = !websiteForm.impressumGeprueft;
+  const noticeGroupsMissing = selectedGroupCount === 0;
+  const noticeDistributionMissing = noticeDistributionCount === 0;
+  const webNoticeNotesMissing = !String(noticeForm.notes || "").trim() && !String(websiteForm.notes || "").trim();
+
+  const matchesWebFilter =
+    (rawWebPrivacyFilter === "consent-missing" && webConsentMissing) ||
+    (rawWebPrivacyFilter === "consent-reason-missing" && webConsentReasonMissing) ||
+    (rawWebPrivacyFilter === "privacy-notice-missing" && webPrivacyNoticeMissing) ||
+    (rawWebPrivacyFilter === "impressum-missing" && webImpressumMissing) ||
+    (rawWebPrivacyFilter === "groups-missing" && noticeGroupsMissing) ||
+    (rawWebPrivacyFilter === "distribution-missing" && noticeDistributionMissing) ||
+    (rawWebPrivacyFilter === "notes-missing" && webNoticeNotesMissing) ||
+    !rawWebPrivacyFilter;
+
+  const buildWebTaskDraft = (kind: "consent-missing" | "consent-reason-missing" | "privacy-notice-missing" | "impressum-missing" | "groups-missing" | "distribution-missing" | "notes-missing") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "consent-missing": { title: "Consent-Tool für Webauftritt nachziehen", priority: "hoch", description: "Für die Webseite ist ein Consent-Tool erforderlich, aber noch nicht als vorhanden/geprüft dokumentiert." },
+      "consent-reason-missing": { title: "Begründung für fehlendes Consent-Tool dokumentieren", priority: "mittel", description: "Es wurde kein Consent-Tool vorgesehen, aber die rechtliche Begründung dafür ist nicht belastbar dokumentiert." },
+      "privacy-notice-missing": { title: "Datenschutzerklärung der Webseite prüfen", priority: "hoch", description: "Die inhaltliche Prüfung der Datenschutzerklärung der Webseite ist noch offen." },
+      "impressum-missing": { title: "Impressum der Webseite prüfen", priority: "mittel", description: "Die Impressumsprüfung für die Webseite wurde noch nicht dokumentiert." },
+      "groups-missing": { title: "Datenschutzhinweise für Personengruppen definieren", priority: "mittel", description: "Relevante Personengruppen für Datenschutzhinweise sind noch nicht ausgewählt oder dokumentiert." },
+      "distribution-missing": { title: "Ausspielweg für Datenschutzhinweise festlegen", priority: "mittel", description: "Für Datenschutzhinweise fehlt noch ein belastbarer Bereitstellungsweg wie E-Mail, QR oder Unterseite." },
+      "notes-missing": { title: "Dokumentationsnotizen für Web-Datenschutz ergänzen", priority: "niedrig", description: "Im Web-Datenschutz- und Datenschutzhinweis-Block fehlen ergänzende Dokumentationsnotizen oder Prüfvermerke." },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `web:${kind}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `web:${kind}` };
+  };
+
+  const createWebFollowUpTask = async (kind: "consent-missing" | "consent-reason-missing" | "privacy-notice-missing" | "impressum-missing" | "groups-missing" | "distribution-missing" | "notes-missing") => {
+    const draft = buildWebTaskDraft(kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: ["privacy-notice-missing", "impressum-missing"].includes(kind) ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: "",
+      kategorie: "web-datenschutz",
+      referenzId: websitePrivacy?.id || companyNotice?.id || null,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createWebPdcaCycle = async (kind: "consent-missing" | "consent-reason-missing" | "privacy-notice-missing" | "impressum-missing" | "groups-missing" | "distribution-missing" | "notes-missing") => {
+    const source = `web-pdca:${kind}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (["consent-missing", "privacy-notice-missing"].includes(kind) ? 7 : 14));
+    const titleMap: Record<string, string> = {
+      "consent-missing": "PDCA Consent-Management Webseite",
+      "consent-reason-missing": "PDCA Consent-Begründung Webseite",
+      "privacy-notice-missing": "PDCA Datenschutzerklärung Webseite",
+      "impressum-missing": "PDCA Impressum Webseite",
+      "groups-missing": "PDCA Datenschutzhinweise Personengruppen",
+      "distribution-missing": "PDCA Bereitstellung Datenschutzhinweise",
+      "notes-missing": "PDCA Dokumentation Web-Datenschutz",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: "Automatisch vorbereiteter Verbesserungszyklus für Web-Datenschutz und Datenschutzhinweise.",
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: ["consent-missing", "privacy-notice-missing"].includes(kind) ? "hoch" : "mittel",
+      verantwortlicher: "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `Webstatus: ${websiteStatus.label}\nHinweisstatus: ${noticeStatus.label}`,
+      planMassnahmen: buildWebTaskDraft(kind).description,
+      planZiele: "Web-Datenschutz und Datenschutzhinweise vollständig, dokumentiert und belastbar betreiben.",
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum Verbesserungszyklus ${titleMap[kind]}.`,
+      typ: ["privacy-notice-missing", "impressum-missing"].includes(kind) ? "review" : "task",
+      prioritaet: ["consent-missing", "privacy-notice-missing"].includes(kind) ? "hoch" : "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "web-datenschutz",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
+
+  if (!matchesWebFilter) {
+    return (
+      <MandantGuard>
+        <div className="space-y-6">
+          <PageHeader title={t("webPrivacyTitle")} desc={t("webPrivacyDesc")} />
+          <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Für diesen Web-Datenschutz-Fokus liegt aktuell kein Treffer vor.</CardContent></Card>
+        </div>
+      </MandantGuard>
+    );
+  }
 
   return (
     <MandantGuard>
       <div className="space-y-6">
         <PageHeader title={t("webPrivacyTitle")} desc={t("webPrivacyDesc")} />
+
+        {(webConsentMissing || webConsentReasonMissing || webPrivacyNoticeMissing || webImpressumMissing || noticeGroupsMissing || noticeDistributionMissing || webNoticeNotesMissing) && (
+          <Card className="border-amber-500/40 bg-amber-500/5">
+            <CardHeader>
+              <CardTitle className="text-sm">Fokusliste Web-Datenschutz</CardTitle>
+              <CardDescription>Die wichtigsten operativen Lücken im Web- und Hinweis-Block</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {webConsentMissing && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">Consent-Tool fehlt trotz Erforderlichkeit</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createWebFollowUpTask("consent-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createWebPdcaCycle("consent-missing")}>PDCA erzeugen</Button><Link href={buildWebTaskDraft("consent-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+              {webPrivacyNoticeMissing && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"><p className="font-medium text-red-700 dark:text-red-400">Datenschutzerklärung nicht geprüft</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createWebFollowUpTask("privacy-notice-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createWebPdcaCycle("privacy-notice-missing")}>PDCA erzeugen</Button><Link href={buildWebTaskDraft("privacy-notice-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+              {noticeGroupsMissing && <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3"><p className="font-medium text-yellow-700 dark:text-yellow-300">Personengruppen für Datenschutzhinweise fehlen</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" onClick={() => createWebFollowUpTask("groups-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createWebPdcaCycle("groups-missing")}>PDCA erzeugen</Button><Link href={buildWebTaskDraft("groups-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div></div>}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

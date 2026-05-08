@@ -11,7 +11,7 @@ describe("dashboard filter route regression guards", () => {
   it("keeps all dashboard links on supported module routes", () => {
     expect(dashboardLinks.length).toBeGreaterThan(0);
     for (const href of dashboardLinks) {
-      expect(href.startsWith("/aufgaben?") || href.startsWith("/pdca?") || href.startsWith("/datenpannen?") || href.startsWith("/dsfa?") || href.startsWith("/avv?") || href.startsWith("/tom?") || href.startsWith("/vvt?") || href.startsWith("/dsr?") || href.startsWith("/loeschkonzept?") || href.startsWith("/ki-compliance?") || href.startsWith("/audits?") || href.startsWith("/beschaeftigtendatenschutz?")).toBe(true);
+      expect(href.startsWith("/aufgaben?") || href.startsWith("/pdca?") || href.startsWith("/datenpannen?") || href.startsWith("/dsfa?") || href.startsWith("/avv?") || href.startsWith("/tom?") || href.startsWith("/vvt?") || href.startsWith("/dsr?") || href.startsWith("/loeschkonzept?") || href.startsWith("/ki-compliance?") || href.startsWith("/audits?") || href.startsWith("/beschaeftigtendatenschutz?") || href.startsWith("/web-datenschutz?")).toBe(true);
     }
   });
 
