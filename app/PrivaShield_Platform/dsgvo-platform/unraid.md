@@ -250,6 +250,13 @@ Prüfen:
 - läuft der Container wirklich?
 - blockiert ein Reverse Proxy oder anderer Dienst den Port?
 
+### 5. Login klappt, aber Speichern/Ändern schlägt fehl
+Prüfen:
+- werden `Host`, `X-Forwarded-Host` und `X-Forwarded-Proto` sauber durch den Proxy weitergereicht?
+- stimmt die im Browser sichtbare Domain mit der erwarteten Ziel-Origin überein?
+- taucht im Netzwerk-Tab eher `403 CSRF-Prüfung fehlgeschlagen` oder `403 Origin-Prüfung fehlgeschlagen` auf?
+- gibt es Mischbetrieb aus HTTP und HTTPS oder mehrere konkurrierende Zugriffs-URLs?
+
 ---
 
 ## Empfohlene Betriebsparameter
@@ -336,6 +343,33 @@ Im Reiter **SSL**:
 - `Force SSL`
 - `HTTP/2 Support`
 - `HSTS Enabled` optional nach Test
+
+### Wichtiger Hinweis zu Login, CSRF und Origin-Prüfung
+
+Der aktuelle gehärtete Stand prüft bei schreibenden Requests zusätzlich:
+- CSRF-Token
+- `Origin` bzw. `Referer`
+- erwartete Ziel-Origin unter Berücksichtigung von Proxy-Headern
+
+Für Unraid + Reverse Proxy heißt das praktisch:
+- externe Nutzung möglichst nur per **HTTPS**
+- Proxy muss `Host` korrekt weiterreichen
+- `X-Forwarded-Host` und `X-Forwarded-Proto` sollten sauber gesetzt werden
+- keine Mischkonstellation aus externer HTTPS-Domain und interner HTTP-Origin im Browser erzeugen
+
+Typische Live-Fehlerbilder:
+- `401 Nicht authentifiziert` → Cookie-/Bearer-/Proxy-Thema
+- `403 CSRF-Prüfung fehlgeschlagen` → CSRF-Cookie/Header fehlen oder passen nicht
+- `403 Origin-Prüfung fehlgeschlagen` → Proxy-/HTTPS-/Host-Weitergabe passt nicht zur aufgerufenen Domain
+
+### Praktischer Prüfpfad im Browser
+
+Nach einem Login sollte im Browser-Netzwerk-Tab geprüft werden:
+1. `POST /api/auth/login`
+2. `GET /api/auth/me`
+3. danach ein schreibender Request (`POST`, `PUT` oder `DELETE`)
+
+Wenn Login 200 liefert, aber Speichern oder Änderungen mit 403 scheitern, ist meist nicht das Passwort das Problem, sondern die Proxy-/Origin-/CSRF-Konstellation.
 
 ### Zusätzliche Empfehlung
 

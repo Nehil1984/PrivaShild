@@ -109,6 +109,44 @@ Beim ersten Start wird nur dann ein Admin-Account angelegt, wenn `INITIAL_ADMIN_
 
 ---
 
+## Login, Auth-Cookies und Reverse Proxy
+
+Der aktuelle gehärtete Stand nutzt für produktive Requests mehrere Schutzschichten:
+- HttpOnly-Auth-Cookie
+- Bearer-Fallback für robuste Session-Wiederherstellung
+- CSRF-Token für zustandsändernde Requests
+- zusätzliche Origin-/Referer-Prüfung auf Server-Seite
+
+Für Docker-/Proxy-Deployments ist daher wichtig:
+- möglichst **HTTPS** verwenden
+- `Host` korrekt an den Container weiterreichen
+- bei Reverse Proxies auch `X-Forwarded-Host` und `X-Forwarded-Proto` sauber setzen
+- keine widersprüchlichen externen und internen Origins erzeugen
+
+### Typische Fehlerbilder
+
+- `401 Nicht authentifiziert`
+  - Auth-Cookie kommt nicht an
+  - Bearer-Fallback fehlt oder wird überschrieben
+  - Proxy reicht Cookies/Headers nicht sauber weiter
+
+- `403 CSRF-Prüfung fehlgeschlagen`
+  - `privashield_csrf`-Cookie fehlt
+  - `X-CSRF-Token` fehlt oder passt nicht zum Cookie
+
+- `403 Origin-Prüfung fehlgeschlagen`
+  - Browser-Origin und erwartete Server-Origin stimmen nicht überein
+  - häufig ein Reverse-Proxy-/HTTPS-/Header-Thema
+
+### Praktischer Check im Browser
+
+Nach einem Login sollten im Browser-Netzwerk-Tab mindestens geprüft werden:
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- ein anschließender schreibender Request, z. B. `POST` oder `PUT`
+
+Wenn Login klappt, aber Speichern fehlschlägt, liegt der Fokus typischerweise auf CSRF-/Origin-/Proxy-Weitergabe, nicht mehr auf der Passwortprüfung selbst.
+
 ## Updates
 
 ```bash

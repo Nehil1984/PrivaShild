@@ -99,6 +99,25 @@ Hinweis:
 - Für automatische verschlüsselte Scheduler-Läufe muss `PRIVASHIELD_BACKUP_PASSWORD` in der Laufzeitumgebung gesetzt sein.
 - Ist die Verschlüsselung aktiviert, aber keine Umgebungsvariable gesetzt, schlägt der automatische Lauf bewusst fehl, statt unverschlüsselte Backups zu erzeugen.
 
+### Wichtige Hinweise für Login, Cookie-Auth und Reverse Proxy
+
+Die aktuelle Auth-Härtung nutzt einen kombinierten Ansatz aus:
+- HttpOnly-Auth-Cookie
+- Bearer-Fallback für robuste Session-Wiederherstellung
+- CSRF-Token für zustandsändernde Requests
+- zusätzlicher Origin-/Referer-Prüfung für schreibende Requests
+
+Für produktionsnahe Deployments bedeutet das:
+- PrivaShield sollte bevorzugt hinter **HTTPS** betrieben werden.
+- Ein Reverse Proxy muss `Host` sowie idealerweise `X-Forwarded-Host` und `X-Forwarded-Proto` sauber durchreichen.
+- Unterschiedliche externe und interne Origins ohne korrekte Proxy-Weitergabe können zu `403` bei schreibenden Requests führen.
+- Nach Login-Problemen sollten insbesondere `/api/auth/login`, `/api/auth/me` und anschließende `POST`-/`PUT`-/`DELETE`-Requests im Browser-Netzwerk-Tab geprüft werden.
+
+Typische Symptome im Live-Betrieb:
+- `401 Nicht authentifiziert` → meist Problem bei Cookie-/Bearer-Weitergabe oder Proxy-Setup
+- `403 CSRF-Prüfung fehlgeschlagen` → CSRF-Cookie/Header fehlen oder stimmen nicht überein
+- `403 Origin-Prüfung fehlgeschlagen` → Browser-Origin passt nicht zur vom Server ermittelten Ziel-Origin, oft Proxy-/HTTPS-/Host-Header-Thema
+
 ## Unraid / Docker
 
 Das Repository enthält zusätzliche Dateien für den Containerbetrieb, unter anderem:
