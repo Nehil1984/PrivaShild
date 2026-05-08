@@ -4602,10 +4602,25 @@ function PdcaPage() {
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
   const { toast } = useToast();
+  const todayIso = new Date().toISOString().split("T")[0];
+  const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
+  const pdcaAufgabenOffen = pdcaAufgaben.filter((item: any) => item.status !== "erledigt");
+  const getPdcaMeta = (item: any) => {
+    const reviewDate = String(item?.naechstePruefungAm || "").trim();
+    const reviewDue = !!reviewDate && reviewDate <= todayIso && String(item?.status || "") !== "abgeschlossen";
+    const reviewMissing = !reviewDate && String(item?.status || "") !== "abgeschlossen";
+    const auditFollowUpWithoutAudit = String(item?.zyklusTyp || "") === "audit_follow_up" && !item?.verknuepftesAuditId;
+    const highPriority = ["hoch", "kritisch"].includes(String(item?.prioritaet || "").toLowerCase()) && String(item?.status || "") !== "abgeschlossen";
+    const linkedTasks = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id));
+    const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
+    const inProgressNoTask = String(item?.status || "") === "in_bearbeitung" && offeneLinkedTasks.length === 0;
+    return { reviewDate, reviewDue, reviewMissing, auditFollowUpWithoutAudit, highPriority, linkedTasks, offeneLinkedTasks, inProgressNoTask };
+  };
   useEffect(() => {
     const route = new URL(location, "https://privashield.local");
     const rawFilter = route.searchParams.get("filter");
-    if (rawFilter === "review") setFilter("überprüfung");
+    if (rawFilter === "review" || rawFilter === "review-missing") setFilter("überprüfung");
+    else if (rawFilter === "in-progress-no-task") setFilter("in_bearbeitung");
     else setFilter("alle");
   }, [location]);
   const save = async (form: any) => {
@@ -4636,35 +4651,50 @@ function PdcaPage() {
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
-  const todayIso = new Date().toISOString().split("T")[0];
   const rawPdcaFilter = new URL(location, "https://privashield.local").searchParams.get("filter");
   const filtered = data.filter((item: any) => {
-    if (rawPdcaFilter === "review" && !(item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen")) return false;
-    if (rawPdcaFilter === "audit-follow-up-ohne-audit" && !(String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) return false;
+    const meta = getPdcaMeta(item);
+    if (rawPdcaFilter === "review" && !meta.reviewDue) return false;
+    if (rawPdcaFilter === "review-missing" && !meta.reviewMissing) return false;
+    if (rawPdcaFilter === "audit-follow-up-ohne-audit" && !meta.auditFollowUpWithoutAudit) return false;
+    if (rawPdcaFilter === "priority-high" && !meta.highPriority) return false;
+    if (rawPdcaFilter === "in-progress-no-task" && !meta.inProgressNoTask) return false;
     return filter === "alle" ? true : item.status === filter;
   }).slice().sort((a: any, b: any) => {
-    const aReview = a.naechstePruefungAm || "9999-12-31";
-    const bReview = b.naechstePruefungAm || "9999-12-31";
-    const aOpenTasks = aufgaben.filter((task: any) => Number(task.referenzId) === Number(a.id) && String(task.vorlagenBezug || "") === "pdca_follow_up" && task.status !== "erledigt").length;
-    const bOpenTasks = aufgaben.filter((task: any) => Number(task.referenzId) === Number(b.id) && String(task.vorlagenBezug || "") === "pdca_follow_up" && task.status !== "erledigt").length;
-    const aScore = (String(a.zyklusTyp || "") === "audit_follow_up" && !a.verknuepftesAuditId ? 120 : 0) + (aReview < todayIso ? 80 : aReview === todayIso ? 50 : 0) + Math.min(40, aOpenTasks * 10) + (a.status === "in_bearbeitung" ? 15 : 0);
-    const bScore = (String(b.zyklusTyp || "") === "audit_follow_up" && !b.verknuepftesAuditId ? 120 : 0) + (bReview < todayIso ? 80 : bReview === todayIso ? 50 : 0) + Math.min(40, bOpenTasks * 10) + (b.status === "in_bearbeitung" ? 15 : 0);
+    const metaA = getPdcaMeta(a);
+    const metaB = getPdcaMeta(b);
+    const aReview = metaA.reviewDate || "9999-12-31";
+    const bReview = metaB.reviewDate || "9999-12-31";
+    const aOpenTasks = metaA.offeneLinkedTasks.length;
+    const bOpenTasks = metaB.offeneLinkedTasks.length;
+    const aScore = (metaA.auditFollowUpWithoutAudit ? 120 : 0) + (metaA.highPriority ? 70 : 0) + (metaA.inProgressNoTask ? 65 : 0) + (metaA.reviewMissing ? 55 : 0) + (aReview < todayIso ? 80 : aReview === todayIso ? 50 : 0) + Math.min(40, aOpenTasks * 10) + (a.status === "in_bearbeitung" ? 15 : 0);
+    const bScore = (metaB.auditFollowUpWithoutAudit ? 120 : 0) + (metaB.highPriority ? 70 : 0) + (metaB.inProgressNoTask ? 65 : 0) + (metaB.reviewMissing ? 55 : 0) + (bReview < todayIso ? 80 : bReview === todayIso ? 50 : 0) + Math.min(40, bOpenTasks * 10) + (b.status === "in_bearbeitung" ? 15 : 0);
     if (rawPdcaFilter) return bScore - aScore || aReview.localeCompare(bReview) || String(a.titel || "").localeCompare(String(b.titel || ""), "de");
     return String(a.titel || "").localeCompare(String(b.titel || ""), "de");
   });
   const offene = data.filter((item: any) => item.status !== "abgeschlossen");
-  const reviewFaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm <= todayIso && item.status !== "abgeschlossen");
-  const reviewUeberfaellig = data.filter((item: any) => item.naechstePruefungAm && item.naechstePruefungAm < todayIso && item.status !== "abgeschlossen");
+  const reviewFaellig = data.filter((item: any) => getPdcaMeta(item).reviewDue);
+  const reviewUeberfaellig = data.filter((item: any) => {
+    const reviewDate = getPdcaMeta(item).reviewDate;
+    return !!reviewDate && reviewDate < todayIso && item.status !== "abgeschlossen";
+  });
   const mitAuditBezug = data.filter((item: any) => !!item.verknuepftesAuditId);
   const ohneAuditBezug = data.filter((item: any) => !item.verknuepftesAuditId);
-  const pdcaAufgaben = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
-  const pdcaAufgabenOffen = pdcaAufgaben.filter((item: any) => item.status !== "erledigt");
-  const auditFollowUpOhneAudit = data.filter((item: any) => String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId);
-  const pdcaFilterHint = new URL(location, "https://privashield.local").searchParams.get("filter") === "review"
+  const auditFollowUpOhneAudit = data.filter((item: any) => getPdcaMeta(item).auditFollowUpWithoutAudit);
+  const pdcaHighPriority = data.filter((item: any) => getPdcaMeta(item).highPriority);
+  const pdcaReviewMissing = data.filter((item: any) => getPdcaMeta(item).reviewMissing);
+  const pdcaInProgressWithoutTask = data.filter((item: any) => getPdcaMeta(item).inProgressNoTask);
+  const pdcaFilterHint = rawPdcaFilter === "review"
     ? "Du siehst gerade: PDCA-Zyklen mit fälligem oder überfälligem Review."
-    : new URL(location, "https://privashield.local").searchParams.get("filter") === "audit-follow-up-ohne-audit"
-      ? "Du siehst gerade: Audit-Follow-ups ohne Audit-Bezug."
-      : "";
+    : rawPdcaFilter === "review-missing"
+      ? "Du siehst gerade: offene PDCA-Zyklen ohne nächsten Prüftermin."
+      : rawPdcaFilter === "audit-follow-up-ohne-audit"
+        ? "Du siehst gerade: Audit-Follow-ups ohne Audit-Bezug."
+        : rawPdcaFilter === "priority-high"
+          ? "Du siehst gerade: offene PDCA-Zyklen mit hoher oder kritischer Priorität."
+          : rawPdcaFilter === "in-progress-no-task"
+            ? "Du siehst gerade: laufende PDCA-Zyklen ohne offene Folgeaufgabe."
+            : "";
   return (
     <MandantGuard>
       <PageHeader title="PDCA / Verbesserungszyklus" desc="Plan-Do-Check-Act-Maßnahmen, Review-Zyklen und kontinuierliche Verbesserung strukturiert steuern"
@@ -4675,12 +4705,13 @@ function PdcaPage() {
         setLocation(`${next.pathname}${next.search}`);
         setFilter("alle");
       }}>Filter zurücksetzen</Button><Link href="/aufgaben?filter=pdca-follow-up-offen"><a className="text-xs text-primary hover:underline self-center">Zu Aufgaben</a></Link></div></CardContent></Card>}
-      {new URL(location, "https://privashield.local").searchParams.get("filter") === "review" && (
+      {(rawPdcaFilter === "review" || rawPdcaFilter === "review-missing" || rawPdcaFilter === "priority-high" || rawPdcaFilter === "in-progress-no-task") && (
         <Card className="mb-4 border-border/60 bg-muted/20">
-          <CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+          <CardContent className="py-3 px-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">Review fällig</p><p className="font-semibold">{reviewFaellig.length}</p></div>
-            <div><p className="text-xs text-muted-foreground">Davon überfällig</p><p className="font-semibold">{reviewUeberfaellig.length}</p></div>
-            <div><p className="text-xs text-muted-foreground">Offene PDCA-Folgeaufgaben</p><p className="font-semibold">{pdcaAufgabenOffen.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Ohne Prüftermin</p><p className="font-semibold">{pdcaReviewMissing.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Hohe Priorität offen</p><p className="font-semibold">{pdcaHighPriority.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Laufend ohne Folgeaufgabe</p><p className="font-semibold">{pdcaInProgressWithoutTask.length}</p></div>
           </CardContent>
         </Card>
       )}
@@ -4703,7 +4734,7 @@ function PdcaPage() {
           <div><p className="text-xs text-muted-foreground">Verknüpfte Audits</p><p className="text-2xl font-bold">{new Set(mitAuditBezug.map((item: any) => item.verknuepftesAuditId)).size}</p></div>
         </CardContent>
       </Card>
-      {(auditFollowUpOhneAudit.length > 0 || reviewFaellig.length > 0 || pdcaAufgabenOffen.length > 0) && (
+      {(auditFollowUpOhneAudit.length > 0 || reviewFaellig.length > 0 || pdcaAufgabenOffen.length > 0 || pdcaReviewMissing.length > 0 || pdcaHighPriority.length > 0 || pdcaInProgressWithoutTask.length > 0) && (
         <Card className="mb-4 border-amber-500/40 bg-amber-500/5">
           <CardHeader>
             <CardTitle className="text-sm">Hinweise mit Prüfbedarf</CardTitle>
@@ -4712,6 +4743,9 @@ function PdcaPage() {
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             {auditFollowUpOhneAudit.length > 0 && <p>• {auditFollowUpOhneAudit.length} Audit-Follow-up(s) ohne verknüpftes Audit.</p>}
             {reviewFaellig.length > 0 && <p>• {reviewFaellig.length} PDCA-Review(s) sind fällig oder überfällig.</p>}
+            {pdcaReviewMissing.length > 0 && <p>• {pdcaReviewMissing.length} offene PDCA-Zyklen haben noch keinen nächsten Prüftermin.</p>}
+            {pdcaHighPriority.length > 0 && <p>• {pdcaHighPriority.length} offene PDCA-Zyklen laufen mit hoher oder kritischer Priorität.</p>}
+            {pdcaInProgressWithoutTask.length > 0 && <p>• {pdcaInProgressWithoutTask.length} laufende PDCA-Zyklen haben keine offene Folgeaufgabe.</p>}
             {pdcaAufgabenOffen.length > 0 && <p>• {pdcaAufgabenOffen.length} offene PDCA-Folgeaufgabe(n) warten auf Bearbeitung.</p>}
           </CardContent>
         </Card>
@@ -4731,9 +4765,10 @@ function PdcaPage() {
         <div className="space-y-3">
           {filtered.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground space-y-3">{pdcaFilterHint || "Keine PDCA-Zyklen in dieser Ansicht."}{pdcaFilterHint ? " Aktuell gibt es dafür keine Treffer." : ""}<div><Button type="button" size="sm" onClick={() => setModal("new")}>Neuen PDCA-Zyklus anlegen</Button></div></CardContent></Card>}
           {filtered.map((item: any) => {
-            const linkedTasks = pdcaAufgaben.filter((task: any) => Number(task.referenzId) === Number(item.id));
-            const offeneLinkedTasks = linkedTasks.filter((task: any) => task.status !== "erledigt");
-            const reviewDue = !!item.naechstePruefungAm && item.naechstePruefungAm <= new Date().toISOString().split("T")[0] && item.status !== "abgeschlossen";
+            const meta = getPdcaMeta(item);
+            const linkedTasks = meta.linkedTasks;
+            const offeneLinkedTasks = meta.offeneLinkedTasks;
+            const reviewDue = meta.reviewDue;
             const progress = Math.max(0, Math.min(100, Number(item.doFortschritt || 0)));
             return (
             <Card key={item.id} className="group hover:border-border/80 transition-colors">
@@ -4742,7 +4777,7 @@ function PdcaPage() {
                   <div>
                     <p className="text-sm font-semibold">{item.titel}</p>
                     <p className="text-xs text-muted-foreground">{item.zyklusTyp || "verbesserungsmassnahme"} · {item.verantwortlicher || "—"}{item.zeitraumVon || item.zeitraumBis ? ` · ${item.zeitraumVon || "?"} bis ${item.zeitraumBis || "?"}` : ""}{item.naechstePruefungAm ? ` · nächste Prüfung ${item.naechstePruefungAm}` : ""}</p>
-                    {rawPdcaFilter && <p className="text-xs text-muted-foreground">Arbeitszustand: {String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId ? "heute erledigen" : reviewDue ? "in Bearbeitung" : offeneLinkedTasks.length > 0 ? "neu" : "beobachten"}</p>}
+                    {rawPdcaFilter && <p className="text-xs text-muted-foreground">Arbeitszustand: {meta.auditFollowUpWithoutAudit ? "heute erledigen" : meta.highPriority ? "priorisiert" : meta.inProgressNoTask ? "blockiert" : meta.reviewMissing ? "Termin festlegen" : reviewDue ? "in Bearbeitung" : offeneLinkedTasks.length > 0 ? "neu" : "beobachten"}</p>}
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                     <StatusBadge value={item.prioritaet} />
@@ -4768,9 +4803,9 @@ function PdcaPage() {
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">ACT</p><p className="text-muted-foreground whitespace-pre-wrap">{item.actKorrekturen || item.actVerbesserungen || item.actFolgemassnahmen || "—"}</p></div>
                   <div className="rounded-lg border p-3"><p className="font-medium mb-1">Workflow</p><p className="text-muted-foreground whitespace-pre-wrap">{(() => { const auditRef = audits.find((audit: any) => Number(audit.id) === Number(item.verknuepftesAuditId)); const auditLabel = auditRef ? `Audit #${auditRef.id}: ${auditRef.titel}` : item.verknuepftesAuditId ? `Audit #${item.verknuepftesAuditId}` : "Ohne Audit-Bezug"; return `${auditLabel}${linkedTasks.length ? `\n${linkedTasks.length} verknüpfte Aufgabe(n)` : "\nKeine verknüpfte Aufgabe"}`; })()}</p><p className="mt-2 text-[11px] text-muted-foreground">{reviewDue ? "Review fällig" : item.naechstePruefungAm ? `Nächste Prüfung: ${item.naechstePruefungAm}` : "Kein Review-Datum gesetzt"}{offeneLinkedTasks.length ? ` · ${offeneLinkedTasks.length} Aufgabe(n) offen` : ""}</p></div>
                 </div>
-                {(reviewDue || (String(item.zyklusTyp || "") === "audit_follow_up" && !item.verknuepftesAuditId)) && (
+                {(reviewDue || meta.auditFollowUpWithoutAudit || meta.reviewMissing || meta.inProgressNoTask || meta.highPriority) && (
                   <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                    {reviewDue ? "Dieser PDCA-Zyklus sollte zeitnah geprüft oder aktualisiert werden." : "Audit-Follow-up ohne Audit-Bezug: bitte verknüpftes Audit ergänzen."}
+                    {meta.auditFollowUpWithoutAudit ? "Audit-Follow-up ohne Audit-Bezug: bitte verknüpftes Audit ergänzen." : meta.inProgressNoTask ? "Dieser laufende PDCA-Zyklus hat aktuell keine offene Folgeaufgabe und sollte operativ nachgesteuert werden." : meta.reviewMissing ? "Für diesen offenen PDCA-Zyklus fehlt ein nächster Prüftermin." : reviewDue ? "Dieser PDCA-Zyklus sollte zeitnah geprüft oder aktualisiert werden." : "Dieser PDCA-Zyklus ist hoch priorisiert und sollte eng gesteuert werden."}
                   </div>
                 )}
               </CardContent>
