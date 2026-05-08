@@ -622,6 +622,25 @@ function Dashboard() {
   const auditFollowUpsOhneAuditDashboard = auditFollowUpsDashboard.filter((item: any) => !item.verknuepftesAuditId);
   const pdcaFollowUpTasksDashboard = aufgaben.filter((item: any) => String(item.vorlagenBezug || "") === "pdca_follow_up");
   const pdcaFollowUpTasksOffenDashboard = pdcaFollowUpTasksDashboard.filter((item: any) => String(item.status || "") !== "erledigt");
+  const tomDashboardMeta = (item: any) => {
+    const reviewDate = String(item?.pruefDatum || "").trim();
+    const reviewMissing = !reviewDate;
+    const reviewOverdue = !!reviewDate && reviewDate < new Date().toISOString().split("T")[0];
+    const planned = String(item?.status || "").toLowerCase() === "geplant";
+    const weakEffectiveness = ["niedrig", "mittel"].includes(String(item?.wirksamkeit || "").toLowerCase()) || !String(item?.wirksamkeit || "").trim();
+    const missingOwner = !String(item?.verantwortlicher || "").trim();
+    return { reviewDate, reviewMissing, reviewOverdue, planned, weakEffectiveness, missingOwner };
+  };
+  const tomReviewOverdueDashboardItems = tom.filter((item: any) => tomDashboardMeta(item).reviewOverdue);
+  const tomReviewMissingDashboardItems = tom.filter((item: any) => tomDashboardMeta(item).reviewMissing);
+  const tomPlannedDashboardItems = tom.filter((item: any) => tomDashboardMeta(item).planned);
+  const tomWeakEffectivenessDashboardItems = tom.filter((item: any) => tomDashboardMeta(item).weakEffectiveness);
+  const tomMissingOwnerDashboardItems = tom.filter((item: any) => tomDashboardMeta(item).missingOwner);
+  const pdcaKritischOderHochOffenDashboard = pdcaOffenItems.filter((item: any) => ["kritisch", "hoch"].includes(String(item?.prioritaet || "").toLowerCase()));
+  const pdcaOhneNaechstePruefungDashboard = pdcaOffenItems.filter((item: any) => !String(item?.naechstePruefungAm || "").trim());
+  const pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard = pdcaOffenItems.filter((item: any) => String(item?.status || "") === "in_bearbeitung" && !pdcaFollowUpTasksOffenDashboard.some((task: any) => Number(task?.referenzId) === Number(item?.id)));
+  const pdcaFollowUpTasksUeberfaelligDashboard = pdcaFollowUpTasksOffenDashboard.filter((item: any) => String(item?.faelligAm || "").trim() && String(item.faelligAm) < new Date().toISOString().split("T")[0]);
+  const kritischeAufgabenOhneTerminDashboard = kritischeAufgaben.filter((item: any) => !String(item?.faelligAm || "").trim());
   const parseIncidentDashboardDateTime = (item: any, fieldDate: string, fieldTime?: string) => {
     const date = String(item?.[fieldDate] || "").trim();
     if (!date) return null;
@@ -662,6 +681,11 @@ function Dashboard() {
     pdcaReviewFaelligItems.length > 0 ? { severity: pdcaReviewFaelligItems.length >= 3 ? "hoch" : "mittel", title: `${pdcaReviewFaelligItems.length} PDCA-Reviews fällig oder überfällig`, recommendation: "Reviewtermine kurzfristig ansetzen und Wirksamkeitsstatus aktualisieren.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=review" } : null,
     auditFollowUpsOhneAuditDashboard.length > 0 ? { severity: "hoch", title: `${auditFollowUpsOhneAuditDashboard.length} Audit-Follow-ups ohne Audit-Bezug`, recommendation: "Audit-Verknüpfungen nachziehen, damit Nachverfolgung und Export vollständig bleiben.", actionLabel: "Zu Audit/PDCA", actionHref: "/pdca?filter=audit-follow-up-ohne-audit" } : null,
     pdcaFollowUpTasksOffenDashboard.length > 0 ? { severity: pdcaFollowUpTasksOffenDashboard.length >= 5 ? "mittel" : "niedrig", title: `${pdcaFollowUpTasksOffenDashboard.length} offene PDCA-Folgeaufgaben`, recommendation: "Offene Folgeaufgaben bündeln und den laufenden PDCA-Zyklen zuordnen.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
+    pdcaFollowUpTasksUeberfaelligDashboard.length > 0 ? { severity: pdcaFollowUpTasksUeberfaelligDashboard.length >= 3 ? "hoch" : "mittel", title: `${pdcaFollowUpTasksUeberfaelligDashboard.length} überfällige PDCA-Folgeaufgaben`, recommendation: "Überfällige Folgeaufgaben sofort terminlich und personell nachsteuern, damit Zyklen nicht hängen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=pdca-follow-up-offen" } : null,
+    pdcaKritischOderHochOffenDashboard.length > 0 ? { severity: "hoch", title: `${pdcaKritischOderHochOffenDashboard.length} offene PDCA-Zyklen mit hoher Priorität`, recommendation: "Kritische Verbesserungszyklen aktiv steuern und ihre Folgeaufgaben eng nachhalten.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=priority-high" } : null,
+    pdcaOhneNaechstePruefungDashboard.length > 0 ? { severity: "mittel", title: `${pdcaOhneNaechstePruefungDashboard.length} offene PDCA-Zyklen ohne nächsten Prüftermin`, recommendation: "Nächste Prüfung und Review-Takt für offene Zyklen verbindlich setzen.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=review-missing" } : null,
+    pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length > 0 ? { severity: "mittel", title: `${pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length} laufende PDCA-Zyklen ohne offene Folgeaufgabe`, recommendation: "Laufende Zyklen operativ absichern und mindestens eine verknüpfte Folgeaufgabe nachziehen.", actionLabel: "Zur PDCA-Seite", actionHref: "/pdca?filter=in-progress-no-task" } : null,
+    kritischeAufgabenOhneTerminDashboard.length > 0 ? { severity: "hoch", title: `${kritischeAufgabenOhneTerminDashboard.length} kritische Aufgaben ohne Fälligkeit`, recommendation: "Kritische Aufgaben sofort mit Termin und Verantwortung versehen, damit keine blinden Risiken offen bleiben.", actionLabel: "Zu den Aufgaben", actionHref: "/aufgaben?filter=kritisch" } : null,
     dsfaMitArt36 > 0 ? { severity: "hoch", title: `${dsfaMitArt36} DSFA mit Art.-36-Prüfbedarf`, recommendation: "Aufsichtsbehördlichen Prüfbedarf rechtlich bewerten und Eskalation vorbereiten.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=art36" } : null,
     dsfaMitHohemRestrisiko > 0 ? { severity: "hoch", title: `${dsfaMitHohemRestrisiko} DSFA mit hohem Restrisiko`, recommendation: "Restrisikobehandlung priorisieren und Freigabe-/Abstellmaßnahmen dokumentieren.", actionLabel: "Zur DSFA-Seite", actionHref: "/dsfa?filter=high-risk" } : null,
     incidentDeadlineMissedItems.length > 0 ? { severity: "hoch", title: `${incidentDeadlineMissedItems.length} Datenpannen mit überschrittener 72h-Frist`, recommendation: "Fristüberschreitungen rechtlich bewerten, Behördenkommunikation absichern und Begründung dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=deadline-missed" } : null,
@@ -674,6 +698,11 @@ function Dashboard() {
     copilotAvvOhnePruefungItems.length > 0 ? { severity: "mittel", title: `${copilotAvvOhnePruefungItems.length} Copilot-/Microsoft-AVV ohne Prüffälligkeit`, recommendation: "Microsoft-/Copilot-Verträge mit DPA, Product Terms und Prüffristen strukturiert nachziehen.", actionLabel: "Zu AVV", actionHref: "/avv?filter=copilot-missing-review" } : null,
     avvReviewMissingDashboardItems.length > 0 ? { severity: "mittel", title: `${avvReviewMissingDashboardItems.length} AVV ohne Reviewtermin`, recommendation: "Prüffälligkeit, Turnus und Verantwortlichkeit für AVV verbindlich festlegen.", actionLabel: "Zu AVV", actionHref: "/avv?filter=review-missing" } : null,
     avvInactiveDashboardItems.length > 0 ? { severity: "niedrig", title: `${avvInactiveDashboardItems.length} AVV mit nicht aktivem Status`, recommendation: "Vertragslage und operative Nutzung bereinigen, damit die AVV-Steuerung belastbar bleibt.", actionLabel: "Zu AVV", actionHref: "/avv?filter=inactive" } : null,
+    tomReviewOverdueDashboardItems.length > 0 ? { severity: "hoch", title: `${tomReviewOverdueDashboardItems.length} TOM-Reviews überfällig`, recommendation: "Wirksamkeits- und Nachweisprüfungen der TOM kurzfristig nachziehen und dokumentieren.", actionLabel: "Zu TOM", actionHref: "/tom?filter=review-overdue" } : null,
+    tomPlannedDashboardItems.length > 0 ? { severity: tomPlannedDashboardItems.length >= 3 ? "hoch" : "mittel", title: `${tomPlannedDashboardItems.length} geplante TOM ohne Abschluss`, recommendation: "Noch nicht umgesetzte TOM priorisieren und operativ absichern.", actionLabel: "Zu TOM", actionHref: "/tom?filter=planned" } : null,
+    tomReviewMissingDashboardItems.length > 0 ? { severity: "mittel", title: `${tomReviewMissingDashboardItems.length} TOM ohne Prüftermin`, recommendation: "Prüffälligkeiten und Reviewintervalle für TOM verbindlich festlegen.", actionLabel: "Zu TOM", actionHref: "/tom?filter=review-missing" } : null,
+    tomWeakEffectivenessDashboardItems.length > 0 ? { severity: "mittel", title: `${tomWeakEffectivenessDashboardItems.length} TOM mit schwacher oder offener Wirksamkeit`, recommendation: "Wirksamkeitsbewertung, Nachweise und Verbesserungsbedarf der TOM fachlich nachsteuern.", actionLabel: "Zu TOM", actionHref: "/tom?filter=weak-effectiveness" } : null,
+    tomMissingOwnerDashboardItems.length > 0 ? { severity: "mittel", title: `${tomMissingOwnerDashboardItems.length} TOM ohne Verantwortlichkeit`, recommendation: "Verantwortliche Rollen für TOM eindeutig festlegen und Reviewverantwortung zuordnen.", actionLabel: "Zu TOM", actionHref: "/tom?filter=missing-owner" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -939,6 +968,11 @@ function Dashboard() {
               {pdcaReviewFaelligItems.length > 0 && <p className="text-yellow-400">PDCA-Reviews fällig oder überfällig: {pdcaReviewFaelligItems.length}</p>}
               {auditFollowUpsOhneAuditDashboard.length > 0 && <p className="text-orange-400">Audit-Follow-ups ohne Audit-Bezug: {auditFollowUpsOhneAuditDashboard.length}</p>}
               {pdcaFollowUpTasksOffenDashboard.length > 0 && <p className="text-orange-400">Offene PDCA-Folgeaufgaben: {pdcaFollowUpTasksOffenDashboard.length}</p>}
+              {pdcaFollowUpTasksUeberfaelligDashboard.length > 0 && <p className="text-red-400">Überfällige PDCA-Folgeaufgaben: {pdcaFollowUpTasksUeberfaelligDashboard.length}</p>}
+              {pdcaKritischOderHochOffenDashboard.length > 0 && <p className="text-red-400">Offene PDCA-Zyklen mit hoher Priorität: {pdcaKritischOderHochOffenDashboard.length}</p>}
+              {pdcaOhneNaechstePruefungDashboard.length > 0 && <p className="text-yellow-400">Offene PDCA-Zyklen ohne Prüftermin: {pdcaOhneNaechstePruefungDashboard.length}</p>}
+              {pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length > 0 && <p className="text-yellow-400">Laufende PDCA-Zyklen ohne Folgeaufgabe: {pdcaInBearbeitungOhneOffeneFolgeaufgabeDashboard.length}</p>}
+              {kritischeAufgabenOhneTerminDashboard.length > 0 && <p className="text-red-400">Kritische Aufgaben ohne Fälligkeit: {kritischeAufgabenOhneTerminDashboard.length}</p>}
               {!leitlinieVorhanden && <p className="text-orange-400">Leitliniendokument für Datenschutz und Informationssicherheit fehlt.</p>}
               {!webDatenschutzCheck && <p className="text-orange-400">Prüfung der Webseiten-Datenschutzerklärung und des Impressums fehlt.</p>}
               {!datenschutzhinweiseCheck && <p className="text-orange-400">Prüfung der Datenschutzhinweise für Personengruppen fehlt.</p>}
@@ -960,6 +994,11 @@ function Dashboard() {
               {avvSccMissingDashboardItems.length > 0 && <p className="text-red-400">AVV mit offenem SCC-/Transferprüfbedarf: {avvSccMissingDashboardItems.length}</p>}
               {copilotAvvOhnePruefungItems.length > 0 && <p className="text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit: {copilotAvvOhnePruefungItems.length}</p>}
               {avvReviewMissingDashboardItems.length > 0 && <p className="text-yellow-400">AVV ohne Reviewtermin: {avvReviewMissingDashboardItems.length}</p>}
+              {tomReviewOverdueDashboardItems.length > 0 && <p className="text-red-400">TOM-Reviews überfällig: {tomReviewOverdueDashboardItems.length}</p>}
+              {tomPlannedDashboardItems.length > 0 && <p className="text-red-400">Geplante TOM ohne Abschluss: {tomPlannedDashboardItems.length}</p>}
+              {tomReviewMissingDashboardItems.length > 0 && <p className="text-yellow-400">TOM ohne Prüftermin: {tomReviewMissingDashboardItems.length}</p>}
+              {tomWeakEffectivenessDashboardItems.length > 0 && <p className="text-yellow-400">TOM mit schwacher oder offener Wirksamkeit: {tomWeakEffectivenessDashboardItems.length}</p>}
+              {tomMissingOwnerDashboardItems.length > 0 && <p className="text-yellow-400">TOM ohne Verantwortlichkeit: {tomMissingOwnerDashboardItems.length}</p>}
             </CardContent>
           </Card>
 
@@ -3596,49 +3635,327 @@ function TomForm({ initial, onSave, onCancel }: any) {
 
 function TomPage() {
   const { t } = useI18n();
+  const [location, setLocation] = useLocation();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
   const { data, isLoading, create, update, remove } = useModuleData("tom");
+  const { data: aufgaben = [] } = useModuleData("aufgaben");
+  const { data: pdca = [] } = useModuleData("pdca");
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
+  const [tomFilter, setTomFilterState] = useState<"all" | "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner">("all");
+  const [tomSort, setTomSortState] = useState<"review" | "name" | "status">("review");
   const { toast } = useToast();
+
+  useEffect(() => {
+    const route = new URL(location, "https://privashield.local");
+    const rawFilter = route.searchParams.get("filter");
+    const rawSort = route.searchParams.get("sort");
+    setTomFilterState(rawFilter === "review-overdue" || rawFilter === "review-missing" || rawFilter === "planned" || rawFilter === "weak-effectiveness" || rawFilter === "missing-owner" ? rawFilter : "all");
+    setTomSortState(rawSort === "name" || rawSort === "status" ? rawSort : "review");
+  }, [location]);
+
+  const updateTomRouteState = (nextFilter: "all" | "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner", nextSort: "review" | "name" | "status") => {
+    const next = new URL(location, "https://privashield.local");
+    if (nextFilter === "all") next.searchParams.delete("filter");
+    else next.searchParams.set("filter", nextFilter);
+    if (nextSort === "review") next.searchParams.delete("sort");
+    else next.searchParams.set("sort", nextSort);
+    setLocation(`${next.pathname}${next.search}`);
+  };
+  const setTomFilter = (value: "all" | "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner") => {
+    setTomFilterState(value);
+    updateTomRouteState(value, tomSort);
+  };
+  const setTomSort = (value: "review" | "name" | "status") => {
+    setTomSortState(value);
+    updateTomRouteState(tomFilter, value);
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch(() => toast({ title: "Fehler", variant: "destructive" }));
   };
-  const grouped = data.reduce((acc: any, item: any) => {
+
+  const today = new Date().toISOString().split("T")[0];
+  const getTomMeta = (item: any) => {
+    const reviewDate = String(item?.pruefDatum || "").trim();
+    const reviewMissing = !reviewDate;
+    const reviewOverdue = !!reviewDate && reviewDate < today;
+    const planned = String(item?.status || "").toLowerCase() === "geplant";
+    const weakEffectiveness = ["niedrig", "mittel"].includes(String(item?.wirksamkeit || "").toLowerCase()) || !String(item?.wirksamkeit || "").trim();
+    const missingOwner = !String(item?.verantwortlicher || "").trim();
+    return { reviewDate, reviewMissing, reviewOverdue, planned, weakEffectiveness, missingOwner };
+  };
+  const tomReviewOverdueItems = data.filter((item: any) => getTomMeta(item).reviewOverdue);
+  const tomReviewMissingItems = data.filter((item: any) => getTomMeta(item).reviewMissing);
+  const tomPlannedItems = data.filter((item: any) => getTomMeta(item).planned);
+  const tomWeakEffectivenessItems = data.filter((item: any) => getTomMeta(item).weakEffectiveness);
+  const tomMissingOwnerItems = data.filter((item: any) => getTomMeta(item).missingOwner);
+
+  const buildTomTaskDraft = (item: any, kind: "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner") => {
+    const drafts: Record<string, { title: string; priority: string; description: string }> = {
+      "review-overdue": {
+        title: `TOM-Review nachziehen: ${item.massnahme}`,
+        priority: "hoch",
+        description: `Die TOM-Maßnahme "${item.massnahme}" ist zur Prüfung fällig oder überfällig. Bitte Wirksamkeit, Nachweis und Umsetzungsstand kurzfristig aktualisieren.`,
+      },
+      "review-missing": {
+        title: `Prüftermin für TOM ergänzen: ${item.massnahme}`,
+        priority: "mittel",
+        description: `Für die TOM-Maßnahme "${item.massnahme}" fehlt ein dokumentierter Prüftermin. Bitte Prüfturnus und nächste Prüfung festlegen.`,
+      },
+      planned: {
+        title: `Geplante TOM in Umsetzung bringen: ${item.massnahme}`,
+        priority: "hoch",
+        description: `Die TOM-Maßnahme "${item.massnahme}" ist noch im Status geplant. Bitte Umsetzung, Nachweis und Wirksamkeitsbewertung operativ nachziehen.`,
+      },
+      "weak-effectiveness": {
+        title: `Wirksamkeit der TOM nachsteuern: ${item.massnahme}`,
+        priority: "mittel",
+        description: `Die TOM-Maßnahme "${item.massnahme}" hat eine schwache oder fehlende Wirksamkeitsbewertung. Bitte Bewertung, Nachweise und Verbesserungsbedarf fachlich prüfen.`,
+      },
+      "missing-owner": {
+        title: `Verantwortlichkeit für TOM festlegen: ${item.massnahme}`,
+        priority: "mittel",
+        description: `Für die TOM-Maßnahme "${item.massnahme}" fehlt ein klarer Verantwortlicher. Bitte Rolle und operative Zuständigkeit verbindlich zuordnen.`,
+      },
+    };
+    const draft = drafts[kind];
+    const params = new URLSearchParams({ draftTitle: draft.title, draftPriority: draft.priority, draftDescription: draft.description, draftSource: `tom:${kind}:${item.id}` });
+    return { href: `/aufgaben?${params.toString()}`, title: draft.title, priority: draft.priority, description: draft.description, source: `tom:${kind}:${item.id}` };
+  };
+
+  const createTomFollowUpTask = async (item: any, kind: "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner") => {
+    const draft = buildTomTaskDraft(item, kind);
+    const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
+    if (duplicate) {
+      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      return;
+    }
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: draft.title,
+      beschreibung: draft.description,
+      typ: kind === "review-overdue" || kind === "review-missing" ? "review" : "task",
+      prioritaet: draft.priority,
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.verantwortlicher || "",
+      faelligAm: getTomMeta(item).reviewDate || "",
+      kategorie: "tom",
+      referenzId: item.id,
+      vorlagenBezug: draft.source,
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+  };
+
+  const createTomPdcaCycle = async (item: any, kind: "review-overdue" | "review-missing" | "planned" | "weak-effectiveness" | "missing-owner") => {
+    const source = `tom-pdca:${kind}:${item.id}`;
+    const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
+    if (duplicate) {
+      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      return;
+    }
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() + (kind === "review-overdue" || kind === "planned" ? 14 : 30));
+    const titleMap: Record<string, string> = {
+      "review-overdue": `PDCA TOM-Review: ${item.massnahme}`,
+      "review-missing": `PDCA TOM-Prüfplanung: ${item.massnahme}`,
+      planned: `PDCA TOM-Umsetzung: ${item.massnahme}`,
+      "weak-effectiveness": `PDCA TOM-Wirksamkeit: ${item.massnahme}`,
+      "missing-owner": `PDCA TOM-Verantwortung: ${item.massnahme}`,
+    };
+    const measureMap: Record<string, string> = {
+      "review-overdue": "Prüfung, Nachweis und Wirksamkeitsstatus der TOM kurzfristig aktualisieren.",
+      "review-missing": "Prüfturnus und Reviewdatum für die TOM verbindlich festlegen.",
+      planned: "Umsetzung, Nachweis und operative Verankerung der TOM priorisiert nachziehen.",
+      "weak-effectiveness": "Wirksamkeit, Kontrollen und Verbesserungsmaßnahmen der TOM fachlich nachsteuern.",
+      "missing-owner": "Verantwortliche Rolle benennen und regelmäßige Steuerung sicherstellen.",
+    };
+    const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
+      titel: titleMap[kind],
+      beschreibung: `Automatisch vorbereiteter Verbesserungszyklus für die TOM-Maßnahme "${item.massnahme}".`,
+      zyklusTyp: "verbesserungsmassnahme",
+      status: "geplant",
+      prioritaet: kind === "review-overdue" || kind === "planned" ? "hoch" : "mittel",
+      verantwortlicher: item.verantwortlicher || "",
+      naechstePruefungAm: reviewDate.toISOString().split("T")[0],
+      planRisiken: `${item.beschreibung || ""}\n\nStatus: ${item.status || "—"}\nWirksamkeit: ${item.wirksamkeit || "offen"}`.trim(),
+      planMassnahmen: measureMap[kind],
+      planZiele: `TOM-Maßnahme ${item.massnahme} belastbar steuern und verbessern.`,
+      actNaechsterZyklus: source,
+      verknuepftesAuditId: null,
+    }).then(r => r.json());
+
+    await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
+      titel: `${titleMap[kind]} – Folgeaufgabe`,
+      beschreibung: `Operative Folgeaufgabe zum PDCA-Zyklus "${titleMap[kind]}" für die TOM-Maßnahme "${item.massnahme}".`,
+      typ: kind === "review-overdue" || kind === "review-missing" ? "review" : "task",
+      prioritaet: kind === "review-overdue" || kind === "planned" ? "hoch" : "mittel",
+      status: "offen",
+      fortschritt: 0,
+      verantwortlicher: item.verantwortlicher || "",
+      faelligAm: reviewDate.toISOString().split("T")[0],
+      kategorie: "tom",
+      referenzId: pdcaItem.id,
+      vorlagenBezug: "pdca_follow_up",
+    });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/pdca`] });
+    await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    toast({ title: "PDCA-Zyklus erstellt", description: titleMap[kind] });
+  };
+
+  const filteredData = data.filter((item: any) => {
+    const meta = getTomMeta(item);
+    if (tomFilter === "review-overdue") return meta.reviewOverdue;
+    if (tomFilter === "review-missing") return meta.reviewMissing;
+    if (tomFilter === "planned") return meta.planned;
+    if (tomFilter === "weak-effectiveness") return meta.weakEffectiveness;
+    if (tomFilter === "missing-owner") return meta.missingOwner;
+    return true;
+  }).slice().sort((a: any, b: any) => {
+    const metaA = getTomMeta(a);
+    const metaB = getTomMeta(b);
+    if (tomSort === "name") return String(a.massnahme || "").localeCompare(String(b.massnahme || ""), "de");
+    if (tomSort === "status") return String(a.status || "").localeCompare(String(b.status || ""), "de") || String(a.massnahme || "").localeCompare(String(b.massnahme || ""), "de");
+    const reviewA = metaA.reviewDate || "9999-12-31";
+    const reviewB = metaB.reviewDate || "9999-12-31";
+    return reviewA.localeCompare(reviewB, "de") || String(a.massnahme || "").localeCompare(String(b.massnahme || ""), "de");
+  });
+
+  const grouped = filteredData.reduce((acc: any, item: any) => {
     const cat = item.kategorie || "sonstige";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
     return acc;
   }, {});
+
   return (
     <MandantGuard>
       <PageHeader title={t("tomTitle")} desc={t("tomDesc")}
         action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neue TOM</Button>} />
       {isLoading ? <Skeleton className="h-32 w-full" /> : (
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">TOM-Quick-Check</CardTitle>
+              <CardDescription>Schneller Blick auf Prüfstände, Wirksamkeit und operative Verantwortlichkeit</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {data.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine TOM-Maßnahmen dokumentiert.</p>
+              ) : (
+                <>
+                  {tomReviewOverdueItems.length > 0 && <p className="text-red-400">TOM-Reviews überfällig: {tomReviewOverdueItems.length}</p>}
+                  {tomPlannedItems.length > 0 && <p className="text-red-400">Geplante TOM ohne Abschluss: {tomPlannedItems.length}</p>}
+                  {tomReviewMissingItems.length > 0 && <p className="text-yellow-400">TOM ohne Prüftermin: {tomReviewMissingItems.length}</p>}
+                  {tomWeakEffectivenessItems.length > 0 && <p className="text-yellow-400">TOM mit schwacher/fehlender Wirksamkeitsbewertung: {tomWeakEffectivenessItems.length}</p>}
+                  {tomMissingOwnerItems.length > 0 && <p className="text-yellow-400">TOM ohne Verantwortlichen: {tomMissingOwnerItems.length}</p>}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">TOM-Fokusliste</CardTitle>
+              <CardDescription>Priorisierte Maßnahmen mit unmittelbarem Prüf-, Umsetzungs- oder Governance-Bedarf</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {tomReviewOverdueItems.length === 0 && tomReviewMissingItems.length === 0 && tomPlannedItems.length === 0 && tomWeakEffectivenessItems.length === 0 && tomMissingOwnerItems.length === 0 ? (
+                <p className="text-muted-foreground">Aktuell keine priorisierten TOM-Fälle.</p>
+              ) : (
+                <>
+                  {tomReviewOverdueItems.slice(0, 3).map((item: any) => (
+                    <div key={`review-overdue-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">TOM-Review überfällig: {item.massnahme}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Nachweis, Wirksamkeit und Prüfstatus kurzfristig aktualisieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setTomFilter("review-overdue")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomFollowUpTask(item, "review-overdue")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomPdcaCycle(item, "review-overdue")}>PDCA erzeugen</Button><Link href={buildTomTaskDraft(item, "review-overdue").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {tomPlannedItems.slice(0, 3).map((item: any) => (
+                    <div key={`planned-${item.id}`} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <p className="font-medium text-red-700 dark:text-red-400">Geplante TOM ohne Umsetzung: {item.massnahme}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Umsetzung, Nachweis und operative Verankerung priorisieren.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setTomFilter("planned")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomFollowUpTask(item, "planned")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomPdcaCycle(item, "planned")}>PDCA erzeugen</Button><Link href={buildTomTaskDraft(item, "planned").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {tomReviewMissingItems.slice(0, 3).map((item: any) => (
+                    <div key={`review-missing-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">TOM ohne Prüftermin: {item.massnahme}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Prüfturnus und nächste Prüfung festlegen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setTomFilter("review-missing")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomFollowUpTask(item, "review-missing")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomPdcaCycle(item, "review-missing")}>PDCA erzeugen</Button><Link href={buildTomTaskDraft(item, "review-missing").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {tomWeakEffectivenessItems.slice(0, 3).map((item: any) => (
+                    <div key={`weak-effectiveness-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Wirksamkeit nachsteuern: {item.massnahme}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Wirksamkeitsbewertung, Kontrolle und Verbesserungsbedarf prüfen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setTomFilter("weak-effectiveness")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomFollowUpTask(item, "weak-effectiveness")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomPdcaCycle(item, "weak-effectiveness")}>PDCA erzeugen</Button><Link href={buildTomTaskDraft(item, "weak-effectiveness").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                  {tomMissingOwnerItems.slice(0, 3).map((item: any) => (
+                    <div key={`missing-owner-${item.id}`} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Verantwortlichkeit fehlt: {item.massnahme}</p>
+                      <p className="text-xs text-muted-foreground">Empfehlung: Verantwortliche Rolle und operative Zuständigkeit festlegen.</p>
+                      <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setTomFilter("missing-owner")}>Nur diese Fälle</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomFollowUpTask(item, "missing-owner")}>Aufgabe erzeugen</Button><Button type="button" size="sm" variant="secondary" onClick={() => createTomPdcaCycle(item, "missing-owner")}>PDCA erzeugen</Button><Link href={buildTomTaskDraft(item, "missing-owner").href}><a className="text-xs text-primary hover:underline self-center">Aufgabe vorbereiten</a></Link></div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-2 mb-1 flex-wrap">
+            <Button type="button" size="sm" variant={tomFilter === "all" ? "default" : "outline"} onClick={() => setTomFilter("all")}>Alle</Button>
+            <Button type="button" size="sm" variant={tomFilter === "review-overdue" ? "default" : "outline"} onClick={() => setTomFilter("review-overdue")}>Review überfällig</Button>
+            <Button type="button" size="sm" variant={tomFilter === "review-missing" ? "default" : "outline"} onClick={() => setTomFilter("review-missing")}>Ohne Prüftermin</Button>
+            <Button type="button" size="sm" variant={tomFilter === "planned" ? "default" : "outline"} onClick={() => setTomFilter("planned")}>Geplant</Button>
+            <Button type="button" size="sm" variant={tomFilter === "weak-effectiveness" ? "default" : "outline"} onClick={() => setTomFilter("weak-effectiveness")}>Wirksamkeit schwach</Button>
+            <Button type="button" size="sm" variant={tomFilter === "missing-owner" ? "default" : "outline"} onClick={() => setTomFilter("missing-owner")}>Ohne Verantwortlichen</Button>
+          </div>
+          <div className="flex gap-2 mb-4 flex-wrap items-center">
+            <span className="text-xs text-muted-foreground">Sortierung:</span>
+            <Button type="button" size="sm" variant={tomSort === "review" ? "default" : "outline"} onClick={() => setTomSort("review")}>Review</Button>
+            <Button type="button" size="sm" variant={tomSort === "name" ? "default" : "outline"} onClick={() => setTomSort("name")}>Name</Button>
+            <Button type="button" size="sm" variant={tomSort === "status" ? "default" : "outline"} onClick={() => setTomSort("status")}>Status</Button>
+          </div>
+
           {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Noch keine TOM-Maßnahmen dokumentiert.</CardContent></Card>}
           {Object.entries(grouped).map(([kat, items]: any) => (
             <div key={kat}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{tomKategorien[kat] || kat}</p>
               <div className="space-y-1.5">
-                {items.map((item: any) => (
-                  <Card key={item.id} className="group hover:border-border/80 transition-colors">
-                    <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Lock className="h-4 w-4 text-emerald-400 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{item.massnahme}</p>
-                          <p className="text-xs text-muted-foreground truncate">{item.verantwortlicher || "Kein Verantwortlicher"}{item.pruefintervall ? ` · ${item.pruefintervall}` : ""}{item.wirksamkeit ? ` · Wirksamkeit: ${item.wirksamkeit}` : ""}</p>
+                {items.map((item: any) => {
+                  const meta = getTomMeta(item);
+                  return (
+                    <Card key={item.id} className={`group hover:border-border/80 transition-colors ${meta.reviewOverdue || meta.planned ? "border-red-500/30" : meta.reviewMissing || meta.weakEffectiveness || meta.missingOwner ? "border-yellow-500/30" : ""}`}>
+                      <CardContent className="py-3 px-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Lock className={`h-4 w-4 shrink-0 ${meta.reviewOverdue || meta.planned ? "text-red-400" : meta.reviewMissing || meta.weakEffectiveness || meta.missingOwner ? "text-yellow-400" : "text-emerald-400"}`} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{item.massnahme}</p>
+                            <p className="text-xs text-muted-foreground truncate">{item.verantwortlicher || "Kein Verantwortlicher"}{item.pruefintervall ? ` · ${item.pruefintervall}` : ""}{item.wirksamkeit ? ` · Wirksamkeit: ${item.wirksamkeit}` : " · Wirksamkeit offen"}</p>
+                            <p className="text-xs text-muted-foreground truncate">Prüfung: {meta.reviewDate || "offen"}{meta.planned ? " · geplant" : ""}{meta.missingOwner ? " · Zuständigkeit offen" : ""}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
-                        <StatusBadge value={item.status} />
-                        <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
+                            {meta.reviewOverdue && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Review überfällig</Badge>}
+                            {meta.reviewMissing && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Review offen</Badge>}
+                            {meta.planned && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Geplant</Badge>}
+                            {meta.weakEffectiveness && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Wirksamkeit prüfen</Badge>}
+                            {meta.missingOwner && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Owner fehlt</Badge>}
+                            <StatusBadge value={item.status} />
+                          </div>
+                          <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setDelId(item.id)} className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))}
