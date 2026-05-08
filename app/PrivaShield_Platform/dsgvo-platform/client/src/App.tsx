@@ -597,7 +597,20 @@ function Dashboard() {
   const copilotTomItems = tom.filter((item: any) => /copilot|ki-/i.test(String(item?.massnahme || "")) || /copilot|ki-/i.test(String(item?.beschreibung || "")));
   const copilotTasksOpenItems = aufgaben.filter((item: any) => /copilot/i.test(String(item?.titel || "")) && item.status !== "erledigt");
   const copilotDsfaOhneReviewItems = copilotDsfaItems.filter((item: any) => !String(item?.naechstePruefungAm || "").trim());
+  const avvDashboardMeta = (item: any) => {
+    const reviewDate = String(item?.pruefFaellig || "").trim();
+    const reviewMissing = !reviewDate;
+    const reviewOverdue = !!reviewDate && reviewDate < new Date().toISOString().split("T")[0];
+    const inactive = ["entwurf", "gekündigt", "inaktiv", "abgelaufen"].includes(String(item?.status || "").toLowerCase());
+    const needsScc = /microsoft|aws|google|openai/i.test(String(item?.auftragsverarbeiter || "")) || /usa|us|drittland|international|global|copilot/i.test(String(item?.gegenstand || ""));
+    const sccMissing = needsScc && !item?.sccs;
+    return { reviewMissing, reviewOverdue, inactive, sccMissing };
+  };
   const copilotAvvOhnePruefungItems = copilotAvvItems.filter((item: any) => !String(item?.pruefFaellig || "").trim());
+  const avvReviewOverdueDashboardItems = avv.filter((item: any) => avvDashboardMeta(item).reviewOverdue);
+  const avvReviewMissingDashboardItems = avv.filter((item: any) => avvDashboardMeta(item).reviewMissing);
+  const avvSccMissingDashboardItems = avv.filter((item: any) => avvDashboardMeta(item).sccMissing);
+  const avvInactiveDashboardItems = avv.filter((item: any) => avvDashboardMeta(item).inactive);
   const copilotVvtOhneDsfaItems = copilotVvtItems.filter((item: any) => !item?.dsfa);
   const copilotStatusVorhanden = copilotVvtItems.length > 0 || copilotDsfaItems.length > 0 || copilotAvvItems.length > 0 || copilotTomItems.length > 0;
   const vvtMitHohemRisikoItems = vvt.filter((entry: any) => String(entry?.risikostufe || "").toLowerCase() === "hoch");
@@ -656,6 +669,11 @@ function Dashboard() {
     incidentReportableOpenItems.length > 0 ? { severity: "mittel", title: `${incidentReportableOpenItems.length} meldepflichtige Datenpannen ohne Abschluss`, recommendation: "Art.-33-Bewertung, Meldestatus und Dokumentation strukturiert nachziehen.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=reportable-open" } : null,
     incidentNotifyArt34Items.length > 0 ? { severity: "mittel", title: `${incidentNotifyArt34Items.length} Datenpannen mit Art.-34-Prüfbedarf`, recommendation: "Benachrichtigung betroffener Personen rechtlich prüfen und Kommunikationsstatus dokumentieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=notify-art34" } : null,
     incidentCriticalItems.length > 0 ? { severity: "mittel", title: `${incidentCriticalItems.length} kritische oder hohe Datenpannen`, recommendation: "Schwere Vorfälle mit Sofortmaßnahmen, Lagebewertung und Verbesserungssteuerung priorisieren.", actionLabel: "Zu Datenpannen", actionHref: "/datenpannen?filter=critical" } : null,
+    avvReviewOverdueDashboardItems.length > 0 ? { severity: "hoch", title: `${avvReviewOverdueDashboardItems.length} AVV-Reviews überfällig`, recommendation: "Vertrags- und Nachweisprüfungen kurzfristig nachziehen und dokumentieren.", actionLabel: "Zu AVV", actionHref: "/avv?filter=review-overdue" } : null,
+    avvSccMissingDashboardItems.length > 0 ? { severity: "hoch", title: `${avvSccMissingDashboardItems.length} AVV mit offenem SCC-/Transferprüfbedarf`, recommendation: "Drittland- und Transfergrundlagen mit SCC-/DPA-Prüfung priorisiert bewerten.", actionLabel: "Zu AVV", actionHref: "/avv?filter=scc-missing" } : null,
+    copilotAvvOhnePruefungItems.length > 0 ? { severity: "mittel", title: `${copilotAvvOhnePruefungItems.length} Copilot-/Microsoft-AVV ohne Prüffälligkeit`, recommendation: "Microsoft-/Copilot-Verträge mit DPA, Product Terms und Prüffristen strukturiert nachziehen.", actionLabel: "Zu AVV", actionHref: "/avv?filter=copilot-missing-review" } : null,
+    avvReviewMissingDashboardItems.length > 0 ? { severity: "mittel", title: `${avvReviewMissingDashboardItems.length} AVV ohne Reviewtermin`, recommendation: "Prüffälligkeit, Turnus und Verantwortlichkeit für AVV verbindlich festlegen.", actionLabel: "Zu AVV", actionHref: "/avv?filter=review-missing" } : null,
+    avvInactiveDashboardItems.length > 0 ? { severity: "niedrig", title: `${avvInactiveDashboardItems.length} AVV mit nicht aktivem Status`, recommendation: "Vertragslage und operative Nutzung bereinigen, damit die AVV-Steuerung belastbar bleibt.", actionLabel: "Zu AVV", actionHref: "/avv?filter=inactive" } : null,
     vvtMitHohemRisikoItems.length > 0 ? { severity: "hoch", title: `${vvtMitHohemRisikoItems.length} VVT mit hoher Risikostufe`, recommendation: "DSFA-Verknüpfung, TOM-Niveau und Maßnahmensteuerung priorisiert nachziehen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=high-risk" } : null,
     vvtMitReviewBedarfItems.length > 0 ? { severity: "mittel", title: `${vvtMitReviewBedarfItems.length} VVT mit Reviewbedarf`, recommendation: "Prüf- und Folgeaufgaben für mittlere Risiken, Drittlandtransfers und Governance-Nachsteuerung planen.", actionLabel: "Zur VVT-Seite", actionHref: "/vvt?filter=review-needed" } : null,
   ].filter(Boolean).sort((a: any, b: any) => (dashboardGovernanceSeverityOrder[String(a?.severity || "niedrig")] ?? 99) - (dashboardGovernanceSeverityOrder[String(b?.severity || "niedrig")] ?? 99));
@@ -938,6 +956,10 @@ function Dashboard() {
               {incidentDeadlineSoonItems.length > 0 && <p className="text-red-400">Datenpannen innerhalb der 72h-Frist: {incidentDeadlineSoonItems.length}</p>}
               {incidentReportableOpenItems.length > 0 && <p className="text-yellow-400">Meldepflichtige Datenpannen ohne Abschluss: {incidentReportableOpenItems.length}</p>}
               {incidentNotifyArt34Items.length > 0 && <p className="text-yellow-400">Datenpannen mit Art.-34-Prüfbedarf: {incidentNotifyArt34Items.length}</p>}
+              {avvReviewOverdueDashboardItems.length > 0 && <p className="text-red-400">AVV-Reviews überfällig: {avvReviewOverdueDashboardItems.length}</p>}
+              {avvSccMissingDashboardItems.length > 0 && <p className="text-red-400">AVV mit offenem SCC-/Transferprüfbedarf: {avvSccMissingDashboardItems.length}</p>}
+              {copilotAvvOhnePruefungItems.length > 0 && <p className="text-yellow-400">Copilot-/Microsoft-AVV ohne Prüffälligkeit: {copilotAvvOhnePruefungItems.length}</p>}
+              {avvReviewMissingDashboardItems.length > 0 && <p className="text-yellow-400">AVV ohne Reviewtermin: {avvReviewMissingDashboardItems.length}</p>}
             </CardContent>
           </Card>
 
