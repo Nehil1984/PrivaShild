@@ -101,26 +101,33 @@ export function issueCsrfToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
-export function setCsrfCookie(res: Response, token: string) {
-  const isProduction = process.env.NODE_ENV === "production";
+function shouldUseSecureCookies(req: Request) {
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const proto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const effectiveProtocol = String(proto || req.protocol || "http").toLowerCase();
+  return effectiveProtocol === "https";
+}
+
+export function setCsrfCookie(req: Request, res: Response, token: string) {
+  const secure = shouldUseSecureCookies(req);
   const cookie = [
     `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}`,
     "Path=/",
     "SameSite=Lax",
     `Max-Age=${8 * 60 * 60}`,
-    isProduction ? "Secure" : "",
+    secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
   res.append("Set-Cookie", cookie);
 }
 
-export function clearCsrfCookie(res: Response) {
-  const isProduction = process.env.NODE_ENV === "production";
+export function clearCsrfCookie(req: Request, res: Response) {
+  const secure = shouldUseSecureCookies(req);
   const cookie = [
     `${CSRF_COOKIE_NAME}=`,
     "Path=/",
     "SameSite=Lax",
     "Max-Age=0",
-    isProduction ? "Secure" : "",
+    secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
   res.append("Set-Cookie", cookie);
 }

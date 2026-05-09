@@ -89,28 +89,35 @@ function attachCsrfToken(user: any) {
   return { user: { ...user, csrfToken }, csrfToken };
 }
 
-function setAuthCookie(res: Response, token: string) {
-  const isProduction = process.env.NODE_ENV === "production";
+function shouldUseSecureCookies(req: Request) {
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const proto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const effectiveProtocol = String(proto || req.protocol || "http").toLowerCase();
+  return effectiveProtocol === "https";
+}
+
+function setAuthCookie(req: Request, res: Response, token: string) {
+  const secure = shouldUseSecureCookies(req);
   const cookie = [
     `privashield_auth=${encodeURIComponent(token)}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
     `Max-Age=${8 * 60 * 60}`,
-    isProduction ? "Secure" : "",
+    secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
   res.setHeader("Set-Cookie", cookie);
 }
 
-function clearAuthCookie(res: Response) {
-  const isProduction = process.env.NODE_ENV === "production";
+function clearAuthCookie(req: Request, res: Response) {
+  const secure = shouldUseSecureCookies(req);
   const cookie = [
     "privashield_auth=",
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
     "Max-Age=0",
-    isProduction ? "Secure" : "",
+    secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
   res.setHeader("Set-Cookie", cookie);
 }
@@ -490,8 +497,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const safeUser = sanitizeUser(refreshedUser || user);
     const authPayload = attachCsrfToken(safeUser);
     const token = jwt.sign({ userId: user.id, role: user.role, csrfToken: authPayload.csrfToken }, getJwtSecret(), { expiresIn: "8h" });
-    setAuthCookie(res, token);
-    setCsrfCookie(res, authPayload.csrfToken);
+    setAuthCookie(req, res, token);
+    setCsrfCookie(req, res, authPayload.csrfToken);
     await auditLog({
       mandantId: null,
       userId: user.id,
@@ -507,8 +514,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/auth/logout", authMiddleware, csrfProtection, async (_req, res) => {
-    clearAuthCookie(res);
-    clearCsrfCookie(res);
+    clearAuthCookie(_req, res);
+    clearCsrfCookie(_req, res);
     res.json({ ok: true });
   });
 
@@ -516,7 +523,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const user = await storage.getUserById(req.userId);
     if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
     const authPayload = attachCsrfToken(sanitizeUser(user));
-    setCsrfCookie(res, authPayload.csrfToken);
+    setCsrfCookie(req, res, authPayload.csrfToken);
     res.json(authPayload.user);
   });
 
