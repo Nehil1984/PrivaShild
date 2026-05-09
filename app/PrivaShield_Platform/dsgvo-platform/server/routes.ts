@@ -81,7 +81,7 @@ function readNamedCookie(req: Request, name: string): string | null {
 }
 
 function readCookieToken(req: Request): string | null {
-  return readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
+  return readNamedCookie(req, "privashield_auth");
 }
 
 function attachCsrfToken(user: any) {
@@ -116,10 +116,7 @@ function clearAuthCookie(res: Response) {
 }
 
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const auth = req.headers.authorization;
-  const bearerToken = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-  const cookieToken = readCookieToken(req);
-  const token = bearerToken || cookieToken;
+  const token = readCookieToken(req);
   if (!token) return res.status(401).json({ message: "Nicht authentifiziert" });
   try {
     const payload = jwt.verify(token, getJwtSecret()) as unknown as { userId: number; role: string };
@@ -506,7 +503,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       beschreibung: "Erfolgreicher Login",
       details: { email, role: user.role },
     });
-    res.json({ token, user: authPayload.user });
+    res.json({ user: authPayload.user });
   });
 
   app.post("/api/auth/logout", authMiddleware, csrfProtection, async (_req, res) => {

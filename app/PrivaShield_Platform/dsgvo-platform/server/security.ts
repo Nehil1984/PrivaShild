@@ -163,7 +163,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return res.status(403).json({ message: "Origin-Prüfung fehlgeschlagen" });
   }
 
-  const authCookie = readNamedCookie(req, "privashield_auth") || readNamedCookie(req, "token");
+  const authCookie = readNamedCookie(req, "privashield_auth");
   const secret = getJwtSecret();
 
   if (authCookie && secret) {

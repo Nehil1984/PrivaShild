@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useComplianceMeta } from "@/hooks/useComplianceMeta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, setApiAuthToken, setApiCsrfToken } from "@/lib/queryClient";
+import { apiRequest, setApiCsrfToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { useState, createContext, useContext, useEffect } from "react";
@@ -42,8 +42,8 @@ import {
 
 // ─── Auth Context ──────────────────────────────────────────────────────────
 type AuthUser = { id: number; email: string; name: string; role: string; mandantIds: string; csrfToken?: string; failedLoginAttempts?: number; temporaryLockUntil?: string | null; adminLocked?: boolean; adminLockedAt?: string | null; lastFailedLoginAt?: string | null };
-const AuthCtx = createContext<{ user: AuthUser | null; token: string | null; login: (u: AuthUser, t: string) => void; logout: () => void }>({
-  user: null, token: null, login: () => {}, logout: () => {}
+const AuthCtx = createContext<{ user: AuthUser | null; login: (u: AuthUser) => void; logout: () => void }>({
+  user: null, login: () => {}, logout: () => {}
 });
 
 function useAuth() { return useContext(AuthCtx); }
@@ -129,7 +129,7 @@ function ConfirmDialog({ open, title, desc, onConfirm, onCancel }: any) {
 }
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────────────
-function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
+function LoginPage({ onLogin }: { onLogin: (u: AuthUser) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -156,7 +156,7 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser, t: string) => void }) {
         }
         throw new Error(data.message);
       }
-      onLogin(data.user, data.token);
+      onLogin(data.user);
     } catch (e: any) {
       setError(e.message);
     } finally { setLoading(false); }
@@ -7886,38 +7886,30 @@ function BenutzerPage() {
 // ─── ROOT APP ──────────────────────────────────────────────────────────────
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("privashield_token"));
-  const [restoring, setRestoring] = useState<boolean>(() => !!localStorage.getItem("privashield_token"));
+  const [restoring, setRestoring] = useState<boolean>(true);
 
-  const login = (u: AuthUser, t: string) => {
-    setUser(u); setToken(t); setRestoring(false);
-    setApiAuthToken(t);
+  const login = (u: AuthUser) => {
+    setUser(u);
+    setRestoring(false);
     setApiCsrfToken(u.csrfToken || null);
-    localStorage.setItem("privashield_token", t);
   };
   const logout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout", {});
     } catch {}
-    setUser(null); setToken(null); setRestoring(false); setApiCsrfToken(null); queryClient.clear();
-    localStorage.removeItem("privashield_token");
+    setUser(null); setRestoring(false); setApiCsrfToken(null); queryClient.clear();
     localStorage.removeItem("privashield_active_mandant_id");
   };
 
   useEffect(() => {
-    setApiAuthToken(token);
     setApiCsrfToken(user?.csrfToken || null);
-    if (!token) {
-      setRestoring(false);
-      return;
-    }
 
     let cancelled = false;
     fetch("/api/auth/me", {
       credentials: "same-origin",
-      headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {
+        if (res.status === 401) return null;
         if (!res.ok) throw new Error("Session ungültig");
         return res.json();
       })
@@ -7925,12 +7917,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setUser(safeUser);
         setApiCsrfToken(safeUser?.csrfToken || null);
+        if (!safeUser) {
+          localStorage.removeItem("privashield_active_mandant_id");
+          queryClient.clear();
+        }
       })
       .catch(() => {
         if (cancelled) return;
-        localStorage.removeItem("privashield_token");
         localStorage.removeItem("privashield_active_mandant_id");
-        setToken(null);
         setUser(null);
         setApiCsrfToken(null);
         queryClient.clear();
@@ -7940,7 +7934,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, [token]);
+  }, []);
 
   if (restoring) {
     return (
@@ -7955,9 +7949,9 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user || !token) return <LoginPage onLogin={login} />;
+  if (!user) return <LoginPage onLogin={login} />;
   return (
-    <AuthCtx.Provider value={{ user, token, login, logout }}>
+    <AuthCtx.Provider value={{ user, login, logout }}>
       {children}
     </AuthCtx.Provider>
   );
@@ -8799,7 +8793,7 @@ function MandantenOverviewPage() {
 }
 
 function AppRoutes() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [activeMandantId, setActiveMandantId] = useState<number | null>(() => {
     const stored = localStorage.getItem("privashield_active_mandant_id");
     return stored ? Number(stored) : null;
@@ -8808,11 +8802,11 @@ function AppRoutes() {
   const { data: mandanten = [], isLoading: mandantenLoading, isError: mandantenError } = useQuery({
     queryKey: ["/api/mandanten"],
     queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
-    enabled: !!token,
+    enabled: !!user,
   });
 
   useEffect(() => {
-    if (!token || mandantenLoading) return;
+    if (!user || mandantenLoading) return;
 
     const allowedMandanten = user?.role === "admin"
       ? mandanten
@@ -8841,7 +8835,7 @@ function AppRoutes() {
     if (!hasValidSelection) {
       setActiveMandantId(allowedMandanten[0].id);
     }
-  }, [token, user, mandanten, mandantenLoading, activeMandantId]);
+  }, [user, mandanten, mandantenLoading, activeMandantId]);
 
   useEffect(() => {
     if (activeMandantId) localStorage.setItem("privashield_active_mandant_id", String(activeMandantId));

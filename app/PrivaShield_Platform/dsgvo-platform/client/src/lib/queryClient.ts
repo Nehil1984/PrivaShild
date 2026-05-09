@@ -10,7 +10,6 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
-let authToken: string | null = null;
 let csrfToken: string | null = null;
 
 function readBrowserCookie(name: string): string | null {
@@ -28,16 +27,12 @@ function readBrowserCookie(name: string): string | null {
   }
 }
 
-export function setApiAuthToken(token: string | null) {
-  authToken = token;
-}
-
 export function setApiCsrfToken(token: string | null) {
   csrfToken = token;
 }
 
 function buildAuthHeaders(headers: Record<string, string>, method?: string) {
-  const nextHeaders: Record<string, string> = authToken ? { ...headers, Authorization: `Bearer ${authToken}` } : { ...headers };
+  const nextHeaders: Record<string, string> = { ...headers };
   const upperMethod = String(method || "GET").toUpperCase();
   const liveCsrfToken = csrfToken || readBrowserCookie("privashield_csrf");
   if (liveCsrfToken && !["GET", "HEAD", "OPTIONS"].includes(upperMethod)) {
