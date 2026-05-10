@@ -7,7 +7,7 @@
 //  http://www.apache.org/licenses/LICENSE-2.0
 
 import { describe, expect, it } from "vitest";
-import { clearLoginFailures, csrfProtection, loginRateLimit, registerLoginFailure } from "./security";
+import { clearLoginFailures, csrfProtection, loginRateLimit, registerLoginFailure, setCsrfCookie } from "./security";
 
 function mockReq(ip = "127.0.0.1", extra: Record<string, unknown> = {}) {
   return { ip, socket: { remoteAddress: ip }, protocol: "https", headers: {}, method: "GET", ...extra } as any;
@@ -67,6 +67,46 @@ describe("security login rate limit", () => {
     let nextCalled = 0;
     loginRateLimit(req, res, () => nextCalled++);
     expect(nextCalled).toBe(1);
+  });
+});
+
+describe("security cookie policy", () => {
+  it("sets secure csrf cookies when forwarded proto contains https", () => {
+    const req = mockReq("127.0.0.1", {
+      headers: {
+        host: "privashield.example.test",
+        "x-forwarded-proto": "https, http",
+      },
+    });
+    const res = {
+      appendCalls: [] as string[],
+      append(_key: string, value: string) {
+        this.appendCalls.push(value);
+      },
+    } as any;
+
+    setCsrfCookie(req, res, "token123");
+
+    expect(res.appendCalls[0]).toContain("Secure");
+  });
+
+  it("does not set secure csrf cookies on localhost http", () => {
+    const req = mockReq("127.0.0.1", {
+      protocol: "http",
+      headers: {
+        host: "localhost:5000",
+      },
+    });
+    const res = {
+      appendCalls: [] as string[],
+      append(_key: string, value: string) {
+        this.appendCalls.push(value);
+      },
+    } as any;
+
+    setCsrfCookie(req, res, "token123");
+
+    expect(res.appendCalls[0]).not.toContain("Secure");
   });
 });
 

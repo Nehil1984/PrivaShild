@@ -101,11 +101,33 @@ export function issueCsrfToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function normalizeProto(value: string | undefined | null) {
+  return String(value || "")
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .find(Boolean) || null;
+}
+
 function shouldUseSecureCookies(req: Request) {
   const forwardedProto = req.headers["x-forwarded-proto"];
-  const proto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
-  const effectiveProtocol = String(proto || req.protocol || "http").toLowerCase();
-  return effectiveProtocol === "https";
+  const protoHeader = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const normalizedForwardedProto = normalizeProto(protoHeader);
+
+  if (normalizedForwardedProto) {
+    return normalizedForwardedProto === "https";
+  }
+
+  if (req.secure) {
+    return true;
+  }
+
+  const hostHeader = req.headers.host;
+  const normalizedHost = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || "").trim().toLowerCase();
+  if (normalizedHost && !/^localhost(?::\d+)?$/.test(normalizedHost) && !/^127(?:\.\d{1,3}){3}(?::\d+)?$/.test(normalizedHost)) {
+    return process.env.NODE_ENV === "production";
+  }
+
+  return false;
 }
 
 export function setCsrfCookie(req: Request, res: Response, token: string) {
