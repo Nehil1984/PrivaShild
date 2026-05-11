@@ -90,12 +90,32 @@ describe("security cookie policy", () => {
     expect(res.appendCalls[0]).toContain("Secure");
   });
 
-  it("sets secure csrf cookies when express marks request as secure", () => {
+  it("sets secure csrf cookies when forwarded ssl is on", () => {
     const req = mockReq("127.0.0.1", {
-      secure: true,
       protocol: "http",
       headers: {
         host: "privashield.example.test",
+        "x-forwarded-ssl": "on",
+      },
+    });
+    const res = {
+      appendCalls: [] as string[],
+      append(_key: string, value: string) {
+        this.appendCalls.push(value);
+      },
+    } as any;
+
+    setCsrfCookie(req, res, "token123");
+
+    expect(res.appendCalls[0]).toContain("Secure");
+  });
+
+  it("sets secure csrf cookies when forwarded port is 443", () => {
+    const req = mockReq("127.0.0.1", {
+      protocol: "http",
+      headers: {
+        host: "privashield.example.test",
+        "x-forwarded-port": "443",
       },
     });
     const res = {

@@ -117,7 +117,19 @@ function shouldUseSecureCookies(req: Request) {
     return normalizedForwardedProto === "https";
   }
 
-  return !!req.secure;
+  const encryptedHeader = req.headers["x-forwarded-ssl"];
+  const encryptedValue = Array.isArray(encryptedHeader) ? encryptedHeader[0] : encryptedHeader;
+  if (String(encryptedValue || "").trim().toLowerCase() === "on") {
+    return true;
+  }
+
+  const forwardedPort = req.headers["x-forwarded-port"];
+  const portValue = Array.isArray(forwardedPort) ? forwardedPort[0] : forwardedPort;
+  if (String(portValue || "").trim() === "443") {
+    return true;
+  }
+
+  return req.protocol === "https";
 }
 
 export function setCsrfCookie(req: Request, res: Response, token: string) {
