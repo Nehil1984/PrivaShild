@@ -90,11 +90,32 @@ describe("security cookie policy", () => {
     expect(res.appendCalls[0]).toContain("Secure");
   });
 
-  it("does not set secure csrf cookies on localhost http", () => {
+  it("sets secure csrf cookies when express marks request as secure", () => {
     const req = mockReq("127.0.0.1", {
+      secure: true,
       protocol: "http",
       headers: {
-        host: "localhost:5000",
+        host: "privashield.example.test",
+      },
+    });
+    const res = {
+      appendCalls: [] as string[],
+      append(_key: string, value: string) {
+        this.appendCalls.push(value);
+      },
+    } as any;
+
+    setCsrfCookie(req, res, "token123");
+
+    expect(res.appendCalls[0]).toContain("Secure");
+  });
+
+  it("does not set secure csrf cookies on plain http without proxy hints", () => {
+    const req = mockReq("127.0.0.1", {
+      secure: false,
+      protocol: "http",
+      headers: {
+        host: "192.168.178.222:5000",
       },
     });
     const res = {

@@ -105,17 +105,7 @@ function shouldUseSecureCookies(req: Request) {
     return normalizedForwardedProto === "https";
   }
 
-  if (req.secure) {
-    return true;
-  }
-
-  const hostHeader = req.headers.host;
-  const normalizedHost = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || "").trim().toLowerCase();
-  if (normalizedHost && !/^localhost(?::\d+)?$/.test(normalizedHost) && !/^127(?:\.\d{1,3}){3}(?::\d+)?$/.test(normalizedHost)) {
-    return process.env.NODE_ENV === "production";
-  }
-
-  return false;
+  return !!req.secure;
 }
 
 function setAuthCookie(req: Request, res: Response, token: string) {
