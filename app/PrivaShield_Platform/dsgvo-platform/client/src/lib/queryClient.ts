@@ -63,6 +63,19 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function parseJsonResponse<T>(res: Response): Promise<T> {
+  if (res.status === 204 || res.status === 205 || res.status === 304) {
+    return null as T;
+  }
+
+  const text = await res.text();
+  if (!text.trim()) {
+    return null as T;
+  }
+
+  return JSON.parse(text) as T;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -100,23 +113,23 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
+export function getQueryFn<T>(options: {
   on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+}): QueryFunction<T> {
+  return async ({ queryKey }) => {
     const res = await fetch(`${API_BASE}${queryKey.join("/")}`, {
       headers: buildAuthHeaders({}, "GET"),
       credentials: "same-origin",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (options.on401 === "returnNull" && res.status === 401) {
+      return null as T;
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    return await parseJsonResponse<T>(res);
   };
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
