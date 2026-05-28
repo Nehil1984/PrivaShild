@@ -3,6 +3,9 @@ FROM node:20-alpine3.22 AS builder
 
 WORKDIR /app
 
+# Build-Tools für native C++ Module (wie better-sqlite3) auf Alpine installieren
+RUN apk add --no-cache python3 make g++
+
 # Abhängigkeiten installieren
 COPY package*.json ./
 RUN npm ci --frozen-lockfile
