@@ -6946,6 +6946,36 @@ function DokumentePage() {
   const [delId, setDelId] = useState<number | null>(null);
   const [filter, setFilter] = useState("alle");
   const { toast } = useToast();
+  const { activeMandantId } = useMandant();
+  const qc = useQueryClient();
+  const [loadingPreset, setLoadingPreset] = useState(false);
+
+  const applyDsdmsPreset = async () => {
+    if (!activeMandantId) return;
+    setLoadingPreset(true);
+    try {
+      const res = await apiRequest("POST", `/api/mandanten/${activeMandantId}/vorlagenpakete/3/apply`, {});
+      if (!res.ok) {
+        throw new Error(await res.text() || "Fehler beim Laden");
+      }
+      const result = await res.json();
+      toast({
+        title: "DSDMS Vorlagen geladen",
+        description: `${result.created.dokumente} Richtlinien & ${result.created.aufgaben} Aufgaben wurden erstellt.`,
+      });
+      await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/dokumente`] });
+      await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
+    } catch (e: any) {
+      toast({
+        title: "Fehler",
+        description: e.message || "Vorlagen konnten nicht geladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPreset(false);
+    }
+  };
+
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
     p.then(() => { setModal(null); toast({ title: "Gespeichert" }); }).catch((e:any) => toast({ title: "Fehler", description: e?.message || "Speichern fehlgeschlagen", variant: "destructive" }));
@@ -6955,7 +6985,19 @@ function DokumentePage() {
   return (
     <MandantGuard>
       <PageHeader title={t("docsTitle")} desc={t("docsDesc")}
-        action={<Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}><Plus className="h-3.5 w-3.5" />Neues Dokument</Button>} />
+        action={
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={applyDsdmsPreset} disabled={loadingPreset}>
+              <Download className="h-3.5 w-3.5" />
+              {loadingPreset ? "Lädt..." : "DSDMS-Vorlagen laden"}
+            </Button>
+            <Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}>
+              <Plus className="h-3.5 w-3.5" />
+              Neues Dokument
+            </Button>
+          </div>
+        }
+      />
       <div className="flex gap-2 mb-4 flex-wrap">
         {["alle", "leitlinie", "richtlinie", "prozessbeschreibung", "risikobewertung", "verfahrensdokumentation", "vorlage"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 rounded-full text-xs transition-colors ${filter === f ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>

@@ -455,8 +455,31 @@ async function seedAdmin() {
   console.log(`Initialer Admin-Benutzer erstellt: ${email}`);
 }
 
+async function seedVorlagenpakete() {
+  try {
+    const existing = await storage.getVorlagenpakete();
+    if (existing.length > 0) return;
+
+    const { defaultData } = await import("./storage-lowdb.js");
+    for (const p of defaultData.vorlagenpakete) {
+      await storage.createVorlagenpaket({
+        name: p.name,
+        beschreibung: p.beschreibung,
+        kategorie: p.kategorie,
+        version: p.version,
+        aktiv: p.aktiv,
+        inhaltJson: p.inhaltJson,
+      });
+    }
+    console.log(`Initial-Seeding: ${defaultData.vorlagenpakete.length} Vorlagenpakete erfolgreich in Datenbank geladen.`);
+  } catch (error) {
+    console.error("Fehler beim Seeding der Vorlagenpakete:", error);
+  }
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await seedAdmin();
+  await seedVorlagenpakete();
 
   getJwtSecret();
 
