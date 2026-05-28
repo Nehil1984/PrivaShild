@@ -11,6 +11,9 @@ RUN npm ci --frozen-lockfile
 COPY . .
 RUN npm run build
 
+# Dev-Dependencies entfernen, um nur Produktions-Dependencies zu behalten
+RUN npm prune --omit=dev
+
 # ─── Stage 2: Production ───────────────────────────────────────────────────
 FROM node:20-alpine3.22 AS runner
 
@@ -32,11 +35,9 @@ RUN addgroup -g 1099 privashield && \
 
 WORKDIR /app
 
-# Nur Produktions-Abhängigkeiten
+# Produktions-Abhängigkeiten und Build-Artefakte kopieren
 COPY package*.json ./
-RUN npm ci --omit=dev --frozen-lockfile
-
-# Build-Artefakte kopieren
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Entrypoint-Skript kopieren
