@@ -90,4 +90,33 @@ describe("backup restore migration", () => {
 
     expect(() => inspectUploadedBackup("backup-daily-broken.bak", payload)).toThrow("Backup-Datei enthält ungültiges JSON");
   }, 15000);
+
+  it("validiert SHA-256 Hashes im Preflight", async () => {
+    const { inspectUploadedBackup } = await import("./backup");
+    const crypto = await import("crypto");
+
+    const sourcePayload = JSON.stringify(sampleLowdb);
+    const validHash = crypto.createHash("sha256").update(sourcePayload).digest("hex");
+
+    // Valid backup with correct SHA-256
+    const validBackupPayload = Buffer.from(
+      `PSMETA1\n${JSON.stringify({ backend: "lowdb", createdAt: new Date().toISOString(), sourceFile: "privashield.json", sha256: validHash })}\n${sourcePayload}`,
+      "utf8"
+    );
+    const preflightValid = inspectUploadedBackup("backup-daily-valid.bak", validBackupPayload);
+    expect(preflightValid.verified).toBe(true);
+    expect(preflightValid.integrityCheck).toBe("pass");
+    expect(preflightValid.sha256).toBe(validHash);
+
+    // Invalid backup with mismatched SHA-256
+    const invalidBackupPayload = Buffer.from(
+      `PSMETA1\n${JSON.stringify({ backend: "lowdb", createdAt: new Date().toISOString(), sourceFile: "privashield.json", sha256: "wrong-hash" })}\n${sourcePayload}`,
+      "utf8"
+    );
+    const preflightInvalid = inspectUploadedBackup("backup-daily-invalid.bak", invalidBackupPayload);
+    expect(preflightInvalid.verified).toBe(false);
+    expect(preflightInvalid.integrityCheck).toBe("fail");
+    expect(preflightInvalid.ok).toBe(false);
+    expect(preflightInvalid.warnings.some(w => w.includes("mismatch") || w.includes("stimmt nicht") || w.includes("Kritisch"))).toBe(true);
+  }, 15000);
 });

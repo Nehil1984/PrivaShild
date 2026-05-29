@@ -43,6 +43,7 @@ export type BackupRecord = {
   label: string;
   backend: DbBackend | null;
   backendMismatch: boolean;
+  sha256?: string;
 };
 
 const BACKUP_META_PREFIX = "PSMETA1\n";
@@ -51,6 +52,7 @@ type BackupMeta = {
   backend: DbBackend;
   createdAt: string;
   sourceFile: string;
+  sha256?: string;
 };
 
 export type BackupPreflightResult = {
@@ -63,6 +65,9 @@ export type BackupPreflightResult = {
   migrationRequired: boolean;
   sizeBytes: number;
   warnings: string[];
+  sha256?: string;
+  integrityCheck: "pass" | "fail";
+  verified: boolean;
 };
 
 type LowdbPayload = {
@@ -326,6 +331,7 @@ function parseFile(filePath: string): BackupRecord | null {
     label: match[2],
     backend: meta?.backend || null,
     backendMismatch: !!meta?.backend && meta.backend !== currentBackend,
+    sha256: meta?.sha256,
   };
 }
 
@@ -364,7 +370,8 @@ export function runBackupNow(passwordOverride?: string) {
     fs.mkdirSync(cfg.backupDir, { recursive: true });
     const now = new Date();
     const sourceBuffer = fs.readFileSync(source);
-    const metaBuffer = Buffer.from(`${BACKUP_META_PREFIX}${JSON.stringify({ backend, createdAt: now.toISOString(), sourceFile: source })}\n`, "utf8");
+    const sha256 = crypto.createHash("sha256").update(sourceBuffer).digest("hex");
+    const metaBuffer = Buffer.from(`${BACKUP_META_PREFIX}${JSON.stringify({ backend, createdAt: now.toISOString(), sourceFile: source, sha256 })}\n`, "utf8");
     const buffer = Buffer.concat([metaBuffer, sourceBuffer]);
     const useEncryption = cfg.encrypt;
     const password = passwordOverride || undefined;
@@ -382,7 +389,7 @@ export function runBackupNow(passwordOverride?: string) {
       const filePath = path.join(cfg.backupDir, fileName);
       fs.writeFileSync(filePath, payload);
       const stat = fs.statSync(filePath);
-      created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label, backend, backendMismatch: false });
+      created.push({ fileName, filePath, createdAt: stat.mtime.toISOString(), size: stat.size, encrypted: useEncryption, slot, label, backend, backendMismatch: false, sha256 });
     }
 
     pruneSlot("hourly", cfg.retention.hourly);
@@ -504,8 +511,22 @@ export function inspectBackupBuffer(fileName: string, raw: Buffer, encrypted: bo
   if (migrationRequired) warnings.push("Wiederherstellung erfordert eine Lowdb-zu-SQLite-Migration.");
   if (encrypted && !passwordOverride && !process.env.PRIVASHIELD_BACKUP_PASSWORD) warnings.push("Für verschlüsselte Backups ist aktuell kein Laufzeitkennwort gesetzt.");
 
+  let integrityCheck: "pass" | "fail" = "pass";
+  let verified = false;
+  if (meta?.sha256) {
+    const computedHash = crypto.createHash("sha256").update(payload).digest("hex");
+    if (computedHash === meta.sha256) {
+      verified = true;
+    } else {
+      integrityCheck = "fail";
+      warnings.push(`Kritisch: Der berechnete SHA-256 Hashwert stimmt nicht mit dem in den Metadaten gespeicherten Wert überein! Das Backup ist möglicherweise beschädigt oder manipuliert.`);
+    }
+  } else {
+    warnings.push("Dieses Backup enthält keinen SHA-256 Integritäts-Hash.");
+  }
+
   return {
-    ok: !backendMismatch || migrationRequired,
+    ok: (!backendMismatch || migrationRequired) && integrityCheck === "pass",
     fileName,
     encrypted,
     currentBackend,
@@ -514,6 +535,9 @@ export function inspectBackupBuffer(fileName: string, raw: Buffer, encrypted: bo
     migrationRequired,
     sizeBytes: raw.length,
     warnings,
+    sha256: meta?.sha256,
+    integrityCheck,
+    verified,
   };
 }
 

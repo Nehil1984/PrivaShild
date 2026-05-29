@@ -765,16 +765,118 @@ export class LowdbStorage implements IStorage {
     db.data.vorlagenpakete = db.data.vorlagenpakete.filter((p) => p.id !== id);
     await db.write();
   }
-  async applyVorlagenpaketToMandant(mandantId: number, paketId: number, user?: { id?: number; name?: string }): Promise<{ ok: true; created: Record<string, number>; skipped: Record<string, number> }> {
+  async getVorlagenpaketPreflight(mandantId: number, paketId: number): Promise<{ ok: boolean; changes: { type: string; name: string; status: "new" | "modified" | "identical" }[] }> {
+    const db = await getDb();
+    const paket = db.data.vorlagenpakete.find((p) => p.id === paketId);
+    if (!paket) throw new Error("Vorlagenpaket nicht gefunden");
+    const inhalt = JSON.parse(paket.inhaltJson || "{}");
+
+    const existingAufgaben = db.data.aufgaben.filter((x) => x.mandantId === mandantId);
+    const existingDokumente = db.data.dokumente.filter((x) => x.mandantId === mandantId);
+    const existingVvts = db.data.vvt.filter((x) => x.mandantId === mandantId);
+    const existingAvvs = db.data.avv.filter((x) => x.mandantId === mandantId);
+    const existingToms = db.data.tom.filter((x) => x.mandantId === mandantId);
+
+    const changes: { type: string; name: string; status: "new" | "modified" | "identical" }[] = [];
+
+    // Aufgaben
+    for (const a of inhalt.aufgaben || []) {
+      if (!a.titel) continue;
+      const match = existingAufgaben.find((ex) => ex.titel.trim().toLowerCase() === a.titel.trim().toLowerCase());
+      if (!match) {
+        changes.push({ type: "aufgaben", name: a.titel, status: "new" });
+      } else {
+        const isModified = (match.beschreibung || "") !== (a.beschreibung || "") || (match.prioritaet || "mittel") !== (a.prioritaet || "mittel");
+        changes.push({ type: "aufgaben", name: a.titel, status: isModified ? "modified" : "identical" });
+      }
+    }
+
+    // Dokumente
+    for (const d of inhalt.dokumente || []) {
+      if (!d.titel) continue;
+      const match = existingDokumente.find((ex) => ex.titel.trim().toLowerCase() === d.titel.trim().toLowerCase());
+      if (!match) {
+        changes.push({ type: "dokumente", name: d.titel, status: "new" });
+      } else {
+        const isModified = (match.inhalt || "") !== (d.inhalt || "") || (match.kategorie || "vorlage") !== (d.kategorie || "vorlage");
+        changes.push({ type: "dokumente", name: d.titel, status: isModified ? "modified" : "identical" });
+      }
+    }
+
+    // VVT
+    for (const item of inhalt.vvt || []) {
+      if (!item.bezeichnung) continue;
+      const match = existingVvts.find((ex) => ex.bezeichnung.trim().toLowerCase() === item.bezeichnung.trim().toLowerCase());
+      if (!match) {
+        changes.push({ type: "vvt", name: item.bezeichnung, status: "new" });
+      } else {
+        const isModified = (match.zweck || "") !== (item.zweck || "") || (match.rechtsgrundlage || "") !== (item.rechtsgrundlage || "");
+        changes.push({ type: "vvt", name: item.bezeichnung, status: isModified ? "modified" : "identical" });
+      }
+    }
+
+    // AVV
+    for (const item of inhalt.avv || []) {
+      if (!item.auftragsverarbeiter) continue;
+      const match = existingAvvs.find((ex) => ex.auftragsverarbeiter.trim().toLowerCase() === item.auftragsverarbeiter.trim().toLowerCase());
+      if (!match) {
+        changes.push({ type: "avv", name: item.auftragsverarbeiter, status: "new" });
+      } else {
+        const isModified = (match.gegenstand || "") !== (item.gegenstand || "") || (match.notizen || "") !== (item.notizen || "");
+        changes.push({ type: "avv", name: item.auftragsverarbeiter, status: isModified ? "modified" : "identical" });
+      }
+    }
+
+    // TOM
+    for (const item of inhalt.tom || []) {
+      if (!item.massnahme) continue;
+      const match = existingToms.find((ex) => ex.massnahme.trim().toLowerCase() === item.massnahme.trim().toLowerCase());
+      if (!match) {
+        changes.push({ type: "tom", name: item.massnahme, status: "new" });
+      } else {
+        const isModified = (match.beschreibung || "") !== (item.beschreibung || "") || (match.schutzziel || "") !== (item.schutzziel || "");
+        changes.push({ type: "tom", name: item.massnahme, status: isModified ? "modified" : "identical" });
+      }
+    }
+
+    return { ok: true, changes };
+  }
+
+  async applyVorlagenpaketToMandant(
+    mandantId: number,
+    paketId: number,
+    user?: { id?: number; name?: string },
+    strategy: "import_new" | "overwrite_all" = "import_new"
+  ): Promise<{ ok: true; created: Record<string, number>; skipped: Record<string, number>; updated?: Record<string, number> }> {
     const db = await getDb();
     const paket = db.data.vorlagenpakete.find((p) => p.id === paketId);
     if (!paket) throw new Error("Vorlagenpaket nicht gefunden");
     const inhalt = JSON.parse(paket.inhaltJson || "{}");
     const created = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
     const skipped = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
+    const updated = { aufgaben: 0, dokumente: 0, vvt: 0, avv: 0, dsfa: 0, tom: 0 };
+
+    // 1. Aufgaben
     for (const a of inhalt.aufgaben || []) {
       if (!String(a?.titel || "").trim()) {
         skipped.aufgaben++;
+        continue;
+      }
+      const matchIdx = db.data.aufgaben.findIndex((ex) => ex.mandantId === mandantId && ex.titel.trim().toLowerCase() === a.titel.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.aufgaben[matchIdx] = {
+            ...db.data.aufgaben[matchIdx],
+            beschreibung: a.beschreibung || "",
+            typ: a.typ || "task",
+            prioritaet: a.prioritaet || "mittel",
+            kategorie: a.kategorie || "sonstige",
+            sortierung: a.sortierung || 0,
+          };
+          updated.aufgaben++;
+        } else {
+          skipped.aufgaben++;
+        }
         continue;
       }
       (db.data.aufgaben as Aufgabe[]).push({
@@ -799,9 +901,30 @@ export class LowdbStorage implements IStorage {
       });
       created.aufgaben++;
     }
+
+    // 2. Dokumente
     for (const d of inhalt.dokumente || []) {
       if (!String(d?.titel || "").trim()) {
         skipped.dokumente++;
+        continue;
+      }
+      const matchIdx = db.data.dokumente.findIndex((ex) => ex.mandantId === mandantId && ex.titel.trim().toLowerCase() === d.titel.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.dokumente[matchIdx] = {
+            ...db.data.dokumente[matchIdx],
+            beschreibung: d.beschreibung || "",
+            kategorie: d.kategorie || "vorlage",
+            dokumentTyp: d.dokumentTyp || "vorlage",
+            dateiname: d.dateiname || "",
+            version: d.version || "1.0",
+            inhalt: d.inhalt || "",
+            updatedAt: new Date().toISOString(),
+          };
+          updated.dokumente++;
+        } else {
+          skipped.dokumente++;
+        }
         continue;
       }
       (db.data.dokumente as Dokument[]).push({
@@ -825,9 +948,39 @@ export class LowdbStorage implements IStorage {
       });
       created.dokumente++;
     }
+
+    // 3. VVT
     for (const item of inhalt.vvt || []) {
       if (!String(item?.bezeichnung || "").trim()) {
         skipped.vvt++;
+        continue;
+      }
+      const matchIdx = db.data.vvt.findIndex((ex) => ex.mandantId === mandantId && ex.bezeichnung.trim().toLowerCase() === item.bezeichnung.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.vvt[matchIdx] = {
+            ...db.data.vvt[matchIdx],
+            zweck: item.zweck || "",
+            rechtsgrundlage: item.rechtsgrundlage || "",
+            datenkategorien: JSON.stringify(Array.isArray(item.datenkategorien) ? item.datenkategorien : []),
+            betroffenePersonen: JSON.stringify(Array.isArray(item.betroffenePersonen) ? item.betroffenePersonen : []),
+            empfaenger: item.empfaenger || "",
+            drittlandtransfer: !!item.drittlandtransfer,
+            risikostufe: item.risikostufe || "niedrig",
+            risikobegruendung: item.risikobegruendung || "",
+            risikoTriggers: JSON.stringify(Array.isArray(item.risikoTriggers) ? item.risikoTriggers : []),
+            loeschfrist: item.loeschfrist || "",
+            loeschklasse: item.loeschklasse || "",
+            aufbewahrungsgrund: item.aufbewahrungsgrund || "",
+            tomHinweis: item.tomHinweis || "",
+            status: item.status || "entwurf",
+            dsfa: !!item.dsfa,
+            updatedAt: new Date().toISOString(),
+          };
+          updated.vvt++;
+        } else {
+          skipped.vvt++;
+        }
         continue;
       }
       (db.data.vvt as Vvt[]).push({
@@ -858,9 +1011,35 @@ export class LowdbStorage implements IStorage {
       });
       created.vvt++;
     }
+
+    // 4. AVV
     for (const item of inhalt.avv || []) {
       if (!String(item?.auftragsverarbeiter || "").trim()) {
         skipped.avv++;
+        continue;
+      }
+      const matchIdx = db.data.avv.findIndex((ex) => ex.mandantId === mandantId && ex.auftragsverarbeiter.trim().toLowerCase() === item.auftragsverarbeiter.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.avv[matchIdx] = {
+            ...db.data.avv[matchIdx],
+            gegenstand: item.gegenstand || "",
+            laufzeit: item.laufzeit || "",
+            status: item.status || "entwurf",
+            sccs: !!item.sccs,
+            subauftragnehmer: JSON.stringify(Array.isArray(item.subauftragnehmer) ? item.subauftragnehmer : []),
+            genehmigteSubdienstleister: JSON.stringify(Array.isArray(item.genehmigteSubdienstleister) ? item.genehmigteSubdienstleister : []),
+            datenarten: item.datenarten || "",
+            betroffenePersonen: item.betroffenePersonen || "",
+            technischeMassnahmen: item.technischeMassnahmen || "",
+            pruefintervall: item.pruefintervall || "",
+            notizen: item.notizen || "",
+            updatedAt: new Date().toISOString(),
+          };
+          updated.avv++;
+        } else {
+          skipped.avv++;
+        }
         continue;
       }
       (db.data.avv as Avv[]).push({
@@ -889,9 +1068,46 @@ export class LowdbStorage implements IStorage {
       });
       created.avv++;
     }
+
+    // 5. DSFA
     for (const item of inhalt.dsfa || []) {
       if (!String(item?.titel || "").trim()) {
         skipped.dsfa++;
+        continue;
+      }
+      const matchIdx = db.data.dsfa.findIndex((ex) => ex.mandantId === mandantId && ex.titel.trim().toLowerCase() === item.titel.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.dsfa[matchIdx] = {
+            ...db.data.dsfa[matchIdx],
+            beschreibung: item.beschreibung || "",
+            zweck: item.zweck || "",
+            prozessablauf: item.prozessablauf || "",
+            verarbeitungskontext: item.verarbeitungskontext || "",
+            datenquellen: item.datenquellen || "",
+            empfaenger: item.empfaenger || "",
+            drittlandtransfer: !!item.drittlandtransfer,
+            auftragsverarbeiter: item.auftragsverarbeiter || "",
+            technologienSysteme: item.technologienSysteme || "",
+            notwendigkeit: item.notwendigkeit || "",
+            rechtsgrundlage: item.rechtsgrundlage || "",
+            zweckbindungBewertung: item.zweckbindungBewertung || "",
+            datenminimierungBewertung: item.datenminimierungBewertung || "",
+            speicherbegrenzungBewertung: item.speicherbegrenzungBewertung || "",
+            transparenzBewertung: item.transparenzBewertung || "",
+            betroffenenrechteBewertung: item.betroffenenrechteBewertung || "",
+            zugriffskonzeptBewertung: item.zugriffskonzeptBewertung || "",
+            privacyByDesignBewertung: item.privacyByDesignBewertung || "",
+            risiken: JSON.stringify(Array.isArray(item.risiken) ? item.risiken : []),
+            massnahmen: item.massnahmen || "",
+            restrisikoBegruendung: item.restrisikoBegruendung || "",
+            art36Erforderlich: !!item.art36Erforderlich,
+            updatedAt: new Date().toISOString(),
+          };
+          updated.dsfa++;
+        } else {
+          skipped.dsfa++;
+        }
         continue;
       }
       (db.data.dsfa as Dsfa[]).push({
@@ -940,9 +1156,28 @@ export class LowdbStorage implements IStorage {
       });
       created.dsfa++;
     }
+
+    // 6. TOM
     for (const item of inhalt.tom || []) {
       if (!String(item?.kategorie || "").trim() || !String(item?.massnahme || "").trim()) {
         skipped.tom++;
+        continue;
+      }
+      const matchIdx = db.data.tom.findIndex((ex) => ex.mandantId === mandantId && ex.massnahme.trim().toLowerCase() === item.massnahme.trim().toLowerCase());
+      if (matchIdx !== -1) {
+        if (strategy === "overwrite_all") {
+          db.data.tom[matchIdx] = {
+            ...db.data.tom[matchIdx],
+            kategorie: item.kategorie,
+            beschreibung: item.beschreibung || "",
+            schutzziel: item.schutzziel || "",
+            pruefintervall: item.pruefintervall || "",
+            notizen: item.notizen || "",
+          };
+          updated.tom++;
+        } else {
+          skipped.tom++;
+        }
         continue;
       }
       (db.data.tom as Tom[]).push({
@@ -963,6 +1198,7 @@ export class LowdbStorage implements IStorage {
       });
       created.tom++;
     }
+
     db.data.mandantenLogs.push({
       id: nextId(db, "mandantenLogs"),
       mandantId,
@@ -973,9 +1209,10 @@ export class LowdbStorage implements IStorage {
       modul: "vorlagenpakete",
       entitaetTyp: "vorlagenpaket",
       entitaetId: paketId,
-      beschreibung: `Vorlagenpaket '${paket.name}' wurde angewendet.`,
-      detailsJson: JSON.stringify({ paketId, paketName: paket.name, created, skipped }),
+      beschreibung: `Vorlagenpaket '${paket.name}' wurde angewendet (Strategie: ${strategy}).`,
+      detailsJson: JSON.stringify({ paketId, paketName: paket.name, strategy, created, skipped, updated }),
     });
+
     db.data.vorlagenpaketHistorie.push({
       id: nextId(db, "vorlagenpaketHistorie"),
       mandantId,
@@ -984,10 +1221,11 @@ export class LowdbStorage implements IStorage {
       paketVersion: paket.version || "1.0",
       angewendetAm: new Date().toISOString(),
       angewendetVon: user?.name ?? "System",
-      detailsJson: JSON.stringify({ created, skipped }),
+      detailsJson: JSON.stringify({ strategy, created, skipped, updated }),
     });
+
     await db.write();
-    return { ok: true, created, skipped };
+    return { ok: true, created, skipped, updated };
   }
 
   // ─── Mandanten-Logs ───────────────────────────────────────────────────────

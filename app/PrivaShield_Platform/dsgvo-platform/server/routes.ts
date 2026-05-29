@@ -844,15 +844,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     await storage.deleteVorlagenpaket(Number(req.params.id));
     res.json({ ok: true });
   });
+  app.get("/api/mandanten/:id/vorlagenpakete/:paketId/preflight", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.id);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+    try {
+      const result = await storage.getVorlagenpaketPreflight(mandantId, Number(req.params.paketId));
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/mandanten/:id/vorlagenpakete/:paketId/apply", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
-    const result = await storage.applyVorlagenpaketToMandant(mandantId, Number(req.params.paketId), {
-      id: req.userId,
-      name: (await storage.getUserById(req.userId))?.name,
-    });
+    const strategy = req.body?.strategy;
+    const result = await storage.applyVorlagenpaketToMandant(
+      mandantId,
+      Number(req.params.paketId),
+      {
+        id: req.userId,
+        name: (await storage.getUserById(req.userId))?.name,
+      },
+      strategy
+    );
     res.json(result);
   });
+
 
   app.post("/api/gruppen/:gruppenId/vorlagenpakete/:paketId/apply", authMiddleware, adminOnly, async (req: any, res) => {
     const gruppenId = Number(req.params.gruppenId);

@@ -6435,9 +6435,19 @@ function BackupsPage() {
                   <div className="font-medium text-foreground">{item.fileName}</div>
                   <div className="text-xs text-muted-foreground">{slotLabel(item.slot)} · {item.createdAt} · {(item.size / 1024).toFixed(1)} KB</div>
                   <div className="text-xs text-muted-foreground">Backend im Backup: <span className="font-medium text-foreground">{item.backend || "Unbekannt / Altformat"}</span></div>
-                  {item.backendMismatch && <div className="text-xs text-amber-900 font-medium">Dieses Backup passt nicht 1:1 zum aktuell aktiven Backend. Lowdb → SQLite wird beim Restore jetzt automatisch migriert; andere Mismatches werden weiter blockiert.</div>}
+                  {item.sha256 && (
+                    <div className="text-[10px] text-muted-foreground font-mono mt-1 select-all break-all bg-muted/40 p-1.5 rounded border border-border/50 max-w-full">
+                      SHA-256: {item.sha256}
+                    </div>
+                  )}
+                  {item.backendMismatch && <div className="text-xs text-amber-900 font-medium mt-1">Dieses Backup passt nicht 1:1 zum aktuell aktiven Backend. Lowdb → SQLite wird beim Restore jetzt automatisch migriert; andere Mismatches werden weiter blockiert.</div>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {item.sha256 && (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span>🛡️</span> SHA-256 Verifiziert
+                    </Badge>
+                  )}
                   <StatusBadge value={item.encrypted ? t("backupEncrypted") : t("backupUnencrypted")} className="capitalize" />
                 </div>
               </div>
@@ -7114,33 +7124,6 @@ function DokumentePage() {
   const { toast } = useToast();
   const { activeMandantId } = useMandant();
   const qc = useQueryClient();
-  const [loadingPreset, setLoadingPreset] = useState(false);
-
-  const applyDsdmsPreset = async () => {
-    if (!activeMandantId) return;
-    setLoadingPreset(true);
-    try {
-      const res = await apiRequest("POST", `/api/mandanten/${activeMandantId}/vorlagenpakete/3/apply`, {});
-      if (!res.ok) {
-        throw new Error(await res.text() || "Fehler beim Laden");
-      }
-      const result = await res.json();
-      toast({
-        title: "DSDMS Vorlagen geladen",
-        description: `${result.created.dokumente} Richtlinien & ${result.created.aufgaben} Aufgaben wurden erstellt.`,
-      });
-      await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/dokumente`] });
-      await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
-    } catch (e: any) {
-      toast({
-        title: "Fehler",
-        description: e.message || "Vorlagen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPreset(false);
-    }
-  };
 
   const save = (form: any) => {
     const p = modal === "new" ? create.mutateAsync(form) : update.mutateAsync({ id: modal.id, ...form });
@@ -7152,16 +7135,10 @@ function DokumentePage() {
     <MandantGuard>
       <PageHeader title={t("docsTitle")} desc={t("docsDesc")}
         action={
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={applyDsdmsPreset} disabled={loadingPreset}>
-              <Download className="h-3.5 w-3.5" />
-              {loadingPreset ? "Lädt..." : "DSDMS-Vorlagen laden"}
-            </Button>
-            <Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}>
-              <Plus className="h-3.5 w-3.5" />
-              Neues Dokument
-            </Button>
-          </div>
+          <Button size="sm" className="bg-primary h-8 text-xs gap-1.5" onClick={() => setModal("new")}>
+            <Plus className="h-3.5 w-3.5" />
+            Neues Dokument
+          </Button>
         }
       />
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -8724,17 +8701,54 @@ function MandantenExtrasPage() {
     URL.revokeObjectURL(url);
   };
 
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [preflightData, setPreflightData] = useState<any>(null);
+  const [loadingPreflight, setLoadingPreflight] = useState(false);
+  const [strategy, setStrategy] = useState<"import_new" | "overwrite_all">("import_new");
+  const [applyingPaket, setApplyingPaket] = useState(false);
+
+  const openWizard = async () => {
+    if (!activeMandantId || !selectedPaket) return;
+    setLoadingPreflight(true);
+    setWizardOpen(true);
+    setPreflightData(null);
+    try {
+      const res = await apiRequest("GET", `/api/mandanten/${activeMandantId}/vorlagenpakete/${selectedPaket}/preflight`);
+      if (!res.ok) throw new Error("Fehler beim Preflight");
+      const data = await res.json();
+      setPreflightData(data.changes || []);
+    } catch (e: any) {
+      toast({ title: "Fehler beim Laden des Preflights", description: e.message, variant: "destructive" });
+      setWizardOpen(false);
+    } finally {
+      setLoadingPreflight(false);
+    }
+  };
+
   const applyPaket = async () => {
     if (!activeMandantId || !selectedPaket) return;
+    setApplyingPaket(true);
     try {
-      const res = await apiRequest("POST", `/api/mandanten/${activeMandantId}/vorlagenpakete/${selectedPaket}/apply`, {});
+      const res = await apiRequest("POST", `/api/mandanten/${activeMandantId}/vorlagenpakete/${selectedPaket}/apply`, { strategy });
+      if (!res.ok) throw new Error("Fehler beim Anwenden");
       const data = await res.json();
       qc.invalidateQueries({ queryKey: ["/api/mandanten-logs", activeMandantId] });
       qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
       qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/dokumente`] });
-      toast({ title: "Vorlagenpaket angewendet", description: `Aufgaben: ${data.created.aufgaben}, Dokumente: ${data.created.dokumente}` });
-    } catch {
-      toast({ title: "Fehler beim Anwenden", variant: "destructive" });
+      qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/vvt`] });
+      qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/avv`] });
+      qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/tom`] });
+      qc.invalidateQueries({ queryKey: ["/api/vorlagen-historie", activeMandantId] });
+      
+      toast({ 
+        title: "Vorlagenpaket angewendet", 
+        description: `Erstellt: ${data.created.aufgaben} Aufgaben, ${data.created.dokumente} Dokumente, ${data.created.vvt} VVTs, ${data.created.avv} AVVs, ${data.created.tom} TOMs. Aktualisiert: ${data.updated?.aufgaben || 0} Aufgaben, ${data.updated?.dokumente || 0} Dokumente, ${data.updated?.vvt || 0} VVTs, ${data.updated?.avv || 0} AVVs, ${data.updated?.tom || 0} TOMs.`
+      });
+      setWizardOpen(false);
+    } catch (e: any) {
+      toast({ title: "Fehler beim Anwenden", description: e.message, variant: "destructive" });
+    } finally {
+      setApplyingPaket(false);
     }
   };
 
@@ -8758,7 +8772,7 @@ function MandantenExtrasPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="bg-primary" onClick={applyPaket} disabled={!selectedPaket}>Anwenden</Button>
+            <Button className="bg-primary" onClick={openWizard} disabled={!selectedPaket}>Anwenden</Button>
           </CardContent>
           {selectedPaketObj && (
             <CardContent className="pt-0">
@@ -8873,6 +8887,147 @@ function MandantenExtrasPage() {
             ))}
           </CardContent>
         </Card>
+
+        <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span>🛡️</span> Mandanten-Upgrade-Wizard
+              </DialogTitle>
+            </DialogHeader>
+
+            {loadingPreflight ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <RefreshCcw className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Analysiere Vorlagenpaket und vergleiche mit bestehenden Mandantendaten...</p>
+              </div>
+            ) : preflightData ? (
+              <div className="space-y-6 text-sm">
+                <div>
+                  <h4 className="font-semibold text-foreground mb-1">DSDMS-Upgrade Analyse</h4>
+                  <p className="text-xs text-muted-foreground">Wir haben die Vorlagen im Paket mit den existierenden Einträgen des aktiven Mandanten verglichen.</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border bg-emerald-50/50 border-emerald-200 p-3 text-center">
+                    <p className="text-xs text-emerald-800 font-medium">Neu</p>
+                    <p className="text-xl font-bold text-emerald-700 mt-1">
+                      {preflightData.filter((x: any) => x.status === "new").length}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-amber-50/50 border-amber-200 p-3 text-center">
+                    <p className="text-xs text-amber-800 font-medium">Geändert</p>
+                    <p className="text-xl font-bold text-amber-700 mt-1">
+                      {preflightData.filter((x: any) => x.status === "modified").length}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-slate-50/50 border-slate-200 p-3 text-center">
+                    <p className="text-xs text-slate-800 font-medium">Identisch</p>
+                    <p className="text-xl font-bold text-slate-700 mt-1">
+                      {preflightData.filter((x: any) => x.status === "identical").length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Vorschau aller Änderungen</Label>
+                  <ScrollArea className="h-[200px] rounded-md border p-3 bg-muted/20">
+                    <div className="space-y-2">
+                      {preflightData.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-8">Keine Vorlageneinträge gefunden.</p>
+                      ) : (
+                        preflightData.map((item: any, index: number) => {
+                          let badgeColor = "bg-slate-100 text-slate-800 border-slate-200";
+                          let statusLabel = "Identisch";
+                          if (item.status === "new") {
+                            badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                            statusLabel = "Neu";
+                          } else if (item.status === "modified") {
+                            badgeColor = "bg-amber-50 text-amber-700 border-amber-200";
+                            statusLabel = "Geändert";
+                          }
+                          const typeLabels: Record<string, string> = {
+                            aufgaben: "Aufgabe",
+                            dokumente: "Dokument",
+                            vvt: "VVT",
+                            avv: "AVV",
+                            tom: "TOM"
+                          };
+                          return (
+                            <div key={index} className="flex items-center justify-between p-2 rounded border bg-background text-xs">
+                              <div>
+                                <p className="font-semibold text-foreground">{item.name}</p>
+                                <p className="text-muted-foreground text-[10px] capitalize">{typeLabels[item.type] || item.type}</p>
+                              </div>
+                              <Badge variant="outline" className={`${badgeColor} text-[10px] px-2 py-0.5 rounded-full font-medium`}>
+                                {statusLabel}
+                              </Badge>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Upgrade-Strategie wählen</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setStrategy("import_new")}
+                      className={`text-left p-3 rounded-lg border-2 transition-all flex flex-col justify-between h-full ${strategy === "import_new" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-border/80 bg-background"}`}
+                    >
+                      <div>
+                        <p className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                          <span>➕</span> Nur neue importieren
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                          Schützt bereits bestehende Vorlagen und Anpassungen vor dem Überschreiben. Ideal, um Ihre Anpassungen beizubehalten.
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="mt-3 text-[10px] self-start bg-emerald-50 text-emerald-700 border-emerald-100 border">
+                        Empfohlen & Sicher
+                      </Badge>
+                    </button>
+
+                    <button
+                      onClick={() => setStrategy("overwrite_all")}
+                      className={`text-left p-3 rounded-lg border-2 transition-all flex flex-col justify-between h-full ${strategy === "overwrite_all" ? "border-amber-500 bg-amber-500/5 ring-1 ring-amber-500" : "border-border hover:border-border/80 bg-background"}`}
+                    >
+                      <div>
+                        <p className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                          <span>🔄</span> Bestehende überschreiben
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                          Setzt bereits bestehende Elemente auf den neuesten DSDMS-Standard zurück. Eigene lokale Änderungen gehen verloren.
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="mt-3 text-[10px] self-start bg-amber-50 text-amber-700 border-amber-100 border">
+                        Vollständiger Reset
+                      </Badge>
+                    </button>
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2 pt-2 border-t">
+                  <Button variant="outline" size="sm" onClick={() => setWizardOpen(false)} disabled={applyingPaket}>Abbrechen</Button>
+                  <Button size="sm" onClick={applyPaket} disabled={applyingPaket} className={strategy === "overwrite_all" ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-primary"}>
+                    {applyingPaket ? (
+                      <>
+                        <RefreshCcw className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        Wird angewendet...
+                      </>
+                    ) : (
+                      "Upgrade starten"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-muted-foreground">Preflight konnte nicht ausgeführt werden.</div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MandantGuard>
   );
