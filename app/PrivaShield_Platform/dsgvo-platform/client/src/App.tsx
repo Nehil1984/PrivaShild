@@ -580,8 +580,31 @@ function Dashboard() {
   const sichtbareInterneNotizen = interneNotizen.slice(0, 5);
   const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
   const dokumenteCount = dokumente.length;
-  const leitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
-  const prozessDokCount = dokumente.filter((d: any) => d.kategorie === "prozessbeschreibung" || d.kategorie === "verfahrensdokumentation").length;
+  const getDocMaturityWeight = (d: any) => {
+    if (d.status === "aktiv") return 1.0;
+    if (d.status === "entwurf" || d.status === "in_bearbeitung" || d.status === "überprüfung") return 0.5;
+    return 0.0;
+  };
+  const getTomMaturityWeight = (t: any) => {
+    if (t.status === "implementiert" || t.status === "überprüft") return 1.0;
+    if (t.status === "geplant") return 0.5;
+    return 0.0;
+  };
+  const dashboardLeitlinienCategories = ["leitlinie", "leitlinie_datenschutz", "leitlinie_informationssicherheit", "richtlinie"];
+  const dashboardProzessCategories = ["prozessbeschreibung", "verfahrensdokumentation"];
+
+  const leitlinienCount = dokumente.filter((d: any) => dashboardLeitlinienCategories.includes(d.kategorie)).length;
+  const prozessDokCount = dokumente.filter((d: any) => dashboardProzessCategories.includes(d.kategorie)).length;
+
+  const leitlinienScore = dokumente
+    .filter((d: any) => dashboardLeitlinienCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
+
+  const prozessScore = dokumente
+    .filter((d: any) => dashboardProzessCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
+
+  const tomScore = tom.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
   const parseDsfaRisiken = (value: any) => {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value || "[]") : value;
@@ -873,15 +896,15 @@ function Dashboard() {
   const dashboardAuditCount = stats?.audits ?? 0;
   const dashboardAuditTodoCount = 0;
   const maturityCriteria = [
-    { label: "Leitlinienbasis", weight: 6, score: leitlinienCount >= 2 ? 6 : leitlinienCount === 1 ? 3 : 0 },
-    { label: "Prozessdokumentation", weight: 5, score: prozessDokCount >= 2 ? 5 : prozessDokCount === 1 ? 2 : 0 },
+    { label: "Leitlinienbasis", weight: 6, score: leitlinienScore >= 1.0 ? 6 : leitlinienScore >= 0.5 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: prozessScore >= 2.34 ? 5 : prozessScore >= 1.95 ? 4 : prozessScore >= 1.0 ? 2 : prozessScore >= 0.5 ? 1 : 0 },
     { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
     { label: "DSFA-Struktur", weight: 8, score: dsfaMitDsbCheck && dsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
     { label: "DSFA-Risikosteuerung", weight: 10, score: dsfaMitArt36 === 0 && dsfaMitHohemRestrisiko === 0 && dsfaReviewFaellig === 0 ? 10 : dsfaMitArt36 + dsfaMitHohemRestrisiko + dsfaReviewFaellig <= 2 ? 5 : 0 },
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: vvtOhneLoeschkonzept === 0 ? 6 : vvtOhneLoeschkonzept <= 2 ? 3 : 0 },
     { label: "Audit-Struktur", weight: 12, score: dashboardAuditCount > 0 ? (auditFollowUpsOhneAuditDashboard.length === 0 && dashboardAuditTodoCount <= 2 ? 12 : dashboardAuditTodoCount <= 5 ? 6 : 2) : 0 },
     { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaelligItems.length === 0 && pdcaFollowUpTasksOffenDashboard.length <= 2 ? 14 : pdcaReviewFaelligItems.length <= 2 && pdcaFollowUpTasksOffenDashboard.length <= 5 ? 7 : 2) : 0 },
-    { label: "TOM-Abdeckung", weight: 5, score: tomUmfangreich ? 5 : (stats?.tom ?? 0) > 0 ? 2 : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: tomScore >= 6.24 ? 5 : tomScore >= 5.2 ? 4 : tomScore >= 3.0 ? 2 : tomScore >= 1.0 ? 1 : 0 },
     { label: "AVV-Abdeckung", weight: 4, score: avvVorhanden ? 4 : 0 },
     { label: "Operative Aufgabensteuerung", weight: 8, score: kritischeAufgaben.length === 0 && kritischeOderNotwendigeAufgaben === 0 ? 8 : kritischeAufgaben.length <= 2 ? 4 : 0 },
     { label: "Web-/Hinweisprüfungen", weight: 4, score: !!webDatenschutzCheck && !!datenschutzhinweiseCheck ? 4 : (!!webDatenschutzCheck || !!datenschutzhinweiseCheck) ? 2 : 0 },
@@ -8676,6 +8699,11 @@ function ExportPage() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/loeschkonzept`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
+  const { data: tom = [] } = useQuery({
+    queryKey: [`/api/mandanten/${activeMandantId}/tom`],
+    queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/tom`).then((r) => r.json()) : [],
+    enabled: !!activeMandantId,
+  });
   const { data: interneNotizen = [] } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}/interne-notizen`],
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/interne-notizen`).then((r) => r.json()) : [],
@@ -8697,8 +8725,22 @@ function ExportPage() {
   }, 0);
   const auditFollowUpsOhneAuditBezug = auditFollowUps.filter((item: any) => !item.verknuepftesAuditId).length;
   const fehlendeLoeschBezuge = vvt.filter((entry: any) => !loeschkonzept.some((lk: any) => (lk.quelleVvtId && lk.quelleVvtId === entry.id) || String(lk.bezeichnung || "").trim().toLowerCase() === String(entry.bezeichnung || "").trim().toLowerCase())).length;
-  const exportLeitlinienCount = dokumente.filter((d: any) => d.kategorie === "leitlinie" || d.kategorie === "richtlinie").length;
-  const exportProzessDokCount = dokumente.filter((d: any) => d.kategorie === "prozessbeschreibung" || d.kategorie === "verfahrensdokumentation").length;
+  const exportLeitlinienCategories = ["leitlinie", "leitlinie_datenschutz", "leitlinie_informationssicherheit", "richtlinie"];
+  const exportProzessCategories = ["prozessbeschreibung", "verfahrensdokumentation"];
+
+  const exportLeitlinienCount = dokumente.filter((d: any) => exportLeitlinienCategories.includes(d.kategorie)).length;
+  const exportProzessDokCount = dokumente.filter((d: any) => exportProzessCategories.includes(d.kategorie)).length;
+
+  const exportLeitlinienScore = dokumente
+    .filter((d: any) => exportLeitlinienCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
+
+  const exportProzessScore = dokumente
+    .filter((d: any) => exportProzessCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
+
+  const exportTomScore = tom.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
+
   const exportDsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(mandant?.dsb || mandant?.dsbEmail || mandant?.datenschutzmanagerName));
   const exportDsfaOhneVvt = dsfa.filter((item: any) => !item.vvtId).length;
   const exportDsfaMitArt36 = dsfa.filter((item: any) => !!item.art36Erforderlich).length;
@@ -8713,22 +8755,22 @@ function ExportPage() {
   }).length;
   const exportKritischeAufgaben = aufgaben.filter((item: any) => String(item.prioritaet || "") === "kritisch" && String(item.status || "") !== "erledigt").length;
   const exportKritischeOderNotwendigeAufgaben = aufgaben.filter((item: any) => ["hoch", "kritisch"].includes(String(item.prioritaet || "")) && String(item.status || "") !== "erledigt").length;
-  const exportTomUmfangreich = (stats?.tom ?? 0) >= 8;
+  const exportTomUmfangreich = exportTomScore >= 6.24;
   const exportAvvVorhanden = (stats?.avv ?? 0) > 0;
   const exportWebDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const exportDatenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
   const exportBeschaeftigtenDok = dokumente.find((d: any) => d.dokumentTyp === "beschaeftigten_datenschutz_check");
   const exportDokumenteCount = dokumente.length;
   const maturityCriteria = [
-    { label: "Leitlinienbasis", weight: 6, score: exportLeitlinienCount >= 2 ? 6 : exportLeitlinienCount === 1 ? 3 : 0 },
-    { label: "Prozessdokumentation", weight: 5, score: exportProzessDokCount >= 2 ? 5 : exportProzessDokCount === 1 ? 2 : 0 },
+    { label: "Leitlinienbasis", weight: 6, score: exportLeitlinienScore >= 1.0 ? 6 : exportLeitlinienScore >= 0.5 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: exportProzessScore >= 2.34 ? 5 : exportProzessScore >= 1.95 ? 4 : exportProzessScore >= 1.0 ? 2 : exportProzessScore >= 0.5 ? 1 : 0 },
     { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
     { label: "DSFA-Struktur", weight: 8, score: exportDsfaMitDsbCheck && exportDsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
     { label: "DSFA-Risikosteuerung", weight: 10, score: exportDsfaMitArt36 === 0 && exportDsfaMitHohemRestrisiko === 0 && exportDsfaReviewFaellig === 0 ? 10 : exportDsfaMitArt36 + exportDsfaMitHohemRestrisiko + exportDsfaReviewFaellig <= 2 ? 5 : 0 },
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: fehlendeLoeschBezuge === 0 ? 6 : fehlendeLoeschBezuge <= 2 ? 3 : 0 },
     { label: "Audit-Struktur", weight: 12, score: audits.length > 0 ? (auditFollowUpsOhneAuditBezug === 0 && auditTodos.length <= 2 ? 12 : auditTodos.length <= 5 ? 6 : 2) : 0 },
     { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaellig.length === 0 && pdcaFollowUpTasksOffen.length <= 2 ? 14 : pdcaReviewFaellig.length <= 2 && pdcaFollowUpTasksOffen.length <= 5 ? 7 : 2) : 0 },
-    { label: "TOM-Abdeckung", weight: 5, score: exportTomUmfangreich ? 5 : (stats?.tom ?? 0) > 0 ? 2 : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: exportTomScore >= 6.24 ? 5 : exportTomScore >= 5.2 ? 4 : exportTomScore >= 3.0 ? 2 : exportTomScore >= 1.0 ? 1 : 0 },
     { label: "AVV-Abdeckung", weight: 4, score: exportAvvVorhanden ? 4 : 0 },
     { label: "Operative Aufgabensteuerung", weight: 8, score: exportKritischeAufgaben === 0 && exportKritischeOderNotwendigeAufgaben === 0 ? 8 : exportKritischeAufgaben <= 2 ? 4 : 0 },
     { label: "Web-/Hinweisprüfungen", weight: 4, score: !!exportWebDatenschutzCheck && !!exportDatenschutzhinweiseCheck ? 4 : (!!exportWebDatenschutzCheck || !!exportDatenschutzhinweiseCheck) ? 2 : 0 },
