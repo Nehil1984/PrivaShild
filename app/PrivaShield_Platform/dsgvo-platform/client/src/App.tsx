@@ -1687,8 +1687,10 @@ const vvtTemplates: Record<string, any> = {
 function VvtForm({ initial, onSave, onCancel }: any) {
   const { t } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
+  const { data: toms = [] } = useModuleData("tom");
+  const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState(() => {
-    const base = { bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", risikostufe: "niedrig", risikobegruendung: "", risikoTriggers: "[]", risikopruefungAm: "", ...initial };
+    const base = { bezeichnung: "", zweck: "", rechtsgrundlage: "", verantwortlicher: "", verantwortlicherEmail: "", verantwortlicherTelefon: "", loeschfrist: "", loeschklasse: "", aufbewahrungsgrund: "", status: "aktiv", dsfa: false, drittlandtransfer: false, datenkategorien: "", betroffenePersonen: "", empfaenger: "", tomHinweis: "", risikostufe: "niedrig", risikobegruendung: "", risikoTriggers: "[]", risikopruefungAm: "", verknuepfteTomIds: "[]", ...initial };
     const assessment = deriveVvtRiskAssessment(base);
     return { ...base, ...assessment, risikoTriggers: JSON.stringify(assessment.risikoTriggers), ...initial };
   });
@@ -1774,6 +1776,174 @@ function VvtForm({ initial, onSave, onCancel }: any) {
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtDataSubjects")}</Label><Textarea value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtRecipients")}</Label><Textarea value={form.empfaenger} onChange={e => set("empfaenger", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">{t("vvtTomHint")}</Label><Textarea value={form.tomHinweis} onChange={e => set("tomHinweis", e.target.value)} className="text-sm min-h-12" /></div>
+        {(() => {
+          const verknuepfteIds: number[] = (() => {
+            try {
+              const parsed = typeof form.verknuepfteTomIds === "string" ? JSON.parse(form.verknuepfteTomIds || "[]") : form.verknuepfteTomIds;
+              return Array.isArray(parsed) ? parsed.map(Number) : [];
+            } catch {
+              return [];
+            }
+          })();
+
+          const toggleTom = (tomId: number) => {
+            const nextIds = verknuepfteIds.includes(tomId)
+              ? verknuepfteIds.filter(id => id !== tomId)
+              : [...verknuepfteIds, tomId];
+            set("verknuepfteTomIds", JSON.stringify(nextIds));
+          };
+
+          const count = verknuepfteIds.length;
+
+          const filteredToms = toms.filter((tom: any) =>
+            tom.massnahme.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (tom.beschreibung || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tom.kategorie.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+
+          const groupedToms = filteredToms.reduce((acc: Record<string, any[]>, tom: any) => {
+            const cat = tom.kategorie || "sonstige";
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(tom);
+            return acc;
+          }, {});
+
+          const catNames: Record<string, string> = {
+            zutrittskontrolle: "Zutrittskontrolle",
+            zugangskontrolle: "Zugangskontrolle",
+            zugriffskontrolle: "Zugriffskontrolle",
+            weitergabe: "Weitergabekontrolle",
+            eingabe: "Eingabekontrolle",
+            auftrag: "Auftragskontrolle",
+            verfuegbarkeit: "Verfügbarkeitskontrolle",
+            trennung: "Trennungskontrolle"
+          };
+
+          return (
+            <div className="col-span-2 rounded-lg border p-4 space-y-4 bg-muted/10">
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Verknüpfte Technische & Organisatorische Maßnahmen (TOMs)
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Verknüpfen Sie relevante Sicherheitsmaßnahmen, um das technische Schutzniveau für diese Verarbeitungstätigkeit zu ermitteln.
+                </p>
+              </div>
+
+              {/* Schutzniveau Ampel Card */}
+              {(() => {
+                let level = "Niedrig";
+                let colorCls = "bg-red-50 text-red-700 border-red-200";
+                let barColor = "bg-red-500";
+                let emoji = "🔴";
+                let desc = "Keine schützenden TOMs verknüpft. Das Schutzniveau ist kritisch niedrig und erfordert dringend organisatorische oder technische Absicherung.";
+                
+                if (count >= 1 && count <= 3) {
+                  level = "Normal (Mittel)";
+                  colorCls = "bg-amber-50 text-amber-700 border-amber-200";
+                  barColor = "bg-amber-500";
+                  emoji = "🟡";
+                  desc = "Basisschutz ist aktiv. Einige wichtige Maßnahmen wurden verknüpft, das Schutzniveau ist ausreichend für normale Risikoanforderungen.";
+                } else if (count >= 4) {
+                  level = "Hoch (Optimal)";
+                  colorCls = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  barColor = "bg-emerald-500";
+                  emoji = "🟢";
+                  desc = "Hervorragender Schutz! Mehrere tiefgreifende Sicherheitsmaßnahmen sind verknüpft. Optimaler Schutz selbst bei sensiblen Datenkategorien.";
+                }
+
+                const pct = Math.min(100, Math.round((count / 4) * 100));
+
+                return (
+                  <div className={`rounded-lg border p-3 flex flex-col md:flex-row gap-3 items-start md:items-center justify-between ${colorCls} transition-all duration-300`}>
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{emoji}</span>
+                        <span className="font-bold text-xs">Technisches Schutzniveau: {level}</span>
+                        <Badge variant="outline" className={`${colorCls} text-[10px] py-0.5 px-2 font-bold`}>
+                          {count} TOMs aktiv
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] leading-relaxed opacity-90">{desc}</p>
+                      <div className="w-full bg-slate-200/50 rounded-full h-1.5 overflow-hidden">
+                        <div className={`${barColor} h-1.5 transition-all duration-500`} style={{ width: `${pct}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Nach TOM-Maßnahme oder Kategorie filtern..."
+                  value={searchTerm}
+                  onChange={(e: any) => setSearchTerm(e.target.value)}
+                  className="h-8 text-xs pl-8 bg-background"
+                />
+                <span className="absolute left-2.5 top-2 text-muted-foreground text-xs">🔍</span>
+              </div>
+
+              {/* Scrollable Checklist */}
+              <ScrollArea className="h-[220px] rounded-md border p-3 bg-background">
+                {toms.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-12">
+                    Keine TOM-Maßnahmen im Mandanten hinterlegt. Bitte erstellen Sie zuerst TOMs im entsprechenden Modul.
+                  </p>
+                ) : Object.keys(groupedToms).length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-12">Keine passenden TOMs gefunden.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(groupedToms).map(([catKey, items]: any) => (
+                      <div key={catKey} className="space-y-2">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-secondary/50 px-2 py-0.5 rounded">
+                          {catNames[catKey] || catKey}
+                        </p>
+                        <div className="space-y-1.5 pl-1">
+                          {items.map((tom: any) => {
+                            const isChecked = verknuepfteIds.includes(tom.id);
+                            return (
+                              <label
+                                key={tom.id}
+                                className={`flex items-start gap-2.5 p-2 rounded border text-xs cursor-pointer transition-all hover:bg-secondary/40 select-none ${isChecked ? "bg-primary/5 border-primary/30" : "bg-card border-border/50"}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleTom(tom.id)}
+                                  className="rounded border-gray-300 text-primary focus:ring-primary mt-0.5"
+                                />
+                                <div className="flex-1 space-y-0.5">
+                                  <p className="font-semibold text-foreground">{tom.massnahme}</p>
+                                  {tom.beschreibung && (
+                                    <p className="text-[10px] text-muted-foreground line-clamp-2 leading-normal">
+                                      {tom.beschreibung}
+                                    </p>
+                                  )}
+                                  <div className="flex gap-2.5 items-center pt-1 flex-wrap">
+                                    <span className={`text-[9px] font-medium px-1.5 py-0.2 rounded border ${tom.status === "implementiert" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
+                                      {tom.status === "implementiert" ? "Aktiv" : "Geplant"}
+                                    </span>
+                                    {tom.wirksamkeit && (
+                                      <span className="text-[9px] text-muted-foreground">
+                                        Wirksamkeit: <span className="font-semibold text-foreground">{tom.wirksamkeit}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          );
+        })()}
         <div className="space-y-1"><Label className="text-xs">Risikostufe</Label>
           <Select value={form.risikostufe || "niedrig"} onValueChange={v => set("risikostufe", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -2710,6 +2880,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   const { t } = useI18n();
   const { data: dokumente = [] } = useModuleData("dokumente");
   const { data: vvts = [] } = useModuleData("vvt");
+  const { data: toms = [] } = useModuleData("tom");
   const kiComplianceCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "ki_compliance_check");
   const kiTools = (() => {
     try {
@@ -2801,10 +2972,51 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
     set("vvtId", Number.isFinite(vvtId) ? vvtId : undefined);
     const selectedVvt = vvts.find((item: any) => item.id === vvtId);
     if (!selectedVvt) return;
+
+    let linkedTomIds: any[] = [];
+    try {
+      linkedTomIds = JSON.parse(selectedVvt.verknuepfteTomIds || "[]");
+      if (!Array.isArray(linkedTomIds)) linkedTomIds = [];
+    } catch (e) {
+      linkedTomIds = [];
+    }
+
+    const matchedToms = toms.filter((tom: any) =>
+      linkedTomIds.map(String).includes(String(tom.id))
+    );
+    const tomCount = matchedToms.length;
+    const matchedNames = matchedToms.map((t: any) => `${t.massnahme} (${t.kategorie || "BSI"})`).join(", ");
+
     const riskTriggers = parseVvtRiskTriggers(selectedVvt.risikoTriggers);
     const inferredRiskTitle = riskTriggers[0] || selectedVvt.risikostufe || "Risikotreiber";
-    const inferredProbability = String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "hoch" : String(selectedVvt.risikostufe || "").toLowerCase() === "mittel" ? "mittel" : "niedrig";
-    const inferredSeverity = String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "hoch" : selectedVvt.drittlandtransfer ? "mittel" : "mittel";
+
+    const bruttoLevel = (selectedVvt.risikostufe || "niedrig").toLowerCase() === "hoch" ? "hoch" :
+                        (selectedVvt.risikostufe || "niedrig").toLowerCase() === "mittel" ? "mittel" : "niedrig";
+
+    const reduceLevel = (level: string, steps: number): string => {
+      const levels = ["niedrig", "mittel", "hoch"];
+      const index = levels.indexOf(level.toLowerCase());
+      if (index === -1) return "niedrig";
+      return levels[Math.max(0, index - steps)];
+    };
+
+    let steps = 0;
+    if (tomCount === 1 || tomCount === 2) {
+      steps = 1;
+    } else if (tomCount >= 3) {
+      steps = 2;
+    }
+
+    const netLevel = reduceLevel(bruttoLevel, steps);
+    const netProbability = reduceLevel(bruttoLevel, steps);
+    const netSeverity = reduceLevel(bruttoLevel, steps);
+
+    const autoControls = matchedNames
+      ? `Verknüpfte TOMs aus VVT: ${matchedNames}`
+      : selectedVvt.tomHinweis || "Keine verknüpften TOMs in VVT hinterlegt.";
+
+    const autoReasoning = `Das Risiko wurde durch die Implementierung von ${tomCount} verknüpften technischen und organisatorischen Maßnahmen (TOMs) von Brutto (${bruttoLevel.toUpperCase()}) auf Netto (${netLevel.toUpperCase()}) minimiert.${matchedNames ? ` Wirksame Maßnahmen: ${matchedNames}.` : ""}`;
+
     setForm((p: any) => ({
       ...p,
       vvtId,
@@ -2819,21 +3031,21 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
       speicherbegrenzungBewertung: p.speicherbegrenzungBewertung || selectedVvt.loeschfrist || "",
       notwendigkeit: p.notwendigkeit || `Verarbeitung aus VVT übernommen. Fachliche Prüfung insbesondere im Hinblick auf ${selectedVvt.risikostufe || "dokumentierte"} Risikolage erforderlich.`,
       massnahmen: p.massnahmen || (riskTriggers.length > 0 ? `Aus VVT abgeleitete Schwerpunkte: ${riskTriggers.join(", ")}. Bestehende TOM prüfen und ergänzende Maßnahmen dokumentieren.` : p.massnahmen),
-      restrisikoBegruendung: p.restrisikoBegruendung || selectedVvt.risikobegruendung || "",
-      art36Erforderlich: p.art36Erforderlich || String(selectedVvt.risikostufe || "").toLowerCase() === "hoch",
+      restrisikoBegruendung: p.restrisikoBegruendung || autoReasoning,
+      art36Erforderlich: p.art36Erforderlich || netLevel === "hoch",
       naechstePruefungAm: p.naechstePruefungAm || selectedVvt.risikopruefungAm || "",
-      risiken: p.risiken.map((risk: any, index: number) => index === 0 ? {
+      risiken: p.risiken.map((risk: any, idx: number) => idx === 0 ? {
         ...risk,
         titel: risk.titel || inferredRiskTitle,
         beschreibung: risk.beschreibung || selectedVvt.risikobegruendung || selectedVvt.zweck || "",
         betroffeneGruppen: risk.betroffeneGruppen || selectedVvt.betroffenePersonen || "",
         datenarten: risk.datenarten || selectedVvt.datenkategorien || "",
         ursache: risk.ursache || riskTriggers.join(", ") || selectedVvt.bezeichnung || "",
-        bestehendeKontrollen: risk.bestehendeKontrollen || selectedVvt.tomHinweis || "",
-        eintrittswahrscheinlichkeit: risk.eintrittswahrscheinlichkeit || inferredProbability,
-        schweregrad: risk.schweregrad || inferredSeverity,
-        inhärentesRisiko: risk.inhärentesRisiko || (String(selectedVvt.risikostufe || "").toLowerCase() || inferredSeverity),
-        restrisiko: risk.restrisiko || (String(selectedVvt.risikostufe || "").toLowerCase() === "hoch" ? "mittel" : inferredProbability),
+        bestehendeKontrollen: risk.bestehendeKontrollen || autoControls,
+        eintrittswahrscheinlichkeit: risk.eintrittswahrscheinlichkeit || netProbability,
+        schweregrad: risk.schweregrad || netSeverity,
+        inhärentesRisiko: risk.inhärentesRisiko || bruttoLevel,
+        restrisiko: risk.restrisiko || netLevel,
         weitereMassnahmen: risk.weitereMassnahmen || (riskTriggers.length > 0 ? `Prüfung und Nachsteuerung zu: ${riskTriggers.join(", ")}` : ""),
       } : risk),
     }));

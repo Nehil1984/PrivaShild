@@ -295,6 +295,7 @@ export class DatabaseStorage implements IStorage {
             tomHinweis: item.tomHinweis || "",
             status: item.status || "entwurf",
             dsfa: !!item.dsfa,
+            verknuepfteTomIds: item.verknuepfteTomIds || "[]",
             updatedAt: now,
           }).where(eq(vvt.id, match.id)).run();
           updated.vvt++;
@@ -321,6 +322,7 @@ export class DatabaseStorage implements IStorage {
         verantwortlicherTelefon: item.verantwortlicherTelefon || "",
         status: item.status || "entwurf",
         dsfa: !!item.dsfa,
+        verknuepfteTomIds: item.verknuepfteTomIds || "[]",
         createdAt: now,
         updatedAt: now,
       }).run();

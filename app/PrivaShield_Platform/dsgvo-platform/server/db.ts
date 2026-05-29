@@ -138,6 +138,7 @@ sqlite.exec(`
     verantwortlicher_telefon TEXT,
     status TEXT DEFAULT 'aktiv',
     dsfa INTEGER DEFAULT 0,
+    verknuepfte_tom_ids TEXT DEFAULT '[]',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -437,3 +438,5 @@ safeAlter("ALTER TABLE avv ADD COLUMN betroffene_personen TEXT;");
 safeAlter("ALTER TABLE avv ADD COLUMN technische_massnahmen TEXT;");
 safeAlter("ALTER TABLE avv ADD COLUMN pruefintervall TEXT;");
 safeAlter("ALTER TABLE avv ADD COLUMN subauftragnehmer_hinweis TEXT;");
+safeAlter("ALTER TABLE vvt ADD COLUMN verknuepfte_tom_ids TEXT DEFAULT '[]';");
+

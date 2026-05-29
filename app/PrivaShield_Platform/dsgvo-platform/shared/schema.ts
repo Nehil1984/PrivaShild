@@ -168,6 +168,7 @@ export const vvt = sqliteTable("vvt", {
   verantwortlicherTelefon: text("verantwortlicher_telefon"),
   status: text("status").default("aktiv"), // aktiv | entwurf | archiviert
   dsfa: integer("dsfa", { mode: "boolean" }).default(false),
+  verknuepfteTomIds: text("verknuepfte_tom_ids").default("[]"),
   createdAt: text("created_at").default(new Date().toISOString()),
   updatedAt: text("updated_at").default(new Date().toISOString()),
 });

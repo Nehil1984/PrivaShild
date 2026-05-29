@@ -975,6 +975,7 @@ export class LowdbStorage implements IStorage {
             tomHinweis: item.tomHinweis || "",
             status: item.status || "entwurf",
             dsfa: !!item.dsfa,
+            verknuepfteTomIds: item.verknuepfteTomIds || "[]",
             updatedAt: new Date().toISOString(),
           };
           updated.vvt++;
@@ -1006,6 +1007,7 @@ export class LowdbStorage implements IStorage {
         verantwortlicherTelefon: item.verantwortlicherTelefon || "",
         status: item.status || "entwurf",
         dsfa: !!item.dsfa,
+        verknuepfteTomIds: item.verknuepfteTomIds || "[]",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
