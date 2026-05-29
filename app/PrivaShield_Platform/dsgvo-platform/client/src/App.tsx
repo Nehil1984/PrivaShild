@@ -604,7 +604,12 @@ function Dashboard() {
     .filter((d: any) => dashboardProzessCategories.includes(d.kategorie))
     .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
 
-  const tomScore = tom.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
+  const tomCategoryKeys = ["zutrittskontrolle", "zugangskontrolle", "zugriffskontrolle", "weitergabe", "eingabe", "auftrag", "verfuegbarkeit", "trennung"];
+  const tomCoveredCategoriesCount = tomCategoryKeys.filter((catKey) => {
+    const catToms = tom.filter((t: any) => t.kategorie === catKey);
+    const catScore = catToms.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
+    return catScore >= 2.0;
+  }).length;
   const parseDsfaRisiken = (value: any) => {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value || "[]") : value;
@@ -904,7 +909,7 @@ function Dashboard() {
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: vvtOhneLoeschkonzept === 0 ? 6 : vvtOhneLoeschkonzept <= 2 ? 3 : 0 },
     { label: "Audit-Struktur", weight: 12, score: dashboardAuditCount > 0 ? (auditFollowUpsOhneAuditDashboard.length === 0 && dashboardAuditTodoCount <= 2 ? 12 : dashboardAuditTodoCount <= 5 ? 6 : 2) : 0 },
     { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaelligItems.length === 0 && pdcaFollowUpTasksOffenDashboard.length <= 2 ? 14 : pdcaReviewFaelligItems.length <= 2 && pdcaFollowUpTasksOffenDashboard.length <= 5 ? 7 : 2) : 0 },
-    { label: "TOM-Abdeckung", weight: 5, score: tomScore >= 6.24 ? 5 : tomScore >= 5.2 ? 4 : tomScore >= 3.0 ? 2 : tomScore >= 1.0 ? 1 : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: tomCoveredCategoriesCount === 8 ? 5 : tomCoveredCategoriesCount >= 6 ? 4 : tomCoveredCategoriesCount >= 4 ? 2 : tomCoveredCategoriesCount >= 1 ? 1 : 0 },
     { label: "AVV-Abdeckung", weight: 4, score: avvVorhanden ? 4 : 0 },
     { label: "Operative Aufgabensteuerung", weight: 8, score: kritischeAufgaben.length === 0 && kritischeOderNotwendigeAufgaben === 0 ? 8 : kritischeAufgaben.length <= 2 ? 4 : 0 },
     { label: "Web-/Hinweisprüfungen", weight: 4, score: !!webDatenschutzCheck && !!datenschutzhinweiseCheck ? 4 : (!!webDatenschutzCheck || !!datenschutzhinweiseCheck) ? 2 : 0 },
@@ -8739,7 +8744,12 @@ function ExportPage() {
     .filter((d: any) => exportProzessCategories.includes(d.kategorie))
     .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
 
-  const exportTomScore = tom.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
+  const exportTomCategoryKeys = ["zutrittskontrolle", "zugangskontrolle", "zugriffskontrolle", "weitergabe", "eingabe", "auftrag", "verfuegbarkeit", "trennung"];
+  const exportTomCoveredCategoriesCount = exportTomCategoryKeys.filter((catKey) => {
+    const catToms = tom.filter((t: any) => t.kategorie === catKey);
+    const catScore = catToms.reduce((sum: number, t: any) => sum + getTomMaturityWeight(t), 0);
+    return catScore >= 2.0;
+  }).length;
 
   const exportDsfaMitDsbCheck = dsfa.every((item: any) => !String(item.status || "").trim() || !!(mandant?.dsb || mandant?.dsbEmail || mandant?.datenschutzmanagerName));
   const exportDsfaOhneVvt = dsfa.filter((item: any) => !item.vvtId).length;
@@ -8755,7 +8765,7 @@ function ExportPage() {
   }).length;
   const exportKritischeAufgaben = aufgaben.filter((item: any) => String(item.prioritaet || "") === "kritisch" && String(item.status || "") !== "erledigt").length;
   const exportKritischeOderNotwendigeAufgaben = aufgaben.filter((item: any) => ["hoch", "kritisch"].includes(String(item.prioritaet || "")) && String(item.status || "") !== "erledigt").length;
-  const exportTomUmfangreich = exportTomScore >= 6.24;
+  const exportTomUmfangreich = exportTomCoveredCategoriesCount === 8;
   const exportAvvVorhanden = (stats?.avv ?? 0) > 0;
   const exportWebDatenschutzCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "web_datenschutz_check");
   const exportDatenschutzhinweiseCheck = dokumente.find((d: any) => d.kategorie === "prozessbeschreibung" && d.dokumentTyp === "datenschutzhinweise_check");
@@ -8770,7 +8780,7 @@ function ExportPage() {
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: fehlendeLoeschBezuge === 0 ? 6 : fehlendeLoeschBezuge <= 2 ? 3 : 0 },
     { label: "Audit-Struktur", weight: 12, score: audits.length > 0 ? (auditFollowUpsOhneAuditBezug === 0 && auditTodos.length <= 2 ? 12 : auditTodos.length <= 5 ? 6 : 2) : 0 },
     { label: "PDCA-Wirksamkeit", weight: 14, score: pdca.length > 0 ? (pdcaReviewFaellig.length === 0 && pdcaFollowUpTasksOffen.length <= 2 ? 14 : pdcaReviewFaellig.length <= 2 && pdcaFollowUpTasksOffen.length <= 5 ? 7 : 2) : 0 },
-    { label: "TOM-Abdeckung", weight: 5, score: exportTomScore >= 6.24 ? 5 : exportTomScore >= 5.2 ? 4 : exportTomScore >= 3.0 ? 2 : exportTomScore >= 1.0 ? 1 : 0 },
+    { label: "TOM-Abdeckung", weight: 5, score: exportTomCoveredCategoriesCount === 8 ? 5 : exportTomCoveredCategoriesCount >= 6 ? 4 : exportTomCoveredCategoriesCount >= 4 ? 2 : exportTomCoveredCategoriesCount >= 1 ? 1 : 0 },
     { label: "AVV-Abdeckung", weight: 4, score: exportAvvVorhanden ? 4 : 0 },
     { label: "Operative Aufgabensteuerung", weight: 8, score: exportKritischeAufgaben === 0 && exportKritischeOderNotwendigeAufgaben === 0 ? 8 : exportKritischeAufgaben <= 2 ? 4 : 0 },
     { label: "Web-/Hinweisprüfungen", weight: 4, score: !!exportWebDatenschutzCheck && !!exportDatenschutzhinweiseCheck ? 4 : (!!exportWebDatenschutzCheck || !!exportDatenschutzhinweiseCheck) ? 2 : 0 },
