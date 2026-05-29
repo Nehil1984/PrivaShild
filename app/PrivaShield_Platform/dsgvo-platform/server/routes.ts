@@ -16,7 +16,7 @@ import { clearCsrfCookie, clearLoginFailures, csrfProtection, issueCsrfToken, lo
 import { inspectBackup, inspectUploadedBackup, listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
 import { insertAuditSchema, insertAvvSchema, insertDatenpanneSchema, insertDokumentSchema, insertDsfaSchema, insertDsrSchema, insertLoeschkonzeptSchema, insertMandantenGruppeSchema, insertInterneNotizSchema, insertMandantSchema, insertPdcaSchema, insertTomSchema, insertUserSchema, insertVorlagenpaketSchema, insertVvtSchema, requestAuditSchema, requestAvvSchema, requestBackupConfigSchema, requestBackupRestoreSchema, requestDatenpanneSchema, requestDokumentSchema, requestDsfaSchema, requestDsrSchema, requestInterneNotizSchema, requestLoeschkonzeptSchema, requestPdcaSchema, requestTomSchema, requestVvtSchema } from "@shared/schema";
-import type { ZodTypeAny } from "zod";
+import { z, type ZodTypeAny } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -175,11 +175,16 @@ async function auditLog(event: {
   beschreibung: string;
   details?: Record<string, unknown>;
 }) {
-  if (!event.mandantId) return;
+  const mId = event.mandantId ?? 0;
+  let uName = event.userName;
+  if (!uName && event.userId) {
+    const user = await storage.getUserById(event.userId);
+    if (user) uName = user.name;
+  }
   await storage.createMandantenLog({
-    mandantId: event.mandantId,
+    mandantId: mId,
     userId: event.userId ?? null,
-    userName: event.userName,
+    userName: uName || "System",
     aktion: event.aktion,
     modul: event.modul,
     entitaetTyp: event.entitaetTyp,
@@ -715,32 +720,97 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
   app.post("/api/users", authMiddleware, adminOnly, validateBody(insertUserSchema), async (req, res) => {
     try {
+      const existing = await storage.getUserByEmail(req.body.email);
+      if (existing) return res.status(400).json({ message: "Benutzer existiert bereits" });
+
       const user = await storage.createUser(req.body);
+      await auditLog({
+        mandantId: 0,
+        userId: (req as any).userId,
+        aktion: "user_erstellt",
+        modul: "admin",
+        entitaetTyp: "user",
+        entitaetId: user.id,
+        beschreibung: `Benutzer ${user.name} (${user.email}) wurde erstellt`,
+        details: { email: user.email, role: user.role, mandantIds: user.mandantIds },
+      });
+
       res.status(201).json(sanitizeUser(user));
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
   });
-  app.put("/api/users/:id", authMiddleware, adminOnly, async (req, res) => {
-    const body = pickAllowedUserUpdateFields(req.body || {});
 
-    if (req.body?.unlockUser === true) {
-      Object.assign(body, {
-        adminLocked: false,
-        adminLockedAt: null,
-        failedLoginAttempts: 0,
-        temporaryLockUntil: null,
-        lastFailedLoginAt: null,
+  const updateUserSchema = insertUserSchema.partial().extend({
+    unlockUser: z.boolean().optional(),
+  });
+
+  app.put("/api/users/:id", authMiddleware, adminOnly, validateBody(updateUserSchema), async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      const oldUser = await storage.getUserById(userId);
+      if (!oldUser) return res.status(404).json({ message: "Nicht gefunden" });
+
+      if (req.body.email) {
+        const existing = await storage.getUserByEmail(req.body.email);
+        if (existing && existing.id !== userId) {
+          return res.status(400).json({ message: "E-Mail-Adresse bereits vergeben" });
+        }
+      }
+
+      const body = pickAllowedUserUpdateFields(req.body || {});
+
+      if (req.body?.unlockUser === true) {
+        Object.assign(body, {
+          adminLocked: false,
+          adminLockedAt: null,
+          failedLoginAttempts: 0,
+          temporaryLockUntil: null,
+          lastFailedLoginAt: null,
+        });
+      }
+
+      const user = await storage.updateUser(userId, body as any);
+      if (!user) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const diff = diffObjects(sanitizeUser(oldUser), sanitizeUser(user));
+      await auditLog({
+        mandantId: 0,
+        userId: (req as any).userId,
+        aktion: "user_aktualisiert",
+        modul: "admin",
+        entitaetTyp: "user",
+        entitaetId: user.id,
+        beschreibung: `Benutzer ${user.name} (${user.email}) wurde aktualisiert`,
+        details: { changes: diff, unlockUser: req.body?.unlockUser === true },
       });
-    }
 
-    const user = await storage.updateUser(Number(req.params.id), body as any);
-    if (!user) return res.status(404).json({ message: "Nicht gefunden" });
-    res.json(sanitizeUser(user));
+      res.json(sanitizeUser(user));
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
   app.delete("/api/users/:id", authMiddleware, adminOnly, async (req, res) => {
-    await storage.deleteUser(Number(req.params.id));
-    res.json({ ok: true });
+    try {
+      const userId = Number(req.params.id);
+      const oldUser = await storage.getUserById(userId);
+      if (oldUser) {
+        await storage.deleteUser(userId);
+        await auditLog({
+          mandantId: 0,
+          userId: (req as any).userId,
+          aktion: "user_geloescht",
+          modul: "admin",
+          entitaetTyp: "user",
+          entitaetId: oldUser.id,
+          beschreibung: `Benutzer ${oldUser.name} (${oldUser.email}) wurde gelöscht`,
+          details: { email: oldUser.email, role: oldUser.role },
+        });
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
   // ─── MANDANTEN ────────────────────────────────────────────────────────────
@@ -758,18 +828,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.json(m);
   });
-  app.post("/api/mandanten", authMiddleware, adminOnly, validateBody(insertMandantSchema), async (req, res) => {
-    const m = await storage.createMandant(req.body);
-    res.status(201).json(m);
+  app.post("/api/mandanten", authMiddleware, adminOnly, validateBody(insertMandantSchema), async (req: any, res) => {
+    try {
+      const m = await storage.createMandant(req.body);
+      await auditLog({
+        mandantId: m.id,
+        userId: req.userId,
+        aktion: "mandant_erstellt",
+        modul: "admin",
+        entitaetTyp: "mandant",
+        entitaetId: m.id,
+        beschreibung: `Mandant ${m.name} wurde erstellt`,
+        details: m,
+      });
+      res.status(201).json(m);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.put("/api/mandanten/:id", authMiddleware, adminOnly, async (req, res) => {
-    const m = await storage.updateMandant(Number(req.params.id), req.body);
-    if (!m) return res.status(404).json({ message: "Nicht gefunden" });
-    res.json(m);
+  app.put("/api/mandanten/:id", authMiddleware, adminOnly, validateBody(insertMandantSchema.partial()), async (req: any, res) => {
+    try {
+      const mandantId = Number(req.params.id);
+      const oldMandant = await storage.getMandant(mandantId);
+      if (!oldMandant) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const m = await storage.updateMandant(mandantId, req.body);
+      if (!m) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const diff = diffObjects(oldMandant, m);
+      await auditLog({
+        mandantId: m.id,
+        userId: req.userId,
+        aktion: "mandant_aktualisiert",
+        modul: "admin",
+        entitaetTyp: "mandant",
+        entitaetId: m.id,
+        beschreibung: `Mandant ${m.name} wurde aktualisiert`,
+        details: { changes: diff },
+      });
+      res.json(m);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.delete("/api/mandanten/:id", authMiddleware, adminOnly, async (req, res) => {
-    await storage.deleteMandant(Number(req.params.id));
-    res.json({ ok: true });
+  app.delete("/api/mandanten/:id", authMiddleware, adminOnly, async (req: any, res) => {
+    try {
+      const mandantId = Number(req.params.id);
+      const oldMandant = await storage.getMandant(mandantId);
+      if (oldMandant) {
+        await storage.deleteMandant(mandantId);
+        await auditLog({
+          mandantId: 0,
+          userId: req.userId,
+          aktion: "mandant_geloescht",
+          modul: "admin",
+          entitaetTyp: "mandant",
+          entitaetId: mandantId,
+          beschreibung: `Mandant ${oldMandant.name} wurde gelöscht`,
+          details: oldMandant,
+        });
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
   app.get("/api/mandanten/:id/logs", authMiddleware, async (req: any, res) => {
@@ -793,56 +915,138 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(gruppen.filter((gruppe) => allowedGruppenIds.includes(gruppe.id)));
   });
   app.post("/api/mandanten-gruppen", authMiddleware, adminOnly, validateBody(insertMandantenGruppeSchema), async (req: any, res) => {
-    const gruppe = await storage.createMandantenGruppe(req.body);
-    await auditLog({
-      mandantId: null,
-      userId: req.userId,
-      userName: (await storage.getUserById(req.userId))?.name,
-      aktion: "mandantengruppe_erstellt",
-      modul: "mandanten-gruppen",
-      entitaetTyp: "mandantengruppe",
-      entitaetId: gruppe.id,
-      beschreibung: "Mandantengruppe wurde erstellt",
-      details: gruppe,
-    });
-    res.status(201).json(gruppe);
+    try {
+      const gruppe = await storage.createMandantenGruppe(req.body);
+      await auditLog({
+        mandantId: 0,
+        userId: req.userId,
+        aktion: "mandantengruppe_erstellt",
+        modul: "mandanten-gruppen",
+        entitaetTyp: "mandantengruppe",
+        entitaetId: gruppe.id,
+        beschreibung: `Mandantengruppe ${gruppe.name} wurde erstellt`,
+        details: gruppe,
+      });
+      res.status(201).json(gruppe);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.put("/api/mandanten-gruppen/:id", authMiddleware, adminOnly, async (req, res) => {
-    const gruppe = await storage.updateMandantenGruppe(Number(req.params.id), req.body);
-    if (!gruppe) return res.status(404).json({ message: "Nicht gefunden" });
-    res.json(gruppe);
+  app.put("/api/mandanten-gruppen/:id", authMiddleware, adminOnly, validateBody(insertMandantenGruppeSchema.partial()), async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      const oldGruppe = await storage.getMandantenGruppe(id);
+      if (!oldGruppe) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const gruppe = await storage.updateMandantenGruppe(id, req.body);
+      if (!gruppe) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const diff = diffObjects(oldGruppe, gruppe);
+      await auditLog({
+        mandantId: 0,
+        userId: req.userId,
+        aktion: "mandantengruppe_aktualisiert",
+        modul: "mandanten-gruppen",
+        entitaetTyp: "mandantengruppe",
+        entitaetId: gruppe.id,
+        beschreibung: `Mandantengruppe ${gruppe.name} wurde aktualisiert`,
+        details: { changes: diff },
+      });
+      res.json(gruppe);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.delete("/api/mandanten-gruppen/:id", authMiddleware, adminOnly, async (req, res) => {
-    await storage.deleteMandantenGruppe(Number(req.params.id));
-    res.json({ ok: true });
+  app.delete("/api/mandanten-gruppen/:id", authMiddleware, adminOnly, async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      const oldGruppe = await storage.getMandantenGruppe(id);
+      if (oldGruppe) {
+        await storage.deleteMandantenGruppe(id);
+        await auditLog({
+          mandantId: 0,
+          userId: req.userId,
+          aktion: "mandantengruppe_geloescht",
+          modul: "mandanten-gruppen",
+          entitaetTyp: "mandantengruppe",
+          entitaetId: id,
+          beschreibung: `Mandantengruppe ${oldGruppe.name} wurde gelöscht`,
+          details: oldGruppe,
+        });
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
   app.get("/api/vorlagenpakete", authMiddleware, async (_req, res) => {
     res.json(await storage.getVorlagenpakete());
   });
   app.post("/api/vorlagenpakete", authMiddleware, adminOnly, validateBody(insertVorlagenpaketSchema), async (req: any, res) => {
-    const paket = await storage.createVorlagenpaket(req.body);
-    await auditLog({
-      mandantId: null,
-      userId: req.userId,
-      userName: (await storage.getUserById(req.userId))?.name,
-      aktion: "vorlagenpaket_erstellt",
-      modul: "vorlagenpakete",
-      entitaetTyp: "vorlagenpaket",
-      entitaetId: paket.id,
-      beschreibung: "Vorlagenpaket wurde erstellt",
-      details: paket,
-    });
-    res.status(201).json(paket);
+    try {
+      const paket = await storage.createVorlagenpaket(req.body);
+      await auditLog({
+        mandantId: 0,
+        userId: req.userId,
+        aktion: "vorlagenpaket_erstellt",
+        modul: "vorlagenpakete",
+        entitaetTyp: "vorlagenpaket",
+        entitaetId: paket.id,
+        beschreibung: `Vorlagenpaket ${paket.name} wurde erstellt`,
+        details: paket,
+      });
+      res.status(201).json(paket);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.put("/api/vorlagenpakete/:id", authMiddleware, adminOnly, async (req, res) => {
-    const paket = await storage.updateVorlagenpaket(Number(req.params.id), req.body);
-    if (!paket) return res.status(404).json({ message: "Nicht gefunden" });
-    res.json(paket);
+  app.put("/api/vorlagenpakete/:id", authMiddleware, adminOnly, validateBody(insertVorlagenpaketSchema.partial()), async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      const oldPaket = await storage.getVorlagenpaket(id);
+      if (!oldPaket) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const paket = await storage.updateVorlagenpaket(id, req.body);
+      if (!paket) return res.status(404).json({ message: "Nicht gefunden" });
+
+      const diff = diffObjects(oldPaket, paket);
+      await auditLog({
+        mandantId: 0,
+        userId: req.userId,
+        aktion: "vorlagenpaket_aktualisiert",
+        modul: "vorlagenpakete",
+        entitaetTyp: "vorlagenpaket",
+        entitaetId: paket.id,
+        beschreibung: `Vorlagenpaket ${paket.name} wurde aktualisiert`,
+        details: { changes: diff },
+      });
+      res.json(paket);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
-  app.delete("/api/vorlagenpakete/:id", authMiddleware, adminOnly, async (req, res) => {
-    await storage.deleteVorlagenpaket(Number(req.params.id));
-    res.json({ ok: true });
+  app.delete("/api/vorlagenpakete/:id", authMiddleware, adminOnly, async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      const oldPaket = await storage.getVorlagenpaket(id);
+      if (oldPaket) {
+        await storage.deleteVorlagenpaket(id);
+        await auditLog({
+          mandantId: 0,
+          userId: req.userId,
+          aktion: "vorlagenpaket_geloescht",
+          modul: "vorlagenpakete",
+          entitaetTyp: "vorlagenpaket",
+          entitaetId: id,
+          beschreibung: `Vorlagenpaket ${oldPaket.name} wurde gelöscht`,
+          details: oldPaket,
+        });
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
   app.get("/api/mandanten/:id/vorlagenpakete/:paketId/preflight", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);

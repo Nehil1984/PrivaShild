@@ -2,6 +2,13 @@
 # Entrypoint: Stellt sicher, dass /data nutzbar ist und startet die App robust.
 set -eu
 
+# Falls wir als non-root laufen, können wir kein chown/su-exec machen.
+# Direkt die App starten!
+if [ "$(id -u)" -ne 0 ]; then
+  echo "[entrypoint] Laufen als non-root ($(id -un)), starte App direkt..."
+  exec node /app/dist/index.cjs
+fi
+
 APP_USER="privashield"
 APP_GROUP="privashield"
 APP_UID="${PUID:-1099}"

@@ -28,8 +28,8 @@ LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 # su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
-# plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen
-RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils
+# plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen (und tini als Init-Prozess)
+RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini
 
 # Non-root User anlegen
 # GID/UID 1099 (1000 ist auf Unraid oft bereits belegt)
@@ -62,6 +62,6 @@ ENV NODE_ENV=production
 ENV PORT=5000
 ENV DATABASE_PATH=/data/privashield.db
 
-# Container startet als root, Entrypoint setzt Rechte und startet dann robust die App
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Container startet als root, tini fängt Signale ab, Entrypoint setzt Rechte und startet dann robust die App
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD []
