@@ -33,3 +33,19 @@ PrivaShield also provides a dedicated internal notes area. Notes are only includ
 ## Governance-aware reporting
 
 The export and dashboard views increasingly reflect governance completeness, including retention mapping, audits, TOM coverage and critical task status.
+
+## Container Architecture, Security & Permissions
+
+As of version **v1.23.0**, the PrivaShield container features comprehensive hardening:
+
+### 1. Init System (tini)
+The container integrates `tini` as the system init process (PID 1). This ensures that system signals (such as `SIGTERM` when stopping the container via the Unraid WebUI) are gracefully and instantly propagated to the Node.js application, preventing sudden process terminations and ensuring consistent data flushing. `tini` also reaps orphan zombie processes.
+
+### 2. Intelligent Non-Root Runtime (Resilience)
+By default, the container starts as `root` to dynamically fix permissions of persistent host volume bind mounts (e.g. `/mnt/user/appdata/privashield/data`) on startup (`chown`/`chmod`), dropping privileges afterwards to the non-root user `privashield` (UID/GID 1099, customizable via `PUID` and `PGID`).
+- **Kubernetes & Enterprise Compatibility**: If run in restricted multi-tenant or enterprise container environments prohibiting root startup (e.g., Kubernetes/OpenShift with `runAsNonRoot: true` or Docker `--user`), the entrypoint automatically detects the non-root context. It bypasses the privileged permissions setup and boots the application directly as the active non-root user, preventing startup failures.
+
+### 3. Password Complexity on Updates & Admin Audits
+- Serverseide Zod validation is now strictly enforced for all user password updates (min. 12 characters, numbers, uppercase/lowercase, special characters).
+- Administrative actions (creating, updating, deleting users, tenants, groups, templates) generate a complete audit trail with exact change diffing (`diffObjects`) stored as JSON.
+

@@ -259,6 +259,21 @@ Prüfen:
 
 ---
 
+## Container-Architektur, Sicherheit & Berechtigungen
+
+Ab Version **v1.23.0** wurde der PrivaShield-Container architektonisch gehärtet:
+
+### 1. Init-Prozess tini
+Der Container nutzt ab sofort `tini` als systemweiten Init-Prozess (PID 1). Dies stellt sicher, dass System-Signale (wie `SIGTERM` beim Stoppen des Containers über die Unraid-Weboberfläche) sofort und sauber an die Node.js-Anwendung weitergeleitet werden, was ein abruptes Killen der App verhindert. Zudem übernimmt `tini` das Reaping verwaister Zombie-Prozesse.
+
+### 2. Intelligenter Non-Root-Modus (Resilienz)
+Der Container startet standardmäßig als `root`, um Dateiberechtigungen für persistente Host-Volumes (z. B. unter `/mnt/user/appdata/privashield/data`) beim Erststart automatisch anzupassen (`chown`/`chmod`), und droppt die Privilegien danach auf den non-root User `privashield` (UID/GID 1099, anpassbar per `PUID` und `PGID`).
+*   **Kubernetes / Enterprise-Kompatibilität**: Falls der Container in Umgebungen betrieben wird, die das Starten als `root` verbieten (z. B. durch Zuweisen eines festen non-root Benutzers in Kubernetes/OpenShift über `runAsNonRoot: true` or Docker mit `--user`), erkennt der Entrypoint dies automatisch. Er überspringt die privilegierten Setup-Schritte und startet die App direkt als non-root, was Permission-Abstürze verhindert.
+
+### 3. Passwortregeln bei Updates & Admin-Auditing
+- Das Zod-Schema validiert ab sofort auch alle Passwortänderungen von Bestandsbenutzern (min. 12 Zeichen, Zahlen, Sonderzeichen, Groß-/Kleinschreibung) serverseitig.
+- Alle administrativen CRUD-Aktionen (Erstellen, Bearbeiten, Löschen von Benutzern, Mandanten, Gruppen, Vorlagen) werden revisionssicher geloggt. Bei Aktualisierungen wird das exakte Änderungs-Diff berechnet und im Audit-Log hinterlegt.
+
 ## Empfohlene Betriebsparameter
 
 Für einen sauberen Betrieb unter Unraid empfehle ich:
@@ -269,6 +284,7 @@ Für einen sauberen Betrieb unter Unraid empfehle ich:
 - persistentes Mapping von `/data`
 - regelmäßige Backups der Datenbankdatei
 - Host-Port nur intern freigeben oder über Reverse Proxy absichern
+
 
 ---
 

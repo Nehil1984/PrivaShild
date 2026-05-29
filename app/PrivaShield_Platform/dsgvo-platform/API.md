@@ -394,3 +394,16 @@ Wichtig:
 
 ### Governance / Reifegrad
 Der Dashboard-Reifegrad wird aus mehreren Compliance-Signalen abgeleitet, darunter Leitlinien, VVT, Löschkonzept-Abdeckung, DSFA-/Datenschutzfunktion, Audits, TOM, AVV und Aufgabenlage.
+
+### Export-Zusatzoptionen & Log-Filterung
+Beim Generieren des Export-Druckdokuments (`print.html`) können Sektionen optional über das Export-Menü an- oder abgewählt werden (`config.sections`). Die im Exportkontext übergebenen `logs` können clientseitig anhand von Grenzwerten, Modulen, Benutzern und Aktionen gefiltert werden, um Berichte bedarfsgerecht zu modularisieren.
+
+### Sicherheits-Härtung & Admin-Auditing
+Alle sicherheitsrelevanten administrativen API-Endpunkte unterliegen einer strengen serverseitigen Absicherung:
+- **Passwortkomplexität bei Updates**: Passwortänderungen über `PUT /api/users/:id` werden über das Zod-Schema `updateUserSchema` (min. 12 Zeichen, Groß-/Kleinschreibung, Sonderzeichen, Zahlen) erzwungen.
+- **E-Mail-Kollisionsschutz**: Verhindert die Duplizierung von E-Mail-Adressen bei Updates durch proaktive Prüfung vor Datenbank-Schreibvorgängen.
+- **Vollständige Zod-Validierung**: Alle Admin-PUT/PATCH-Endpunkte (für Mandanten, Gruppen, Vorlagen) validieren eingehende Requests über `.partial()`-Zod-Schemata gegen Injections und ungültige Feldwerte.
+- **Globale & Diff-basierte Revisionsprotokolle**:
+  - Vorgänge ohne direkten Mandantenbezug (z. B. Logins, administrative Setups, Benutzerverwaltung) werden revisionssicher unter der globalen Mandanten-ID `0` (System) aufgezeichnet.
+  - Updates an Benutzern, Mandanten, Gruppen und Vorlagen generieren ein exaktes Änderungs-Diff (`diffObjects`), das strukturiert in den Log-Details (`detailsJson`) gespeichert wird.
+

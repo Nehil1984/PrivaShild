@@ -36,11 +36,22 @@ Die App zeigt nicht nur Einzeldaten, sondern verdichtet diese zu Management-Kenn
 ### 3. Interne Notizen mit Exportsteuerung
 Mandantenbezogene interne Notizen können separat erfasst werden. Für jede Notiz kann ausdrücklich festgelegt werden, ob sie im Export erscheinen darf.
 
-### 4. Export / Druck
-Für Auswertungen und Berichte steht eine Druck- und Exportansicht zur Verfügung. Sensible Inhalte wie interne Notizen werden nur bei expliziter Freigabe berücksichtigt.
+### 4. Export / Druck & Log-Filterung
+Für Auswertungen und Berichte steht eine Druck- und Exportansicht zur Verfügung. Jede Berichts- und Governance-Sektion (z. B. M365 Copilot, Executive Summary, Auditprotokoll, Löschkonzept) lässt sich über das Export-Menü flexibel an- oder abwählen. Das Änderungsprotokoll / Audit-Log kann granular nach Kategorie, Benutzer, Aktion sowie Zeilenbegrenzung gefiltert werden. Sensible Inhalte wie interne Notizen werden weiterhin nur bei expliziter Freigabe berücksichtigt.
 
-### 5. Backup und Betrieb
-Die Plattform unterstützt interne Backups, Rotationslogik und optional verschlüsselte Sicherungen. Automatische verschlüsselte Scheduler-Backups benötigen zusätzlich die Umgebungsvariable `PRIVASHIELD_BACKUP_PASSWORD`.
+### 5. Sicherheits-Härtung & Admin-Auditing
+Die Plattform erzwingt strikte Richtlinien für administrative Vorgänge:
+- Passwortkomplexität (min. 12 Zeichen, Zahlen, Sonderzeichen, Groß-/Kleinschreibung) wird auch bei Passwortänderungen und Benutzer-Updates streng serverseitig über Zod validiert.
+- E-Mail-Adressen werden bei Änderungen proaktiv auf Eindeutigkeit geprüft.
+- Sämtliche PUT/PATCH-Endpunkte für Benutzer, Mandanten, Gruppen und Vorlagenpakete werden über Zod-Teilschemata gegen Injections und ungültige Feldwerte abgesichert.
+- Revisionssicheres, diff-basiertes Logging zeichnet alle administrativen Änderungen inklusive eines Vorher-Nachher-Vergleichs im System auf. Vorgänge ohne Mandantenkontext (z. B. Logins, Benutzerpflege, administrative Setups) werden global unter Mandanten-ID `0` (System) revisionssicher aufgezeichnet.
+
+### 6. Container-Sicherheit, Resilienz & Unraid
+Die Plattform ist für den sicheren, modernen Containerbetrieb vorbereitet:
+- **Init-Prozess tini**: Wird als PID 1 vorgeschaltet, um robuste Signalweiterleitung (z. B. SIGTERM beim Herunterfahren) und Zombie-Reaping zu garantieren.
+- **Non-Root-Kompatibilität**: Das Entrypoint-Skript erkennt automatisch, wenn der Container als non-root (z. B. unter Kubernetes mit `runAsNonRoot: true` oder Docker mit `--user`) gestartet wird, und überspringt chown- und su-exec-Schritte, um Berechtigungsfehler zu vermeiden. Unter Unraid/Docker Compose läuft der automatische Rechte-Setup wie gewohnt weiter.
+- Backup-Verwaltung mit Rotationslogik und optionaler AES-256-GCM Verschlüsselung ist integriert. Automatische verschlüsselte Scheduler-Backups benötigen die Umgebungsvariable `PRIVASHIELD_BACKUP_PASSWORD`.
+
 
 ## Technischer Stack
 
