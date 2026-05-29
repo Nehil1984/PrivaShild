@@ -323,6 +323,18 @@ Wenn du PrivaShield dauerhaft unter Unraid betreiben willst, würde ich zusätzl
 
 ---
 
+## Mandanten-Export & -Import (Daten-Transfer)
+
+Ab Version **v1.24.4** bietet die Plattform einen eigenen Daten-Transfer-Bereich für den selektiven Export und Import von Mandanten-Modulen:
+
+- **Selektiver Export:** Beliebige Kombination der 13 Module auswählbar, optionale AES-256-GCM Verschlüsselung mit Stärkeindikator und Download als `.privashield` Datei.
+- **Sicherer Import:** Import der `.privashield` Datei, automatische Erkennung und Entschlüsselung verschlüsselter Dateien, Zuordnung auf einen beliebigen Ziel-Mandanten und zwei Import-Strategien:
+  - *Hinzufügen:* Daten werden an bestehende Module angehängt.
+  - *Überschreiben (Ersetzen):* Zieldaten werden vor dem Einspielen vollständig geleert.
+- **Beziehungs-Mapping:** Integriertes ID-Mapping sorgt dafür, dass alle internen Beziehungen (z.B. VVT ↔ TOM, DSFA ↔ VVT, Aufgaben ↔ PDCA) auch nach dem Import in ein anderes System vollständig intakt bleiben.
+
+---
+
 ## Reverse Proxy mit Nginx Proxy Manager unter Unraid
 
 Für produktionsnahen Betrieb solltest du PrivaShield nicht einfach ungeschützt direkt auf Port 5000 ins Internet stellen.

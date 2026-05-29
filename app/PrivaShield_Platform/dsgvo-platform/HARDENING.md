@@ -7,6 +7,7 @@
 - gehärtete Mandanten-Zugriffskontrolle
 - Initial-Admin nur per Umgebungsvariablen
 - Test-Grundgerüst mit Vitest
+- Optionale AES-256-GCM Verschlüsselung für selektiven Mandanten-Export & -Import (v1.24.4)
 
 ## Noch sinnvoll
 

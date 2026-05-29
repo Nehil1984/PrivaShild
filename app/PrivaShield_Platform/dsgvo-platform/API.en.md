@@ -17,6 +17,38 @@
 
 The export context now also includes explicitly export-approved internal notes.
 
+## Client Export / Import
+- `POST /api/mandanten/:mid/export-download`
+  Selective client data export with optional AES-256-GCM encryption. Returns a `.privashield` JSON file.
+  **Request Body:**
+  ```json
+  {
+    "modules": ["vvt", "tom", "avv", "mandant"],
+    "password": "optional_password"
+  }
+  ```
+
+- `POST /api/mandanten/:mid/import`
+  Selective client data import. Decrypts the file (if password is provided), inserts module data, and maps relationship IDs.
+  **Request Body:**
+  ```json
+  {
+    "fileContent": "<JSON string of the .privashield file>",
+    "password": "optional_password",
+    "strategy": "hinzufuegen" | "ersetzen"
+  }
+  ```
+  **Response Body:**
+  ```json
+  {
+    "ok": true,
+    "importedStats": {
+      "vvt": 5,
+      "tom": 12
+    }
+  }
+  ```
+
 
 ## Functional notes
 

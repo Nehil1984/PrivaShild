@@ -34,6 +34,16 @@ PrivaShield also provides a dedicated internal notes area. Notes are only includ
 
 The export and dashboard views increasingly reflect governance completeness, including retention mapping, audits, TOM coverage and critical task status.
 
+## Client Export & Import (Data-Transfer)
+
+As of version **v1.24.4**, the platform provides a dedicated Data-Transfer area for selective client data export and import:
+
+- **Selective Export:** Choose any combination of the 13 modules, optional AES-256-GCM encryption with password strength validation, and download as a `.privashield` JSON file.
+- **Secure Import:** Import `.privashield` files, auto-detect and decrypt password-protected files, target any existing client, and choose from two strategies:
+  - *Add:* Appends the imported data to existing modules.
+  - *Replace:* Completely wipes target modules before importing the new data.
+- **Relationship ID Mapping:** Built-in ID mapping ensures all internal associations (such as VVT ↔ TOM, DSFA ↔ VVT, Tasks ↔ PDCA) are fully restored and linked even when importing data into a different client.
+
 ## Container Architecture, Security & Permissions
 
 As of version **v1.23.0**, the PrivaShield container features comprehensive hardening:

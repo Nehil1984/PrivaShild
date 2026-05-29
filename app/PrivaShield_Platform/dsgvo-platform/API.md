@@ -92,6 +92,43 @@ Historie angewendeter Vorlagenpakete.
 ### GET `/api/mandanten/:id/stats`
 Kennzahlen pro Mandant.
 
+### POST `/api/mandanten/:mid/export-download`
+Selektiver Daten-Export für Mandanten-Module.
+
+**Body**
+```json
+{
+  "modules": ["vvt", "tom", "avv", "mandant"],
+  "password": "optionales_passwort"
+}
+```
+
+**Response**
+Liefert ein JSON-Paket (optional AES-256-GCM verschlüsselt) mit dem Header `Content-Disposition: attachment; filename="<mandant>_<date>.privashield"`.
+
+### POST `/api/mandanten/:mid/import`
+Selektiver Daten-Import für Mandanten-Module.
+
+**Body**
+```json
+{
+  "fileContent": "<Inhalt der .privashield-Datei>",
+  "password": "optionales_entschluesselungspasswort",
+  "strategy": "hinzufuegen" | "ersetzen"
+}
+```
+
+**Response**
+```json
+{
+  "ok": true,
+  "importedStats": {
+    "vvt": 5,
+    "tom": 12
+  }
+}
+```
+
 **Aktuelle Stats-Felder**
 - `vvt`
 - `avv`

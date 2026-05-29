@@ -10,6 +10,7 @@ PrivaShield is a GDPR and compliance management platform for tenant-based privac
 - **Customizable Export & Audit Log Filtering**: Toggle individual report sections (e.g. M365 Copilot, Executive Summary, Retention Concept) and filter the audit log granularly by module/category, user, action, and count limits.
 - **Enterprise-ready Container Security**: Pre-configured `tini` as PID 1 for signal-handling and zombie reaping. Intelligent `docker-entrypoint.sh` fallback ensuring compatibility with strict non-root runtimes (e.g. Kubernetes with `runAsNonRoot: true` or Docker `--user`).
 - **Strict Security Hardening**: Enforces Zod-based password complexity checks on updates/changes, email uniqueness constraints, and strict payload validation. Complete audit trail with exact change diffing (`diffObjects`) for administrative tasks.
+- **Selective Client Export & Import (Data-Transfer)**: Export and import client modules (e.g. VVT, TOMs, AVVs) selectively with optional AES-256-GCM password encryption and automatic relationship ID mapping (v1.24.4).
 - automatic in-app backup scheduler with optional AES-256-GCM encryption
 - print/export context for management reports
 - German and English UI foundation
