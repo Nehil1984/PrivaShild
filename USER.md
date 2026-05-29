@@ -1,5 +1,0 @@
-- **Name:** Daniel
-- **Was du mich nennen sollst:** TOM
-- **Pronouns:** Ich nenne dich als Daniel (freundlich und natürlich)
-- **Zeitzone:** Europa/Berlin (UTC+2)
-- **Notes:** Professionell und zuverlässig. Ich sollte dir bei klaren Aufgaben helfen, ohne dich mit unnötigen Details zu überfluten.

@@ -1,0 +1,20 @@
+# Agent workspace files
+AGENTS.md
+DREAMS.md
+HEARTBEAT.md
+IDENTITY.md
+MEMORY.md
+SOUL.md
+TOOLS.md
+USER.md
+todos.md
+implementation_plan.md
+walkthrough.md
+task.md
+
+# Agent directories
+knowledge/
+memory/
+isms_workflow_temp/
+scratch/
+.DS_Store
