@@ -247,7 +247,6 @@ const navItems = [
   { path: "/beschaeftigten-datenschutz", label: "employeePrivacyNav", icon: Users },
   { path: "/extras", label: "tenantExtrasNav", icon: MoreVertical },
   { path: "/export", label: "exportPrint", icon: Printer },
-  { path: "/datentransfer", label: "dataTransfer", icon: ArrowLeftRight },
   { path: "/backups", label: "backups", icon: Archive },
 ];
 
@@ -256,6 +255,7 @@ const adminNavItems = [
   { path: "/gruppen", label: "groupsNav", icon: ChevronDown },
   { path: "/vorlagenpakete", label: "templatesNav", icon: FolderOpen },
   { path: "/benutzer", label: "usersNav", icon: Users },
+  { path: "/datentransfer", label: "dataTransfer", icon: ArrowLeftRight },
   { path: "/system", label: "systemTitle", icon: Settings },
 ];
 
@@ -491,6 +491,24 @@ function MandantGuard({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  return <>{children}</>;
+}
+
+// ─── ADMIN GUARD ───────────────────────────────────────────────────────────
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { lang } = useI18n();
+  if (user?.role !== "admin") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] text-center gap-3 p-6 bg-card/60 backdrop-blur-md border border-border/60 rounded-xl max-w-md mx-auto mt-12">
+        <AlertCircle className="h-10 w-10 text-destructive/70 animate-bounce" />
+        <div className="space-y-1.5">
+          <p className="text-base font-semibold text-foreground">{lang === "en" ? "Access Denied" : "Zugriff verweigert"}</p>
+          <p className="text-sm text-muted-foreground">{lang === "en" ? "This area is reserved for administrators only." : "Dieser Bereich ist ausschließlich für Administratoren reserviert."}</p>
+        </div>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -10436,13 +10454,13 @@ function AppRoutes() {
           <Route path="/beschaeftigten-datenschutz" component={BeschaeftigtenDatenschutzPage} />
           <Route path="/ki-compliance" component={KiCompliancePage} />
           <Route path="/extras" component={MandantenExtrasPage} />
-          <Route path="/mandanten" component={MandantenPage} />
-          <Route path="/gruppen" component={GruppenPage} />
-          <Route path="/vorlagenpakete" component={VorlagenpaketePage} />
-          <Route path="/benutzer" component={BenutzerPage} />
-          <Route path="/system" component={SystemPage} />
+          <Route path="/mandanten" component={() => <AdminGuard><MandantenPage /></AdminGuard>} />
+          <Route path="/gruppen" component={() => <AdminGuard><GruppenPage /></AdminGuard>} />
+          <Route path="/vorlagenpakete" component={() => <AdminGuard><VorlagenpaketePage /></AdminGuard>} />
+          <Route path="/benutzer" component={() => <AdminGuard><BenutzerPage /></AdminGuard>} />
+          <Route path="/system" component={() => <AdminGuard><SystemPage /></AdminGuard>} />
           <Route path="/export" component={ExportPage} />
-          <Route path="/datentransfer" component={MandantExportImportPage} />
+          <Route path="/datentransfer" component={() => <AdminGuard><MandantExportImportPage /></AdminGuard>} />
           <Route path="/backups" component={BackupsPage} />
           <Route path="/interne-notizen" component={InterneNotizenPage} />
         </Switch>
