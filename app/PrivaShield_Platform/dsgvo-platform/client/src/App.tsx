@@ -1623,6 +1623,62 @@ const vvtTemplates: Record<string, any> = {
     empfaenger: "KI-Anbieter, IT-Dienstleister, interne Fachbereiche",
     tomHinweis: "Richtlinie für KI-Nutzung, Anbieterauswahl, Minimierung personenbezogener Daten, Transferbewertung",
   },
+  dsdms_cloud_office: {
+    bezeichnung: "DSDMS: Cloud-Anwendungen & Office-Suite",
+    zweck: "Kollaboration, E-Mail-Kommunikation und Dateiverarbeitung im Cloud-Umfeld.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+    verantwortlicher: "IT-Leitung / DS-Team",
+    loeschfrist: "Gemäß Löschkonzept der verknüpften Systemklassen (E-Mail/Dateien)",
+    status: "aktiv",
+    dsfa: true,
+    drittlandtransfer: true,
+    datenkategorien: "Kommunikationsdaten, Benutzerdaten, Inhaltsdaten, Metadaten",
+    betroffenePersonen: "Beschäftigte, Kunden, Lieferanten, Partner",
+    empfaenger: "IT-Administration, Cloud-Service-Provider (AV)",
+    tomHinweis: "Zwei-Faktor-Authentifizierung (2FA), TLS-Transportverschlüsselung, Audit-Logging",
+  },
+  dsdms_it_support: {
+    bezeichnung: "DSDMS: IT-Support extern",
+    zweck: "Wartung, Fernwartung und technischer Support der IT-Systeme durch externe Dienstleister.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+    verantwortlicher: "IT-Leitung",
+    loeschfrist: "Ticketdaten 3 Jahre nach Abschluss, Sessions-Protokolle 1 Jahr",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Stammdaten, Kontaktdaten, Logindaten, System-Metadaten",
+    betroffenePersonen: "Beschäftigte, Admins",
+    empfaenger: "Technischer Support-Dienstleister (AVV)",
+    tomHinweis: "Verschlüsselte VPN-Fernwartung, Freigabe-Pflicht, detailliertes Session-Logging",
+  },
+  dsdms_zutritt: {
+    bezeichnung: "DSDMS: Zutrittskontrollsystem",
+    zweck: "Sicherung des Objektschutzes, Zutrittskontrolle zu Büro- und Serverräumen.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+    verantwortlicher: "Facility Management / IT",
+    loeschfrist: "Zutrittsprotokolle werden nach spätestens 3 Monaten automatisch gelöscht",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Chipkarten-ID, Zeitstempel (Kommen/Gehen), Raumnummer",
+    betroffenePersonen: "Beschäftigte, Dienstleister, Besucher",
+    empfaenger: "Sicherheitsdienstleister (AVV)",
+    tomHinweis: "Physischer und logischer Zugriffsschutz des Steuerungsrechners, Rollenkonzept",
+  },
+  dsdms_zeiterfassung: {
+    bezeichnung: "DSDMS: Zeiterfassung",
+    zweck: "Dokumentation von Arbeits-, Pausen- und Urlaubszeiten zur Einhaltung des Arbeitszeitgesetzes.",
+    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag) & § 26 BDSG",
+    verantwortlicher: "HR / Personalabteilung",
+    loeschfrist: "3 Jahre nach Ablauf des Kalenderjahres, steuerlich relevante Daten 10 Jahre",
+    status: "aktiv",
+    dsfa: false,
+    drittlandtransfer: false,
+    datenkategorien: "Stammdaten, Arbeitszeitdaten, Abwesenheiten (Krankheit/Urlaub)",
+    betroffenePersonen: "Beschäftigte",
+    empfaenger: "Lohnbuchhaltung, Zeiterfassungssoftware-Anbieter (AVV)",
+    tomHinweis: "Rollen- und Berechtigungskonzept, verschlüsselte Datenbankverbindung",
+  },
 };
 
 function VvtForm({ initial, onSave, onCancel }: any) {
@@ -1674,6 +1730,10 @@ function VvtForm({ initial, onSave, onCancel }: any) {
               <SelectItem value="newsletter">Newsletter-Versand</SelectItem>
               <SelectItem value="video">Videoüberwachung</SelectItem>
               <SelectItem value="ki">Einsatz von KI-Tools</SelectItem>
+              <SelectItem value="dsdms_cloud_office">DSDMS: Cloud & Office Suite</SelectItem>
+              <SelectItem value="dsdms_it_support">DSDMS: IT-Support extern</SelectItem>
+              <SelectItem value="dsdms_zutritt">DSDMS: Zutrittskontrollsystem</SelectItem>
+              <SelectItem value="dsdms_zeiterfassung">DSDMS: Zeiterfassung</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2142,6 +2202,48 @@ const avvTemplates: Record<string, any> = {
     subauftragnehmerHinweis: "Modellanbieter, Hosting-Partner und nachgelagerte Dienste prüfen",
     notizen: "DSFA-Pflicht und KI-VO-Risikoklasse gesondert prüfen",
   },
+  dsdms_avv_standard: {
+    auftragsverarbeiter: "Muster Cloud & Hosting Services GmbH",
+    gegenstand: "SaaS-Bereitstellung, Hosting von Kundendaten und E-Mail-Infrastruktur",
+    vertragsdatum: new Date().toISOString().slice(0, 10),
+    laufzeit: "unbefristet für die Dauer der Leistungserbringung",
+    status: "aktiv",
+    sccs: true,
+    datenarten: "Stammdaten, Kontaktdaten, Kommunikationsinhalte, Metadaten",
+    betroffenePersonen: "Kunden, Beschäftigte, Interessenten",
+    technischeMassnahmen: "AES-Verschlüsselung, MFA für Admins, ISO 27001 Zertifizierung, SOC-2 Reports",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Subprozessor-Änderungen sind 30 Tage vorab anzukündigen.",
+    notizen: "Sehr solider Standard-AVV, Härtung durch Standarddatenschutzklauseln (SCCs).",
+  },
+  dsdms_avv_hosting: {
+    auftragsverarbeiter: "Muster Host & Serverzentrum KG",
+    gegenstand: "Bereitstellung von dedizierter Server-Infrastruktur und RZ-Housing",
+    vertragsdatum: new Date().toISOString().slice(0, 10),
+    laufzeit: "Mindestlaufzeit 12 Monate, danach Verlängerung um 12 Monate",
+    status: "aktiv",
+    sccs: false,
+    datenarten: "Sämtliche auf den gehosteten Systemen verarbeiteten Daten",
+    betroffenePersonen: "Kunden, Partner, Beschäftigte",
+    technischeMassnahmen: "Physische Zutrittskontrolle, redundante USV, Videoüberwachung RZ-Flächen, Notstromdiesel",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Einbindung von Unterauftragnehmern für RZ-Wachschutz und Facility-Betrieb zulässig.",
+    notizen: "Reiner Infrastruktur-AVV. Eigene Datenverschlüsselung (LUKS/dm-crypt) auf Betriebssystemebene einrichten.",
+  },
+  dsdms_avv_support: {
+    auftragsverarbeiter: "Muster IT-Systemhaus & Support GmbH",
+    gegenstand: "Externer Second-Level-Support, Administration und Fernwartung der IT-Infrastruktur",
+    vertragsdatum: new Date().toISOString().slice(0, 10),
+    laufzeit: "unbefristet mit einer Kündigungsfrist von 3 Monaten",
+    status: "aktiv",
+    sccs: false,
+    datenarten: "Systemkonfigurationen, Logdaten, Stichproben von Anwenderdaten bei Tickets",
+    betroffenePersonen: "Beschäftigte (Anwender)",
+    technischeMassnahmen: "VPN-Zugriff geschützt mit 2FA, detailliertes Client-Session-Logging, verschlüsselte Ticketdatenbank",
+    pruefintervall: "jährlich",
+    subauftragnehmerHinweis: "Keine Unterbeauftragung ohne vorherige schriftliche Zustimmung des Auftraggebers.",
+    notizen: "Besonderer Fokus auf restriktive Vergabe von temporären Admin-Rechten und Session-Logging.",
+  },
 };
 
 function AvvForm({ initial, onSave, onCancel }: any) {
@@ -2169,6 +2271,9 @@ function AvvForm({ initial, onSave, onCancel }: any) {
               <SelectItem value="newsletter">Newsletter-Dienstleister</SelectItem>
               <SelectItem value="payroll">Lohnabrechnungsdienstleister</SelectItem>
               <SelectItem value="ki">KI-Dienstleister</SelectItem>
+              <SelectItem value="dsdms_avv_standard">DSDMS: Standard-AVV (mit SCCs)</SelectItem>
+              <SelectItem value="dsdms_avv_hosting">DSDMS: Infrastruktur & Hosting</SelectItem>
+              <SelectItem value="dsdms_avv_support">DSDMS: Externer IT-Support</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -3997,6 +4102,42 @@ const tomTemplates: Record<string, any> = {
     wirksamkeit: "hoch",
     notizen: "Datenschutzkonforme Logspeicherung beachten",
   },
+  dsdms_tom_zutritt: {
+    massnahme: "BSI-konforme Zutrittssicherung (Gebäude & Server)",
+    kategorie: "zutrittskontrolle",
+    beschreibung: "Physische Sicherung von Gebäuden und IT-Infrastrukturen durch strukturierte Zugangszonen, Chipkartensystem und Videoüberwachung.",
+    status: "implementiert",
+    verantwortlicher: "Facility Management / ISB",
+    pruefintervall: "jährlich",
+    schutzziel: "Vertraulichkeit und Verfügbarkeit",
+    nachweis: "Zutrittskontroll-Richtlinie, Schließplan, Chipkarten-Logs, Wartungsbericht Alarmanlage",
+    wirksamkeit: "hoch",
+    notizen: "Orientiert an BSI IT-Grundschutz INF.1 (Gebäudesicherheit).",
+  },
+  dsdms_tom_zugang: {
+    massnahme: "BSI-konforme Zugangskontrolle (MFA & Passwortrichtlinie)",
+    kategorie: "zugangskontrolle",
+    beschreibung: "Erzwingung einer starken Passwortkomplexität (min. 12 Zeichen) kombiniert mit flächendeckendem Einsatz von Multi-Faktor-Authentisierung (MFA) für alle externen Zugriffe (VPN, Cloud).",
+    status: "implementiert",
+    verantwortlicher: "IT-Administration / ISB",
+    pruefintervall: "halbjährlich",
+    schutzziel: "Vertraulichkeit und Integrität",
+    nachweis: "Active Directory GPO-Reports, Azure AD MFA Compliance-Statistik, Schulungsnachweis Beschäftigte",
+    wirksamkeit: "hoch",
+    notizen: "Abstimmung mit BSI ORP.4 (Identitäts- und Berechtigungsmanagement).",
+  },
+  dsdms_tom_weitergabe: {
+    massnahme: "Transport- und Weitergabesicherung (Verschlüsselung)",
+    kategorie: "weitergabe",
+    beschreibung: "Durchgängige Transportverschlüsselung für alle Datenflüsse (TLS 1.3 / HTTPS) und Festplattenvollverschlüsselung (BitLocker / FileVault) für all mobile Endgeräte.",
+    status: "implementiert",
+    verantwortlicher: "IT-Support / Admins",
+    pruefintervall: "quartalsweise",
+    schutzziel: "Vertraulichkeit",
+    nachweis: "MDM-Systemberichte (Compliance State), SSL-Labs Testergebnisse externer Webservices, Richtlinie Mobiles Arbeiten",
+    wirksamkeit: "hoch",
+    notizen: "Harmonisiert mit BSI SYS.2.1 (Client-Sicherheit) und CON.1 (Kryptokonzept).",
+  },
 };
 
 function TomForm({ initial, onSave, onCancel }: any) {
@@ -4023,6 +4164,9 @@ function TomForm({ initial, onSave, onCancel }: any) {
               <SelectItem value="rollen">Rollen- und Berechtigungskonzept</SelectItem>
               <SelectItem value="loeschung">Lösch- und Aufbewahrungskonzept</SelectItem>
               <SelectItem value="logging">Protokollierung sicherheitsrelevanter Zugriffe</SelectItem>
+              <SelectItem value="dsdms_tom_zutritt">DSDMS: BSI Zutrittssicherung</SelectItem>
+              <SelectItem value="dsdms_tom_zugang">DSDMS: BSI Zugangskontrolle</SelectItem>
+              <SelectItem value="dsdms_tom_weitergabe">DSDMS: Transport verschlüsselt</SelectItem>
             </SelectContent>
           </Select>
         </div>
