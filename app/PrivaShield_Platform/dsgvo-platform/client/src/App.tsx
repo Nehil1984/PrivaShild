@@ -19,7 +19,15 @@ import { apiRequest, setApiCsrfToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { allVvtTemplates } from "@/lib/vvt-templates";
-import { allTomTemplates } from "@/lib/tom-templates";
+import { getAllTomTemplates } from "@/lib/tom-templates";
+import {
+  getRechtsgrundlageLabel,
+  getDsrArtLabel,
+  getTomKategorieLabel,
+  translateVvtTemplate,
+  translateTomTemplate,
+  translateText
+} from "@/lib/translation-helpers";
 import { useState, createContext, useContext, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1577,153 +1585,164 @@ function getVvtRiskBadgeClass(level: string) {
   if (level === "mittel") return "border-yellow-500/40 text-yellow-600";
   return "border-emerald-500/40 text-emerald-600";
 }
-const vvtTemplates: Record<string, any> = {
-  none: null,
-  personalverwaltung: {
-    bezeichnung: "Personalverwaltung",
-    zweck: "Verwaltung von Beschäftigtenverhältnissen einschließlich Lohnabrechnung, Zeiterfassung und Personalentwicklung.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
-    verantwortlicher: "Personalabteilung",
-    loeschfrist: "10 Jahre nach Ausscheiden, soweit gesetzlich erforderlich",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Stammdaten, Vertragsdaten, Abrechnungsdaten, Qualifikationen",
-    betroffenePersonen: "Beschäftigte, Bewerber, ehemalige Beschäftigte",
-    empfaenger: "Steuerberater, Sozialversicherungsträger, Behörden",
-    tomHinweis: "Zugriffsbeschränkung nach Rollen, verschlüsselte Ablage, Berechtigungskonzept",
-  },
-  bewerbermanagement: {
-    bezeichnung: "Bewerbermanagement",
-    zweck: "Durchführung des Bewerbungsprozesses und Auswahl geeigneter Kandidaten.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
-    verantwortlicher: "HR / Recruiting",
-    loeschfrist: "6 Monate nach Abschluss des Bewerbungsverfahrens",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Kontaktdaten, Lebenslauf, Zeugnisse, Interviewnotizen",
-    betroffenePersonen: "Bewerber",
-    empfaenger: "Fachabteilungen, Recruiting-Dienstleister",
-    tomHinweis: "Need-to-know-Zugriff, geschütztes Bewerberportal, Löschkonzept",
-  },
-  kundenverwaltung: {
-    bezeichnung: "Kundenverwaltung / CRM",
-    zweck: "Verwaltung von Kundenbeziehungen, Verträgen, Kommunikation und Vertriebschancen.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
-    verantwortlicher: "Vertrieb / Kundenservice",
-    loeschfrist: "3 Jahre nach Ende der Geschäftsbeziehung, steuerrechtliche Daten länger",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Stammdaten, Kontaktdaten, Vertragsdaten, Kommunikationsdaten",
-    betroffenePersonen: "Kunden, Ansprechpartner bei Kunden",
-    empfaenger: "Vertrieb, Support, Auftragsverarbeiter",
-    tomHinweis: "CRM-Berechtigungskonzept, Protokollierung, Verschlüsselung",
-  },
-  newsletter: {
-    bezeichnung: "Newsletter-Versand",
-    zweck: "Versand von Informationen und Marketinginhalten an Interessenten und Kunden.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. a (Einwilligung)",
-    verantwortlicher: "Marketing",
-    loeschfrist: "Bis Widerruf der Einwilligung bzw. 3 Jahre nach letztem Kontakt",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: true,
-    datenkategorien: "E-Mail-Adresse, Name, Nutzungsdaten, Einwilligungsnachweise",
-    betroffenePersonen: "Interessenten, Kunden",
-    empfaenger: "Newsletter-Dienstleister",
-    tomHinweis: "Double-Opt-In, Abmeldemechanismus, Anbieterprüfung",
-  },
-  video: {
-    bezeichnung: "Videoüberwachung",
-    zweck: "Wahrnehmung des Hausrechts, Schutz von Eigentum und Aufklärung von Vorfällen.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
-    verantwortlicher: "Geschäftsführung / Facility Management",
-    loeschfrist: "72 Stunden, sofern kein Vorfall vorliegt",
-    status: "aktiv",
-    dsfa: true,
-    drittlandtransfer: false,
-    datenkategorien: "Bilddaten, Zeitstempel, Standortdaten",
-    betroffenePersonen: "Besucher, Beschäftigte, Lieferanten",
-    empfaenger: "Sicherheitsdienst, Strafverfolgungsbehörden bei Vorfällen",
-    tomHinweis: "Beschilderung, Zugriff nur für Berechtigte, kurze Speicherfristen",
-  },
-  ki: {
-    bezeichnung: "Einsatz von KI-Tools im Unternehmen",
-    zweck: "Unterstützung von Analyse-, Text-, Automatisierungs- und Entscheidungsprozessen durch KI-Anwendungen.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
-    verantwortlicher: "Fachbereich mit KI-Einsatz / Datenschutzkoordination",
-    loeschfrist: "Gemäß Löschkonzept des jeweiligen Einsatzszenarios",
-    status: "aktiv",
-    dsfa: true,
-    drittlandtransfer: true,
-    datenkategorien: "Prompt-Inhalte, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Kontextdaten",
-    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige betroffene Personen je Use Case",
-    empfaenger: "KI-Anbieter, IT-Dienstleister, interne Fachbereiche",
-    tomHinweis: "Richtlinie für KI-Nutzung, Anbieterauswahl, Minimierung personenbezogener Daten, Transferbewertung",
-  },
-  dsdms_cloud_office: {
-    bezeichnung: "DSDMS: Cloud-Anwendungen & Office-Suite",
-    zweck: "Kollaboration, E-Mail-Kommunikation und Dateiverarbeitung im Cloud-Umfeld.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
-    verantwortlicher: "IT-Leitung / DS-Team",
-    loeschfrist: "Gemäß Löschkonzept der verknüpften Systemklassen (E-Mail/Dateien)",
-    status: "aktiv",
-    dsfa: true,
-    drittlandtransfer: true,
-    datenkategorien: "Kommunikationsdaten, Benutzerdaten, Inhaltsdaten, Metadaten",
-    betroffenePersonen: "Beschäftigte, Kunden, Lieferanten, Partner",
-    empfaenger: "IT-Administration, Cloud-Service-Provider (AV)",
-    tomHinweis: "Zwei-Faktor-Authentifizierung (2FA), TLS-Transportverschlüsselung, Audit-Logging",
-  },
-  dsdms_it_support: {
-    bezeichnung: "DSDMS: IT-Support extern",
-    zweck: "Wartung, Fernwartung und technischer Support der IT-Systeme durch externe Dienstleister.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
-    verantwortlicher: "IT-Leitung",
-    loeschfrist: "Ticketdaten 3 Jahre nach Abschluss, Sessions-Protokolle 1 Jahr",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Stammdaten, Kontaktdaten, Logindaten, System-Metadaten",
-    betroffenePersonen: "Beschäftigte, Admins",
-    empfaenger: "Technischer Support-Dienstleister (AVV)",
-    tomHinweis: "Verschlüsselte VPN-Fernwartung, Freigabe-Pflicht, detailliertes Session-Logging",
-  },
-  dsdms_zutritt: {
-    bezeichnung: "DSDMS: Zutrittskontrollsystem",
-    zweck: "Sicherung des Objektschutzes, Zutrittskontrolle zu Büro- und Serverräumen.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
-    verantwortlicher: "Facility Management / IT",
-    loeschfrist: "Zutrittsprotokolle werden nach spätestens 3 Monaten automatisch gelöscht",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Chipkarten-ID, Zeitstempel (Kommen/Gehen), Raumnummer",
-    betroffenePersonen: "Beschäftigte, Dienstleister, Besucher",
-    empfaenger: "Sicherheitsdienstleister (AVV)",
-    tomHinweis: "Physischer und logischer Zugriffsschutz des Steuerungsrechners, Rollenkonzept",
-  },
-  dsdms_zeiterfassung: {
-    bezeichnung: "DSDMS: Zeiterfassung",
-    zweck: "Dokumentation von Arbeits-, Pausen- und Urlaubszeiten zur Einhaltung des Arbeitszeitgesetzes.",
-    rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag) & § 26 BDSG",
-    verantwortlicher: "HR / Personalabteilung",
-    loeschfrist: "3 Jahre nach Ablauf des Kalenderjahres, steuerlich relevante Daten 10 Jahre",
-    status: "aktiv",
-    dsfa: false,
-    drittlandtransfer: false,
-    datenkategorien: "Stammdaten, Arbeitszeitdaten, Abwesenheiten (Krankheit/Urlaub)",
-    betroffenePersonen: "Beschäftigte",
-    empfaenger: "Lohnbuchhaltung, Zeiterfassungssoftware-Anbieter (AVV)",
-    tomHinweis: "Rollen- und Berechtigungskonzept, verschlüsselte Datenbankverbindung",
-  },
-  ...allVvtTemplates
+const getVvtTemplates = (lang: string): Record<string, any> => {
+  const baseVvtTemplates: Record<string, any> = {
+    none: null,
+    personalverwaltung: {
+      bezeichnung: lang === "en" ? "HR Management" : "Personalverwaltung",
+      zweck: lang === "en" ? "Administration of employment relationships including payroll, time tracking and development." : "Verwaltung von Beschäftigtenverhältnissen einschließlich Lohnabrechnung, Zeiterfassung und Personalentwicklung.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+      verantwortlicher: lang === "en" ? "HR Department" : "Personalabteilung",
+      loeschfrist: lang === "en" ? "10 years after termination, as far as legally required" : "10 Jahre nach Ausscheiden, soweit gesetzlich erforderlich",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Master data, contract data, payroll data, qualifications" : "Stammdaten, Vertragsdaten, Abrechnungsdaten, Qualifikationen",
+      betroffenePersonen: lang === "en" ? "Employees, applicants, former employees" : "Beschäftigte, Bewerber, ehemalige Beschäftigte",
+      empfaenger: lang === "en" ? "Tax advisor, social security agencies, authorities" : "Steuerberater, Sozialversicherungsträger, Behörden",
+      tomHinweis: lang === "en" ? "Access restriction by role, encrypted storage, authorization concept" : "Zugriffsbeschränkung nach Rollen, verschlüsselte Ablage, Berechtigungskonzept",
+    },
+    bewerbermanagement: {
+      bezeichnung: lang === "en" ? "Applicant Management" : "Bewerbermanagement",
+      zweck: lang === "en" ? "Conducting the application process and selecting suitable candidates." : "Durchführung des Bewerbungsprozesses und Auswahl geeigneter Kandidaten.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+      verantwortlicher: "HR / Recruiting",
+      loeschfrist: lang === "en" ? "6 months after completion of the application process" : "6 Monate nach Abschluss des Bewerbungsverfahrens",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Contact details, CV, certificates, interview notes" : "Kontaktdaten, Lebenslauf, Zeugnisse, Interviewnotizen",
+      betroffenePersonen: lang === "en" ? "Applicants" : "Bewerber",
+      empfaenger: lang === "en" ? "Departments, recruiting service providers" : "Fachabteilungen, Recruiting-Dienstleister",
+      tomHinweis: lang === "en" ? "Need-to-know access, secure applicant portal, deletion concept" : "Need-to-know-Zugriff, geschütztes Bewerberportal, Löschkonzept",
+    },
+    kundenverwaltung: {
+      bezeichnung: lang === "en" ? "Customer Management / CRM" : "Kundenverwaltung / CRM",
+      zweck: lang === "en" ? "Administration of customer relationships, contracts, communication and sales opportunities." : "Verwaltung von Kundenbeziehungen, Verträgen, Kommunikation und Vertriebschancen.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag)",
+      verantwortlicher: lang === "en" ? "Sales / Customer Service" : "Vertrieb / Kundenservice",
+      loeschfrist: lang === "en" ? "3 years after end of business relationship, tax data longer" : "3 Jahre nach Ende der Geschäftsbeziehung, steuerrechtliche Daten länger",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Master data, contact details, contract data, communication logs" : "Stammdaten, Kontaktdaten, Vertragsdaten, Kommunikationsdaten",
+      betroffenePersonen: lang === "en" ? "Customers, contact persons at customers" : "Kunden, Ansprechpartner bei Kunden",
+      empfaenger: lang === "en" ? "Sales, Support, processors" : "Vertrieb, Support, Auftragsverarbeiter",
+      tomHinweis: lang === "en" ? "CRM authorization concept, logging, encryption" : "CRM-Berechtigungskonzept, Protokollierung, Verschlüsselung",
+    },
+    newsletter: {
+      bezeichnung: lang === "en" ? "Newsletter Distribution" : "Newsletter-Versand",
+      zweck: lang === "en" ? "Sending information and marketing content to prospects and customers." : "Versand von Informationen und Marketinginhalten an Interessenten und Kunden.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. a (Einwilligung)",
+      verantwortlicher: "Marketing",
+      loeschfrist: lang === "en" ? "Until withdrawal of consent or 3 years after last contact" : "Bis Widerruf der Einwilligung bzw. 3 Jahre nach letztem Kontakt",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: true,
+      datenkategorien: lang === "en" ? "E-mail address, name, usage data, consent records" : "E-Mail-Adresse, Name, Nutzungsdaten, Einwilligungsnachweise",
+      betroffenePersonen: lang === "en" ? "Prospects, customers" : "Interessenten, Kunden",
+      empfaenger: lang === "en" ? "Newsletter service provider" : "Newsletter-Dienstleister",
+      tomHinweis: lang === "en" ? "Double-Opt-In, unsubscribe mechanism, provider check" : "Double-Opt-In, Abmeldemechanismus, Anbieterprüfung",
+    },
+    video: {
+      bezeichnung: lang === "en" ? "Video Surveillance" : "Videoüberwachung",
+      zweck: lang === "en" ? "Exercise of domiciliary rights, protection of property and investigation of incidents." : "Wahrnehmung des Hausrechts, Schutz von Eigentum und Aufklärung von Vorfällen.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+      verantwortlicher: lang === "en" ? "Management / Facility Management" : "Geschäftsführung / Facility Management",
+      loeschfrist: lang === "en" ? "72 hours, unless an incident has occurred" : "72 Stunden, sofern kein Vorfall vorliegt",
+      status: "aktiv",
+      dsfa: true,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Image data, timestamps, location reference" : "Bilddaten, Zeitstempel, Standortdaten",
+      betroffenePersonen: lang === "en" ? "Visitors, employees, suppliers" : "Besucher, Beschäftigte, Lieferanten",
+      empfaenger: lang === "en" ? "Security service, law enforcement agencies in case of incidents" : "Sicherheitsdienst, Strafverfolgungsbehörden bei Vorfällen",
+      tomHinweis: lang === "en" ? "Signage, access only for authorized persons, short retention periods" : "Beschilderung, Zugriff nur für Berechtigte, kurze Speicherfristen",
+    },
+    ki: {
+      bezeichnung: lang === "en" ? "Use of AI Tools" : "Einsatz von KI-Tools im Unternehmen",
+      zweck: lang === "en" ? "Supporting analysis, text, automation and decision processes with AI applications." : "Unterstützung von Analyse-, Text-, Automatisierungs- und Entscheidungsprozessen durch KI-Anwendungen.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+      verantwortlicher: lang === "en" ? "Department with AI usage / Data Protection Coordination" : "Fachbereich mit KI-Einsatz / Datenschutzkoordination",
+      loeschfrist: lang === "en" ? "According to retention policy of the respective scenario" : "Gemäß Löschkonzept des jeweiligen Einsatzszenarios",
+      status: "aktiv",
+      dsfa: true,
+      drittlandtransfer: true,
+      datenkategorien: lang === "en" ? "Prompt content, content data, usage data, metadata, context data" : "Prompt-Inhalte, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Kontextdaten",
+      betroffenePersonen: lang === "en" ? "Employees, customers, prospects, other data subjects per use case" : "Beschäftigte, Kunden, Interessenten, sonstige betroffene Personen je Use Case",
+      empfaenger: lang === "en" ? "AI provider, IT service providers, internal departments" : "KI-Anbieter, IT-Dienstleister, interne Fachbereiche",
+      tomHinweis: lang === "en" ? "AI usage policy, provider selection, minimization of personal data" : "Richtlinie für KI-Nutzung, Anbieterauswahl, Minimierung personenbezogener Daten, Transferbewertung",
+    },
+    dsdms_cloud_office: {
+      bezeichnung: lang === "en" ? "DSDMS: Cloud Applications & Office Suite" : "DSDMS: Cloud-Anwendungen & Office-Suite",
+      zweck: lang === "en" ? "Collaboration, e-mail communication and file processing in the cloud environment." : "Kollaboration, E-Mail-Kommunikation und Dateiverarbeitung im Cloud-Umfeld.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+      verantwortlicher: lang === "en" ? "IT Management / Privacy Team" : "IT-Leitung / DS-Team",
+      loeschfrist: lang === "en" ? "According to deletion policy of connected system classes (E-mail/Files)" : "Gemäß Löschkonzept der verknüpften Systemklassen (E-Mail/Dateien)",
+      status: "aktiv",
+      dsfa: true,
+      drittlandtransfer: true,
+      datenkategorien: lang === "en" ? "Communication data, user data, content data, metadata" : "Kommunikationsdaten, Benutzerdaten, Inhaltsdaten, Metadaten",
+      betroffenePersonen: lang === "en" ? "Employees, customers, suppliers, partners" : "Beschäftigte, Kunden, Lieferanten, Partner",
+      empfaenger: lang === "en" ? "IT Administration, cloud service providers (AV)" : "IT-Administration, Cloud-Service-Provider (AV)",
+      tomHinweis: lang === "en" ? "Two-factor authentication (2FA), TLS transport encryption, audit logging" : "Zwei-Faktor-Authentifizierung (2FA), TLS-Transportverschlüsselung, Audit-Logging",
+    },
+    dsdms_it_support: {
+      bezeichnung: lang === "en" ? "DSDMS: External IT Support" : "DSDMS: IT-Support extern",
+      zweck: lang === "en" ? "Maintenance, remote maintenance and technical support of IT systems by external providers." : "Wartung, Fernwartung und technischer Support der IT-Systeme durch externe Dienstleister.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+      verantwortlicher: lang === "en" ? "IT Management" : "IT-Leitung",
+      loeschfrist: lang === "en" ? "Ticket data 3 years after closure, session logs 1 year" : "Ticketdaten 3 Jahre nach Abschluss, Sessions-Protokolle 1 Jahr",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Master data, contact details, login details, system metadata" : "Stammdaten, Kontaktdaten, Logindaten, System-Metadaten",
+      betroffenePersonen: lang === "en" ? "Employees, admins" : "Beschäftigte, Admins",
+      empfaenger: lang === "en" ? "Technical support provider (AVV)" : "Technischer Support-Dienstleister (AVV)",
+      tomHinweis: lang === "en" ? "Encrypted VPN remote access, approval requirement, session logging" : "Verschlüsselte VPN-Fernwartung, Freigabe-Pflicht, detailliertes Session-Logging",
+    },
+    dsdms_zutritt: {
+      bezeichnung: lang === "en" ? "DSDMS: Access Control System" : "DSDMS: Zutrittskontrollsystem",
+      zweck: lang === "en" ? "Securing property protection, access control to office and server rooms." : "Sicherung des Objektschutzes, Zutrittskontrolle zu Büro- und Serverräumen.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. f (berechtigtes Interesse)",
+      verantwortlicher: lang === "en" ? "Facility Management / IT" : "Facility Management / IT",
+      loeschfrist: lang === "en" ? "Access logs are automatically deleted after 3 months" : "Zutrittsprotokolle werden nach spätestens 3 Monaten automatisch gelöscht",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Card ID, timestamp (in/out), room number" : "Chipkarten-ID, Zeitstempel (Kommen/Gehen), Raumnummer",
+      betroffenePersonen: lang === "en" ? "Employees, service providers, visitors" : "Beschäftigte, Dienstleister, Besucher",
+      empfaenger: lang === "en" ? "Security service provider (AVV)" : "Sicherheitsdienstleister (AVV)",
+      tomHinweis: lang === "en" ? "Physical and logical access protection of control PC, role concept" : "Physischer und logischer Zugriffsschutz des Steuerungsrechners, Rollenkonzept",
+    },
+    dsdms_zeiterfassung: {
+      bezeichnung: lang === "en" ? "DSDMS: Time Tracking" : "DSDMS: Zeiterfassung",
+      zweck: lang === "en" ? "Documentation of work, break and vacation times for compliance with the Working Hours Act." : "Dokumentation von Arbeits-, Pausen- und Urlaubszeiten zur Einhaltung des Arbeitszeitgesetzes.",
+      rechtsgrundlage: "Art. 6 Abs. 1 lit. b (Vertrag) & § 26 BDSG",
+      verantwortlicher: lang === "en" ? "HR / Personnel Department" : "HR / Personalabteilung",
+      loeschfrist: lang === "en" ? "3 years after end of calendar year, tax-relevant data 10 years" : "3 Jahre nach Ablauf des Kalenderjahres, steuerlich relevante Daten 10 Jahre",
+      status: "aktiv",
+      dsfa: false,
+      drittlandtransfer: false,
+      datenkategorien: lang === "en" ? "Master data, working hours data, absences (illness/vacation)" : "Stammdaten, Arbeitszeitdaten, Abwesenheiten (Krankheit/Urlaub)",
+      betroffenePersonen: lang === "en" ? "Employees" : "Beschäftigte",
+      empfaenger: lang === "en" ? "Payroll department, time tracking software provider (AVV)" : "Lohnbuchhaltung, Zeiterfassungssoftware-Anbieter (AVV)",
+      tomHinweis: lang === "en" ? "Role and authorization concept, encrypted database connection" : "Rollen- und Berechtigungskonzept, verschlüsselte Datenbankverbindung",
+    }
+  };
+
+  const translatedLibrary: Record<string, any> = {};
+  for (const [key, val] of Object.entries(allVvtTemplates)) {
+    translatedLibrary[key] = translateVvtTemplate(val, lang);
+  }
+
+  return {
+    ...baseVvtTemplates,
+    ...translatedLibrary
+  };
 };
 
 function VvtForm({ initial, onSave, onCancel }: any) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const { data: toms = [] } = useModuleData("tom");
   const [searchTerm, setSearchTerm] = useState("");
@@ -1735,7 +1754,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
-    const template = vvtTemplates[value];
+    const template = getVvtTemplates(lang)[value];
     if (!template) return;
     setForm((p: any) => {
       const next = { ...p, ...template };
@@ -1767,18 +1786,19 @@ function VvtForm({ initial, onSave, onCancel }: any) {
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent className="max-h-80">
               <SelectItem value="none">{t("noTemplate")}</SelectItem>
-              <SelectItem value="personalverwaltung">Personalverwaltung</SelectItem>
-              <SelectItem value="bewerbermanagement">Bewerbermanagement</SelectItem>
-              <SelectItem value="kundenverwaltung">Kundenverwaltung / CRM</SelectItem>
-              <SelectItem value="newsletter">Newsletter-Versand</SelectItem>
-              <SelectItem value="video">Videoüberwachung</SelectItem>
-              <SelectItem value="ki">Einsatz von KI-Tools</SelectItem>
+              <SelectItem value="personalverwaltung">{lang === "en" ? "HR Management" : "Personalverwaltung"}</SelectItem>
+              <SelectItem value="bewerbermanagement">{lang === "en" ? "Applicant Management" : "Bewerbermanagement"}</SelectItem>
+              <SelectItem value="kundenverwaltung">{lang === "en" ? "Customer Management / CRM" : "Kundenverwaltung / CRM"}</SelectItem>
+              <SelectItem value="newsletter">{lang === "en" ? "Newsletter Distribution" : "Newsletter-Versand"}</SelectItem>
+              <SelectItem value="video">{lang === "en" ? "Video Surveillance" : "Videoüberwachung"}</SelectItem>
+              <SelectItem value="ki">{lang === "en" ? "Use of AI Tools" : "Einsatz von KI-Tools"}</SelectItem>
               <SelectItem value="dsdms_cloud_office">DSDMS: Cloud & Office Suite</SelectItem>
-              <SelectItem value="dsdms_it_support">DSDMS: IT-Support extern</SelectItem>
-              <SelectItem value="dsdms_zutritt">DSDMS: Zutrittskontrollsystem</SelectItem>
-              <SelectItem value="dsdms_zeiterfassung">DSDMS: Zeiterfassung</SelectItem>
+              <SelectItem value="dsdms_it_support">{lang === "en" ? "DSDMS: External IT Support" : "DSDMS: IT-Support extern"}</SelectItem>
+              <SelectItem value="dsdms_zutritt">{lang === "en" ? "DSDMS: Access Control System" : "DSDMS: Zutrittskontrollsystem"}</SelectItem>
+              <SelectItem value="dsdms_zeiterfassung">{lang === "en" ? "DSDMS: Time Tracking" : "DSDMS: Zeiterfassung"}</SelectItem>
               <Separator />
               {Object.entries(allVvtTemplates)
+                .map(([key, item]) => [key, translateVvtTemplate(item, lang)] as const)
                 .sort((a, b) => a[1].bezeichnung.localeCompare(b[1].bezeichnung))
                 .map(([key, t]) => (
                   <SelectItem key={key} value={key}>
@@ -1795,7 +1815,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
           <Label className="text-xs">{t("vvtLegalBasis")}</Label>
           <Select value={form.rechtsgrundlage} onValueChange={v => set("rechtsgrundlage", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("choose")} /></SelectTrigger>
-            <SelectContent>{rechtsgrundlagen.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
+            <SelectContent>{rechtsgrundlagen.map(r => <SelectItem key={r} value={r} className="text-xs">{getRechtsgrundlageLabel(r, lang)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1"><Label className="text-xs">{t("vvtStatusLabel")}</Label>
@@ -2355,125 +2375,125 @@ function VvtPage() {
 }
 
 // ─── AVV PAGE ──────────────────────────────────────────────────────────────
-const avvTemplates: Record<string, any> = {
+const getAvvTemplates = (lang: string): Record<string, any> => ({
   none: null,
   microsoft365: {
     auftragsverarbeiter: "Microsoft 365",
-    gegenstand: "Bereitstellung von E-Mail, Kollaboration, Dateiablage und Office-Diensten",
-    laufzeit: "unbefristet für die Dauer der Nutzung",
+    gegenstand: lang === "en" ? "Provision of e-mail, collaboration, file storage and office services" : "Bereitstellung von E-Mail, Kollaboration, Dateiablage und Office-Diensten",
+    laufzeit: lang === "en" ? "indefinite for the duration of use" : "unbefristet für die Dauer der Nutzung",
     status: "aktiv",
     sccs: true,
-    datenarten: "Benutzerdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
-    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige Kommunikationspartner",
-    technischeMassnahmen: "MFA, Rollen- und Berechtigungskonzept, Verschlüsselung, Logging",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Cloud-Infrastruktur und verbundene Microsoft-Unterauftragnehmer prüfen",
-    notizen: "Transfer Impact Assessment und Drittlandtransfer prüfen",
+    datenarten: lang === "en" ? "User data, communication data, content data, metadata" : "Benutzerdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
+    betroffenePersonen: lang === "en" ? "Employees, customers, prospects, other communication partners" : "Beschäftigte, Kunden, Interessenten, sonstige Kommunikationspartner",
+    technischeMassnahmen: lang === "en" ? "MFA, role and authorization concept, encryption, logging" : "MFA, Rollen- und Berechtigungskonzept, Verschlüsselung, Logging",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Check cloud infrastructure and connected Microsoft subprocessors" : "Cloud-Infrastruktur und verbundene Microsoft-Unterauftragnehmer prüfen",
+    notizen: lang === "en" ? "Check Transfer Impact Assessment and third country transfer" : "Transfer Impact Assessment und Drittlandtransfer prüfen",
   },
   hosting: {
-    auftragsverarbeiter: "Hosting-Anbieter",
-    gegenstand: "Hosting von Webseiten, Anwendungen und Datenbanken",
-    laufzeit: "unbefristet für die Dauer des Hostingvertrags",
+    auftragsverarbeiter: lang === "en" ? "Hosting Provider" : "Hosting-Anbieter",
+    gegenstand: lang === "en" ? "Hosting of websites, applications and databases" : "Hosting von Webseiten, Anwendungen und Datenbanken",
+    laufzeit: lang === "en" ? "indefinite for the duration of the hosting contract" : "unbefristet für die Dauer des Hostingvertrags",
     status: "aktiv",
     sccs: false,
-    datenarten: "Server-Logs, Nutzungsdaten, Kundendaten, Inhaltsdaten",
-    betroffenePersonen: "Webseitenbesucher, Kunden, Beschäftigte",
-    technischeMassnahmen: "Zugriffsschutz, Backup, Netzwerksegmentierung, Härtung",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Rechenzentrum und Infrastrukturpartner prüfen",
-    notizen: "Standort des Hostings und technische TOMs dokumentieren",
+    datenarten: lang === "en" ? "Server logs, usage data, customer data, content data" : "Server-Logs, Nutzungsdaten, Kundendaten, Inhaltsdaten",
+    betroffenePersonen: lang === "en" ? "Website visitors, customers, employees" : "Webseitenbesucher, Kunden, Beschäftigte",
+    technischeMassnahmen: lang === "en" ? "Access protection, backup, network segmentation, hardening" : "Zugriffsschutz, Backup, Netzwerksegmentierung, Härtung",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Check data center and infrastructure partners" : "Rechenzentrum und Infrastrukturpartner prüfen",
+    notizen: lang === "en" ? "Document location of hosting and technical TOMs" : "Standort des Hostings und technische TOMs dokumentieren",
   },
   newsletter: {
-    auftragsverarbeiter: "Newsletter-Dienstleister",
-    gegenstand: "Versand und Verwaltung von Newslettern und Einwilligungen",
-    laufzeit: "für die Dauer der Nutzung",
+    auftragsverarbeiter: lang === "en" ? "Newsletter Service Provider" : "Newsletter-Dienstleister",
+    gegenstand: lang === "en" ? "Distribution and management of newsletters and consents" : "Versand und Verwaltung von Newslettern und Einwilligungen",
+    laufzeit: lang === "en" ? "for the duration of use" : "für die Dauer der Nutzung",
     status: "aktiv",
     sccs: true,
-    datenarten: "E-Mail-Adresse, Name, Nutzungs- und Öffnungsdaten, Einwilligungsdaten",
-    betroffenePersonen: "Interessenten, Kunden, Newsletter-Abonnenten",
-    technischeMassnahmen: "Double-Opt-In, Rollenrechte, Export- und Löschkonzept",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Versandinfrastruktur und Tracking-Komponenten prüfen",
-    notizen: "Tracking und Einwilligungslage gesondert bewerten",
+    datenarten: lang === "en" ? "E-mail address, name, usage and open rates, consent data" : "E-Mail-Adresse, Name, Nutzungs- und Öffnungsdaten, Einwilligungsdaten",
+    betroffenePersonen: lang === "en" ? "Prospects, customers, newsletter subscribers" : "Interessenten, Kunden, Newsletter-Abonnenten",
+    technischeMassnahmen: lang === "en" ? "Double-Opt-In, role permissions, export and deletion concept" : "Double-Opt-In, Rollenrechte, Export- und Löschkonzept",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Check mail infrastructure and tracking components" : "Versandinfrastruktur und Tracking-Komponenten prüfen",
+    notizen: lang === "en" ? "Evaluate tracking and consent situation separately" : "Tracking und Einwilligungslage gesondert bewerten",
   },
   payroll: {
-    auftragsverarbeiter: "Lohnabrechnungsdienstleister",
-    gegenstand: "Durchführung der Lohn- und Gehaltsabrechnung",
-    laufzeit: "für die Dauer des Dienstleistungsvertrags",
+    auftragsverarbeiter: lang === "en" ? "Payroll Service Provider" : "Lohnabrechnungsdienstleister",
+    gegenstand: lang === "en" ? "Execution of payroll accounting" : "Durchführung der Lohn- und Gehaltsabrechnung",
+    laufzeit: lang === "en" ? "for the duration of the service contract" : "für die Dauer des Dienstleistungsvertrags",
     status: "aktiv",
     sccs: false,
-    datenarten: "Beschäftigtendaten, Steuerdaten, Sozialversicherungsdaten, Bankdaten",
-    betroffenePersonen: "Beschäftigte",
-    technischeMassnahmen: "Vertraulichkeitskonzept, Zugriffsbeschränkung, verschlüsselte Übertragung",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Softwareanbieter und Rechenzentrumsbetrieb prüfen",
-    notizen: "Besonders schützensame Daten im Beschäftigtenkontext beachten",
+    datenarten: lang === "en" ? "Employee data, tax data, social security data, bank details" : "Beschäftigtendaten, Steuerdaten, Sozialversicherungsdaten, Bankdaten",
+    betroffenePersonen: lang === "en" ? "Employees" : "Beschäftigte",
+    technischeMassnahmen: lang === "en" ? "Confidentiality concept, access restriction, encrypted transmission" : "Vertraulichkeitskonzept, Zugriffsbeschränkung, verschlüsselte Übertragung",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Check software provider and data center operations" : "Softwareanbieter und Rechenzentrumsbetrieb prüfen",
+    notizen: lang === "en" ? "Note highly sensitive data in the employee context" : "Besonders schützensame Daten im Beschäftigtenkontext beachten",
   },
   ki: {
-    auftragsverarbeiter: "KI-Dienstleister",
-    gegenstand: "Verarbeitung von Prompts, Eingaben und Ausgaben im Rahmen KI-gestützter Prozesse",
-    laufzeit: "für die Dauer der Nutzung des KI-Dienstes",
+    auftragsverarbeiter: lang === "en" ? "AI Service Provider" : "KI-Dienstleister",
+    gegenstand: lang === "en" ? "Processing of prompts, inputs and outputs within AI-supported processes" : "Verarbeitung von Prompts, Eingaben und Ausgaben im Rahmen KI-gestützter Prozesse",
+    laufzeit: lang === "en" ? "for the duration of using the AI service" : "für die Dauer der Nutzung des KI-Dienstes",
     status: "aktiv",
     sccs: true,
-    datenarten: "Prompt-Daten, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Daten",
-    betroffenePersonen: "Beschäftigte, Kunden, Interessenten, sonstige Betroffene je Use Case",
-    technischeMassnahmen: "Datenminimierung, Rollen- und Berechtigungskonzept, Anbieterprüfung, Protokollierung",
-    pruefintervall: "halbjährlich",
-    subauftragnehmerHinweis: "Modellanbieter, Hosting-Partner und nachgelagerte Dienste prüfen",
-    notizen: "DSFA-Pflicht und KI-VO-Risikoklasse gesondert prüfen",
+    datenarten: lang === "en" ? "Prompt data, content data, usage data, metadata, contextual data" : "Prompt-Daten, Inhaltsdaten, Nutzungsdaten, Metadaten, ggf. personenbezogene Daten",
+    betroffenePersonen: lang === "en" ? "Employees, customers, prospects, other data subjects per use case" : "Beschäftigte, Kunden, Interessenten, sonstige Betroffene je Use Case",
+    technischeMassnahmen: lang === "en" ? "Data minimization, role and authorization concept, provider check, logging" : "Datenminimierung, Rollen- und Berechtigungskonzept, Anbieterprüfung, Protokollierung",
+    pruefintervall: lang === "en" ? "half-yearly" : "halbjährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Check model providers, hosting partners and downstream services" : "Modellanbieter, Hosting-Partner und nachgelagerte Dienste prüfen",
+    notizen: lang === "en" ? "Check DPIA obligation and AI Act risk class separately" : "DSFA-Pflicht und KI-VO-Risikoklasse gesondert prüfen",
   },
   dsdms_avv_standard: {
-    auftragsverarbeiter: "Muster Cloud & Hosting Services GmbH",
-    gegenstand: "SaaS-Bereitstellung, Hosting von Kundendaten und E-Mail-Infrastruktur",
+    auftragsverarbeiter: lang === "en" ? "Sample Cloud & Hosting Services GmbH" : "Muster Cloud & Hosting Services GmbH",
+    gegenstand: lang === "en" ? "SaaS provision, hosting of customer data and email infrastructure" : "SaaS-Bereitstellung, Hosting von Kundendaten und E-Mail-Infrastruktur",
     vertragsdatum: new Date().toISOString().slice(0, 10),
-    laufzeit: "unbefristet für die Dauer der Leistungserbringung",
+    laufzeit: lang === "en" ? "indefinite for the duration of the service provision" : "unbefristet für die Dauer der Leistungserbringung",
     status: "aktiv",
     sccs: true,
-    datenarten: "Stammdaten, Kontaktdaten, Kommunikationsinhalte, Metadaten",
-    betroffenePersonen: "Kunden, Beschäftigte, Interessenten",
-    technischeMassnahmen: "AES-Verschlüsselung, MFA für Admins, ISO 27001 Zertifizierung, SOC-2 Reports",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Subprozessor-Änderungen sind 30 Tage vorab anzukündigen.",
-    notizen: "Sehr solider Standard-AVV, Härtung durch Standarddatenschutzklauseln (SCCs).",
+    datenarten: lang === "en" ? "Master data, contact details, communication content, metadata" : "Stammdaten, Kontaktdaten, Kommunikationsinhalte, Metadaten",
+    betroffenePersonen: lang === "en" ? "Customers, employees, prospects" : "Kunden, Beschäftigte, Interessenten",
+    technischeMassnahmen: lang === "en" ? "AES encryption, MFA for admins, ISO 27001 certification, SOC-2 reports" : "AES-Verschlüsselung, MFA für Admins, ISO 27001 Zertifizierung, SOC-2 Reports",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Changes to subprocessors must be announced 30 days in advance." : "Subprozessor-Änderungen sind 30 Tage vorab anzukündigen.",
+    notizen: lang === "en" ? "Very solid standard DPA, hardened by standard contractual clauses (SCCs)." : "Sehr solider Standard-AVV, Härtung durch Standarddatenschutzklauseln (SCCs).",
   },
   dsdms_avv_hosting: {
-    auftragsverarbeiter: "Muster Host & Serverzentrum KG",
-    gegenstand: "Bereitstellung von dedizierter Server-Infrastruktur und RZ-Housing",
+    auftragsverarbeiter: lang === "en" ? "Sample Host & Server Center KG" : "Muster Host & Serverzentrum KG",
+    gegenstand: lang === "en" ? "Provision of dedicated server infrastructure and DC housing" : "Bereitstellung von dedizierter Server-Infrastruktur und RZ-Housing",
     vertragsdatum: new Date().toISOString().slice(0, 10),
-    laufzeit: "Mindestlaufzeit 12 Monate, danach Verlängerung um 12 Monate",
+    laufzeit: lang === "en" ? "minimum term 12 months, thereafter extended by 12 months" : "Mindestlaufzeit 12 Monate, danach Verlängerung um 12 Monate",
     status: "aktiv",
     sccs: false,
-    datenarten: "Sämtliche auf den gehosteten Systemen verarbeiteten Daten",
-    betroffenePersonen: "Kunden, Partner, Beschäftigte",
-    technischeMassnahmen: "Physische Zutrittskontrolle, redundante USV, Videoüberwachung RZ-Flächen, Notstromdiesel",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Einbindung von Unterauftragnehmern für RZ-Wachschutz und Facility-Betrieb zulässig.",
-    notizen: "Reiner Infrastruktur-AVV. Eigene Datenverschlüsselung (LUKS/dm-crypt) auf Betriebssystemebene einrichten.",
+    datenarten: lang === "en" ? "All data processed on the hosted systems" : "Sämtliche auf den gehosteten Systemen verarbeiteten Daten",
+    betroffenePersonen: lang === "en" ? "Customers, partners, employees" : "Kunden, Partner, Beschäftigte",
+    technischeMassnahmen: lang === "en" ? "Physical access control, redundant UPS, video surveillance of DC spaces, emergency generators" : "Physische Zutrittskontrolle, redundante USV, Videoüberwachung RZ-Flächen, Notstromdiesel",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "Involvement of subprocessors for DC security and facility operations permitted." : "Einbindung von Unterauftragnehmern für RZ-Wachschutz und Facility-Betrieb zulässig.",
+    notizen: lang === "en" ? "Pure infrastructure DPA. Set up own data encryption (LUKS/dm-crypt) on OS level." : "Reiner Infrastruktur-AVV. Eigene Datenverschlüsselung (LUKS/dm-crypt) auf Betriebssystemebene einrichten.",
   },
   dsdms_avv_support: {
-    auftragsverarbeiter: "Muster IT-Systemhaus & Support GmbH",
-    gegenstand: "Externer Second-Level-Support, Administration und Fernwartung der IT-Infrastruktur",
+    auftragsverarbeiter: lang === "en" ? "Sample IT Systems & Support GmbH" : "Muster IT-Systemhaus & Support GmbH",
+    gegenstand: lang === "en" ? "External second-level support, administration and remote maintenance of IT infrastructure" : "Externer Second-Level-Support, Administration und Fernwartung der IT-Infrastruktur",
     vertragsdatum: new Date().toISOString().slice(0, 10),
-    laufzeit: "unbefristet mit einer Kündigungsfrist von 3 Monaten",
+    laufzeit: lang === "en" ? "indefinite with a termination notice period of 3 months" : "unbefristet mit einer Kündigungsfrist von 3 Monaten",
     status: "aktiv",
     sccs: false,
-    datenarten: "Systemkonfigurationen, Logdaten, Stichproben von Anwenderdaten bei Tickets",
-    betroffenePersonen: "Beschäftigte (Anwender)",
-    technischeMassnahmen: "VPN-Zugriff geschützt mit 2FA, detailliertes Client-Session-Logging, verschlüsselte Ticketdatenbank",
-    pruefintervall: "jährlich",
-    subauftragnehmerHinweis: "Keine Unterbeauftragung ohne vorherige schriftliche Zustimmung des Auftraggebers.",
-    notizen: "Besonderer Fokus auf restriktive Vergabe von temporären Admin-Rechten und Session-Logging.",
+    datenarten: lang === "en" ? "System configurations, log data, sampling of user data in case of tickets" : "Systemkonfigurationen, Logdaten, Stichproben von Anwenderdaten bei Tickets",
+    betroffenePersonen: lang === "en" ? "Employees (users)" : "Beschäftigte (Anwender)",
+    technischeMassnahmen: lang === "en" ? "VPN access protected with 2FA, detailed client session logging, encrypted ticket database" : "VPN-Zugriff geschützt mit 2FA, detailliertes Client-Session-Logging, verschlüsselte Ticketdatenbank",
+    pruefintervall: lang === "en" ? "yearly" : "jährlich",
+    subauftragnehmerHinweis: lang === "en" ? "No subconsulting without prior written consent of the client." : "Keine Unterbeauftragung ohne vorherige schriftliche Zustimmung des Auftraggebers.",
+    notizen: lang === "en" ? "Special focus on restrictive granting of temporary admin rights and session logging." : "Besonderer Fokus auf restriktive Vergabe von temporären Admin-Rechten und Session-Logging.",
   },
-};
+});
 
 function AvvForm({ initial, onSave, onCancel }: any) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ auftragsverarbeiter: "", gegenstand: "", vertragsdatum: "", laufzeit: "", status: "aktiv", sccs: false, avKontaktName: "", avKontaktEmail: "", avKontaktTelefon: "", genehmigteSubdienstleister: "", pruefFaellig: "", datenarten: "", betroffenePersonen: "", technischeMassnahmen: "", pruefintervall: "", subauftragnehmerHinweis: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
-    const template = avvTemplates[value];
+    const template = getAvvTemplates(lang)[value];
     if (!template) return;
     setForm((p: any) => ({ ...p, ...template }));
   };
@@ -2487,13 +2507,13 @@ function AvvForm({ initial, onSave, onCancel }: any) {
             <SelectContent>
               <SelectItem value="none">{t("noTemplate")}</SelectItem>
               <SelectItem value="microsoft365">Microsoft 365</SelectItem>
-              <SelectItem value="hosting">Hosting-Anbieter</SelectItem>
-              <SelectItem value="newsletter">Newsletter-Dienstleister</SelectItem>
-              <SelectItem value="payroll">Lohnabrechnungsdienstleister</SelectItem>
-              <SelectItem value="ki">KI-Dienstleister</SelectItem>
-              <SelectItem value="dsdms_avv_standard">DSDMS: Standard-AVV (mit SCCs)</SelectItem>
-              <SelectItem value="dsdms_avv_hosting">DSDMS: Infrastruktur & Hosting</SelectItem>
-              <SelectItem value="dsdms_avv_support">DSDMS: Externer IT-Support</SelectItem>
+              <SelectItem value="hosting">{lang === "en" ? "Hosting Provider" : "Hosting-Anbieter"}</SelectItem>
+              <SelectItem value="newsletter">{lang === "en" ? "Newsletter Service Provider" : "Newsletter-Dienstleister"}</SelectItem>
+              <SelectItem value="payroll">{lang === "en" ? "Payroll Service Provider" : "Lohnabrechnungsdienstleister"}</SelectItem>
+              <SelectItem value="ki">{lang === "en" ? "AI Service Provider" : "KI-Dienstleister"}</SelectItem>
+              <SelectItem value="dsdms_avv_standard">{lang === "en" ? "DSDMS: Standard DPA (with SCCs)" : "DSDMS: Standard-AVV (mit SCCs)"}</SelectItem>
+              <SelectItem value="dsdms_avv_hosting">{lang === "en" ? "DSDMS: Infrastructure & Hosting" : "DSDMS: Infrastruktur & Hosting"}</SelectItem>
+              <SelectItem value="dsdms_avv_support">{lang === "en" ? "DSDMS: External IT Support" : "DSDMS: Externer IT-Support"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2865,57 +2885,57 @@ function AvvPage() {
 }
 
 // ─── DSFA PAGE ─────────────────────────────────────────────────────────────
-const dsfaTemplates: Record<string, any> = {
+const getDsfaTemplates = (lang: string): Record<string, any> => ({
   none: null,
   ki: {
-    titel: "DSFA für KI-gestützte Verarbeitung",
-    beschreibung: "Bewertung eines KI-gestützten Verarbeitungsprozesses mit möglicher Auswirkung auf Rechte und Freiheiten betroffener Personen.",
-    notwendigkeit: "Prüfung, ob der KI-Einsatz für den festgelegten Zweck erforderlich und verhältnismäßig ist.",
-    massnahmen: "Datenminimierung, menschliche Kontrolle, Anbieterprüfung, Logging, Zugriffsbegrenzung, Transparenzmaßnahmen",
+    titel: lang === "en" ? "DPIA for AI-supported Processing" : "DSFA für KI-gestützte Verarbeitung",
+    beschreibung: lang === "en" ? "Assessment of an AI-supported processing activity with a potential risk to the rights and freedoms of natural persons." : "Bewertung eines KI-gestützten Verarbeitungsprozesses mit möglicher Auswirkung auf Rechte und Freiheiten betroffener Personen.",
+    notwendigkeit: lang === "en" ? "Assessment of whether the use of AI is necessary and proportionate to the specified purpose." : "Prüfung, ob der KI-Einsatz für den festgelegten Zweck erforderlich und verhältnismäßig ist.",
+    massnahmen: lang === "en" ? "Data minimization, human oversight, provider audits, logging, access restrictions, transparency measures" : "Datenminimierung, menschliche Kontrolle, Anbieterprüfung, Logging, Zugriffsbegrenzung, Transparenzmaßnahmen",
     ergebnis: "bedingt",
     status: "entwurf",
-    risikoquelle: "Automatisierte Bewertung / KI-Einsatz",
-    betroffeneGruppen: "Beschäftigte, Kunden, Interessenten",
-    datenarten: "Prompt-Daten, Inhaltsdaten, Kontextdaten, Metadaten",
+    risikoquelle: lang === "en" ? "Automated assessment / AI use" : "Automatisierte Bewertung / KI-Einsatz",
+    betroffeneGruppen: lang === "en" ? "Employees, customers, prospects" : "Beschäftigte, Kunden, Interessenten",
+    datenarten: lang === "en" ? "Prompt data, content data, context data, metadata" : "Prompt-Daten, Inhaltsdaten, Kontextdaten, Metadaten",
     eintrittswahrscheinlichkeit: "mittel",
     schweregrad: "hoch",
     restrisiko: "mittel",
     konsultation: false,
   },
   video: {
-    titel: "DSFA für Videoüberwachung",
-    beschreibung: "Bewertung der Videoüberwachung unter Berücksichtigung von Eingriffsintensität, Speicherfristen und Transparenz.",
-    notwendigkeit: "Prüfung der Erforderlichkeit zur Wahrung des Hausrechts und zur Vorfallaufklärung.",
-    massnahmen: "Beschilderung, kurze Speicherfrist, eingeschränkter Zugriff, dokumentierte Auswertungsvorgaben",
+    titel: lang === "en" ? "DPIA for Video Surveillance" : "DSFA für Videoüberwachung",
+    beschreibung: lang === "en" ? "Assessment of video surveillance considering intrusion severity, retention periods and transparency." : "Bewertung der Videoüberwachung unter Berücksichtigung von Eingriffsintensität, Speicherfristen und Transparenz.",
+    notwendigkeit: lang === "en" ? "Assessment of whether video surveillance is necessary for domiciliary rights and incident investigation." : "Prüfung der Erforderlichkeit zur Wahrung des Hausrechts und zur Vorfallaufklärung.",
+    massnahmen: lang === "en" ? "Signage, short retention periods, restricted access, documented retrieval guidelines" : "Beschilderung, kurze Speicherfrist, eingeschränkter Zugriff, dokumentierte Auswertungsvorgaben",
     ergebnis: "bedingt",
     status: "entwurf",
-    risikoquelle: "Systematische Überwachung öffentlich zugänglicher Bereiche",
-    betroffeneGruppen: "Besucher, Beschäftigte, Lieferanten",
-    datenarten: "Bilddaten, Zeitstempel, Standortbezug",
+    risikoquelle: lang === "en" ? "Systematic monitoring of publicly accessible areas" : "Systematische Überwachung öffentlich zugänglicher Bereiche",
+    betroffeneGruppen: lang === "en" ? "Visitors, employees, suppliers" : "Besucher, Beschäftigte, Lieferanten",
+    datenarten: lang === "en" ? "Image data, timestamps, location reference" : "Bilddaten, Zeitstempel, Standortbezug",
     eintrittswahrscheinlichkeit: "mittel",
     schweregrad: "hoch",
     restrisiko: "mittel",
     konsultation: false,
   },
   biometrie: {
-    titel: "DSFA für biometrische Verarbeitung",
-    beschreibung: "Bewertung biometrischer Verfahren, etwa Zutritts- oder Zeiterfassung mit sensiblen Merkmalen.",
-    notwendigkeit: "Prüfung, ob mildere Mittel zur Zweckerreichung bestehen.",
-    massnahmen: "Alternativverfahren, Verschlüsselung, getrennte Speicherung, enge Berechtigungskonzepte",
+    titel: lang === "en" ? "DPIA for Biometric Processing" : "DSFA für biometrische Verarbeitung",
+    beschreibung: lang === "en" ? "Assessment of biometric procedures, such as access control or time tracking using sensitive characteristics." : "Bewertung biometrischer Verfahren, etwa Zutritts- oder Zeiterfassung mit sensiblen Merkmalen.",
+    notwendigkeit: lang === "en" ? "Assessment of whether less intrusive means exist to achieve the purpose." : "Prüfung, ob mildere Mittel zur Zweckerreichung bestehen.",
+    massnahmen: lang === "en" ? "Alternative procedures, encryption, separate storage, strict authorization concepts" : "Alternativverfahren, Verschlüsselung, getrennte Speicherung, enge Berechtigungskonzepte",
     ergebnis: "nicht_akzeptabel",
     status: "entwurf",
-    risikoquelle: "Verarbeitung besonderer Kategorien personenbezogener Daten",
-    betroffeneGruppen: "Beschäftigte, Besucher",
-    datenarten: "Biometrische Merkmale, Identitätsdaten, Protokolldaten",
+    risikoquelle: lang === "en" ? "Processing of special categories of personal data" : "Verarbeitung besonderer Kategorien personenbezogener Daten",
+    betroffeneGruppen: lang === "en" ? "Employees, visitors" : "Beschäftigte, Besucher",
+    datenarten: lang === "en" ? "Biometric characteristics, identity details, log data" : "Biometrische Merkmale, Identitätsdaten, Protokolldaten",
     eintrittswahrscheinlichkeit: "hoch",
     schweregrad: "hoch",
     restrisiko: "hoch",
     konsultation: true,
   },
-};
+});
 
 function DsfaForm({ initial, onSave, onCancel }: any) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data: dokumente = [] } = useModuleData("dokumente");
   const { data: vvts = [] } = useModuleData("vvt");
   const { data: toms = [] } = useModuleData("tom");
@@ -3005,48 +3025,46 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   const setRisk = (index: number, key: string, value: any) => setForm((p: any) => ({ ...p, risiken: p.risiken.map((risk: any, i: number) => i === index ? { ...risk, [key]: value } : risk) }));
   const addRisk = () => setForm((p: any) => ({ ...p, risiken: [...p.risiken, { ...defaultRisk }] }));
   const removeRisk = (index: number) => setForm((p: any) => ({ ...p, risiken: p.risiken.length === 1 ? [{ ...defaultRisk }] : p.risiken.filter((_: any, i: number) => i !== index) }));
-  const applyVvtPrefill = (vvtIdRaw: string) => {
-    const vvtId = Number(vvtIdRaw);
-    set("vvtId", Number.isFinite(vvtId) ? vvtId : undefined);
-    const selectedVvt = vvts.find((item: any) => item.id === vvtId);
-    if (!selectedVvt) return;
-
-    let linkedTomIds: any[] = [];
-    try {
-      linkedTomIds = JSON.parse(selectedVvt.verknuepfteTomIds || "[]");
-      if (!Array.isArray(linkedTomIds)) linkedTomIds = [];
-    } catch (e) {
-      linkedTomIds = [];
+  const applyVvtPrefill = (valStr: string) => {
+    const vvtId = valStr === "none" ? undefined : Number(valStr);
+    const selectedVvt = vvts.find((v: any) => v.id === vvtId);
+    if (!selectedVvt) {
+      setForm((p: any) => ({ ...p, vvtId: undefined }));
+      return;
     }
 
-    const matchedToms = toms.filter((tom: any) =>
-      linkedTomIds.map(String).includes(String(tom.id))
-    );
-    const tomCount = matchedToms.length;
-    const matchedNames = matchedToms.map((t: any) => `${t.massnahme} (${t.kategorie || "BSI"})`).join(", ");
+    const linkedToms = toms.filter((t: any) => {
+      try {
+        const linkedIds = JSON.parse(selectedVvt.verknuepfteTomIds || "[]");
+        return Array.isArray(linkedIds) && linkedIds.includes(t.id);
+      } catch {
+        return false;
+      }
+    });
 
+    const matchedNames = linkedToms.map((t: any) => t.massnahme).join(", ");
+    const tomCount = linkedToms.length;
+
+    const bruttoLevel = selectedVvt.risikostufe || "niedrig";
     const riskTriggers = parseVvtRiskTriggers(selectedVvt.risikoTriggers);
-    const inferredRiskTitle = riskTriggers[0] || selectedVvt.risikostufe || "Risikotreiber";
 
-    const bruttoLevel = (selectedVvt.risikostufe || "niedrig").toLowerCase() === "hoch" ? "hoch" :
-                        (selectedVvt.risikostufe || "niedrig").toLowerCase() === "mittel" ? "mittel" : "niedrig";
+    let inferredRiskTitle = `Oversharing / Datenabfluss bei: ${selectedVvt.bezeichnung}`;
+    if (riskTriggers.includes("Drittlandtransfer")) inferredRiskTitle = `Drittland-Transferrisiko bei: ${selectedVvt.bezeichnung}`;
+    if (riskTriggers.includes("besondere Kategorien personenbezogener Daten")) inferredRiskTitle = `Sensible Datenverarbeitung ohne Schutz bei: ${selectedVvt.bezeichnung}`;
 
-    const reduceLevel = (level: string, steps: number): string => {
+    const reduceLevel = (start: string, steps: number) => {
+      if (steps <= 0) return start;
       const levels = ["niedrig", "mittel", "hoch"];
-      const index = levels.indexOf(level.toLowerCase());
-      if (index === -1) return "niedrig";
-      return levels[Math.max(0, index - steps)];
+      let idx = levels.indexOf(start);
+      if (idx === -1) idx = 0;
+      idx = Math.max(0, idx - steps);
+      return levels[idx];
     };
 
-    let steps = 0;
-    if (tomCount === 1 || tomCount === 2) {
-      steps = 1;
-    } else if (tomCount >= 3) {
-      steps = 2;
-    }
-
+    const steps = tomCount >= 4 ? 2 : tomCount >= 1 ? 1 : 0;
     const netLevel = reduceLevel(bruttoLevel, steps);
-    const netProbability = reduceLevel(bruttoLevel, steps);
+
+    const netProbability = tomCount >= 4 ? "niedrig" : tomCount >= 1 ? "mittel" : "hoch";
     const netSeverity = reduceLevel(bruttoLevel, steps);
 
     const autoControls = matchedNames
@@ -3090,7 +3108,7 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
   };
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
-    const template = dsfaTemplates[value];
+    const template = getDsfaTemplates(lang)[value];
     if (!template) return;
     setForm((p: any) => ({
       ...p,
@@ -3120,34 +3138,34 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Keine Vorlage</SelectItem>
-              <SelectItem value="ki">KI-gestützte Verarbeitung</SelectItem>
-              <SelectItem value="video">Videoüberwachung</SelectItem>
-              <SelectItem value="biometrie">Biometrische Verarbeitung</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
+              <SelectItem value="ki">{lang === "en" ? "AI-supported Processing" : "KI-gestützte Verarbeitung"}</SelectItem>
+              <SelectItem value="video">{lang === "en" ? "Video Surveillance" : "Videoüberwachung"}</SelectItem>
+              <SelectItem value="biometrie">{lang === "en" ? "Biometric Processing" : "Biometrische Verarbeitung"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="col-span-2 rounded-lg border p-3 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Grunddaten</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{lang === "en" ? "Basic Data" : "Grunddaten"}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaTitleLabel")} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
             <div className="space-y-1">
-              <Label className="text-xs">VVT-Verknüpfung</Label>
+              <Label className="text-xs">{lang === "en" ? "VVT Linkage" : "VVT-Verknüpfung"}</Label>
               <Select value={form.vvtId ? String(form.vvtId) : "none"} onValueChange={v => applyVvtPrefill(v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="VVT auswählen" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={lang === "en" ? "Select VVT" : "VVT auswählen"} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Kein VVT</SelectItem>
+                  <SelectItem value="none">{lang === "en" ? "No VVT" : "Kein VVT"}</SelectItem>
                   {vvts.map((item: any) => <SelectItem key={item.id} value={String(item.id)}>{item.bezeichnung}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1"><Label className="text-xs">{t("dsfaReviewerLabel")}</Label><Input value={form.reviewer} onChange={e => set("reviewer", e.target.value)} className="h-8 text-sm" /></div>
-            <div className="space-y-1"><Label className="text-xs">Verantwortlicher Bereich</Label><Input value={form.verantwortlicherBereich} onChange={e => set("verantwortlicherBereich", e.target.value)} className="h-8 text-sm" /></div>
+            <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Responsible Department" : "Verantwortlicher Bereich"}</Label><Input value={form.verantwortlicherBereich} onChange={e => set("verantwortlicherBereich", e.target.value)} className="h-8 text-sm" /></div>
             <div className="space-y-1"><Label className="text-xs">{t("dsfaStatusLabel")}</Label>
               <Select value={form.status} onValueChange={v => set("status", v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="entwurf">Entwurf</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem><SelectItem value="überprüfung">In Überprüfung</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="entwurf">{t("draft")}</SelectItem><SelectItem value="abgeschlossen">{t("completed")}</SelectItem><SelectItem value="überprüfung">{t("inReview")}</SelectItem></SelectContent>
               </Select>
             </div>
           </div>
@@ -3232,14 +3250,14 @@ function DsfaForm({ initial, onSave, onCancel }: any) {
         </div>
 
         <div className="col-span-2 rounded-lg border p-3 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Maßnahmen, Ergebnis und Eskalation</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{lang === "en" ? "Measures, Result and Escalation" : "Maßnahmen, Ergebnis und Eskalation"}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dsfaMeasuresLabel")}</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-            <div className="col-span-2 space-y-1"><Label className="text-xs">Restrisiko-Begründung</Label><Textarea value={form.restrisikoBegruendung} onChange={e => set("restrisikoBegruendung", e.target.value)} className="text-sm min-h-12" /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Residual Risk Justification" : "Restrisiko-Begründung"}</Label><Textarea value={form.restrisikoBegruendung} onChange={e => set("restrisikoBegruendung", e.target.value)} className="text-sm min-h-12" /></div>
             <div className="space-y-1"><Label className="text-xs">{t("dsfaResultLabel")}</Label>
               <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Wählen..." /></SelectTrigger>
-                <SelectContent><SelectItem value="akzeptabel">Akzeptabel</SelectItem><SelectItem value="nicht_akzeptabel">Nicht akzeptabel</SelectItem><SelectItem value="bedingt">Bedingt akzeptabel</SelectItem></SelectContent>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("choose")} /></SelectTrigger>
+                <SelectContent><SelectItem value="akzeptabel">{t("acceptable")}</SelectItem><SelectItem value="nicht_akzeptabel">{t("notAcceptable")}</SelectItem><SelectItem value="bedingt">{t("conditionallyAcceptable")}</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2"><input type="checkbox" id="art36" checked={!!form.art36Erforderlich} onChange={e => set("art36Erforderlich", e.target.checked)} className="rounded" /><Label htmlFor="art36" className="text-xs">Art. 36 erforderlich</Label></div>
@@ -3470,62 +3488,63 @@ function DsfaPage() {
 }
 
 // ─── DATENPANNEN PAGE ──────────────────────────────────────────────────────
-const datenpannenTemplates: Record<string, any> = {
+const getDatenpannenTemplates = (lang: string): Record<string, any> => ({
   none: null,
   email: {
-    titel: "Fehlversand einer E-Mail",
-    beschreibung: "Personenbezogene Daten wurden per E-Mail an einen falschen Empfänger versendet.",
+    titel: lang === "en" ? "Misdirected E-mail" : "Fehlversand einer E-Mail",
+    beschreibung: lang === "en" ? "Personal data was sent to an incorrect recipient by e-mail." : "Personenbezogene Daten wurden per E-Mail an einen falschen Empfänger versendet.",
     schwere: "mittel",
     status: "offen",
-    ursache: "Fehladressierung / manueller Versandfehler",
-    massnahmen: "Empfänger kontaktieren, Löschung verlangen, Versandprozess prüfen",
-    kategorie: "Vertraulichkeitsverletzung",
-    datenarten: "Kontaktdaten, Kommunikationsinhalte, Anhangsdaten",
-    erstmassnahmen: "Rückruf / Löschaufforderung an falschen Empfänger",
-    folgemassnahmen: "Sensibilisierung, Vier-Augen-Prinzip, Versandprüfungen",
-    betroffenengruppen: "Kunden, Beschäftigte, Interessenten",
+    ursache: lang === "en" ? "Addressing error / manual shipping mistake" : "Fehladressierung / manueller Versandfehler",
+    massnahmen: lang === "en" ? "Contact recipient, demand deletion, check shipping process" : "Empfänger kontaktieren, Löschung verlangen, Versandprozess prüfen",
+    kategorie: lang === "en" ? "Confidentiality Breach" : "Vertraulichkeitsverletzung",
+    datenarten: lang === "en" ? "Contact details, communication contents, attachment data" : "Kontaktdaten, Kommunikationsinhalte, Anhangsdaten",
+    erstmassnahmen: lang === "en" ? "Recall request / request to delete to incorrect recipient" : "Rückruf / Löschaufforderung an falschen Empfänger",
+    folgemassnahmen: lang === "en" ? "Awareness training, four-eyes principle, dispatch checks" : "Sensibilisierung, Vier-Augen-Prinzip, Versandprüfungen",
+    betroffenengruppen: lang === "en" ? "Customers, employees, prospects" : "Kunden, Beschäftigte, Interessenten",
     meldepflichtig: false,
     betroffenInformiert: false,
   },
   phishing: {
-    titel: "Phishing / Account-Kompromittierung",
-    beschreibung: "Unberechtigter Zugriff auf ein Benutzerkonto mit möglichem Datenabfluss.",
+    titel: lang === "en" ? "Phishing / Account Compromise" : "Phishing / Account-Kompromittierung",
+    beschreibung: lang === "en" ? "Unauthorized access to a user account with potential data leakage." : "Unberechtigter Zugriff auf ein Benutzerkonto mit möglichem Datenabfluss.",
     schwere: "hoch",
     status: "offen",
-    ursache: "Kompromittierte Zugangsdaten / Phishing-Angriff",
-    massnahmen: "Passwort zurücksetzen, Sitzungen beenden, MFA erzwingen, Logs auswerten",
-    kategorie: "Vertraulichkeitsverletzung",
-    datenarten: "Zugangsdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
-    erstmassnahmen: "Account sperren, Credentials zurücksetzen, Zugriff analysieren",
-    folgemassnahmen: "MFA-Rollout, Awareness-Maßnahmen, Incident-Response-Nachbereitung",
-    betroffenengruppen: "Beschäftigte, Kunden",
+    ursache: lang === "en" ? "Compromised credentials / phishing attack" : "Kompromittierte Zugangsdaten / Phishing-Angriff",
+    massnahmen: lang === "en" ? "Reset password, end sessions, enforce MFA, analyze logs" : "Passwort zurücksetzen, Sitzungen beenden, MFA erzwingen, Logs auswerten",
+    kategorie: lang === "en" ? "Confidentiality Breach" : "Vertraulichkeitsverletzung",
+    datenarten: lang === "en" ? "Access data, communication data, content data, metadata" : "Zugangsdaten, Kommunikationsdaten, Inhaltsdaten, Metadaten",
+    erstmassnahmen: lang === "en" ? "Block account, reset credentials, analyze access" : "Account sperren, Credentials zurücksetzen, Zugriff analysieren",
+    folgemassnahmen: lang === "en" ? "MFA rollout, awareness campaign, incident response post-mortem" : "MFA-Rollout, Awareness-Maßnahmen, Incident-Response-Nachbereitung",
+    betroffenengruppen: lang === "en" ? "Employees, customers" : "Beschäftigte, Kunden",
     meldepflichtig: true,
     betroffenInformiert: false,
   },
   lostdevice: {
-    titel: "Verlust eines mobilen Endgeräts",
-    beschreibung: "Verlust oder Diebstahl eines Geräts mit potenziellem Zugriff auf personenbezogene Daten.",
+    titel: lang === "en" ? "Loss of a Mobile Device" : "Verlust eines mobilen Endgeräts",
+    beschreibung: lang === "en" ? "Loss or theft of a device with potential access to personal data." : "Verlust oder Diebstahl eines Geräts mit potenziellem Zugriff auf personenbezogene Daten.",
     schwere: "hoch",
     status: "offen",
-    ursache: "Gerät verloren oder entwendet",
-    massnahmen: "Remote-Wipe, Gerätesperre, Passwortänderung, Asset-Dokumentation aktualisieren",
-    kategorie: "Verfügbarkeits- / Vertraulichkeitsverletzung",
-    datenarten: "Kontaktdaten, E-Mails, Dokumente, Zugangsdaten",
-    erstmassnahmen: "Gerät orten / sperren / löschen",
-    folgemassnahmen: "MDM-Konzept prüfen, Geräteschutz verbessern",
-    betroffenengruppen: "Beschäftigte, Kunden, Geschäftspartner",
+    ursache: lang === "en" ? "Device lost or stolen" : "Gerät verloren oder entwendet",
+    massnahmen: lang === "en" ? "Remote wipe, device lock, password change, update asset logs" : "Remote-Wipe, Gerätesperre, Passwortänderung, Asset-Dokumentation aktualisieren",
+    kategorie: lang === "en" ? "Availability / Confidentiality Breach" : "Verfügbarkeits- / Vertraulichkeitsverletzung",
+    datenarten: lang === "en" ? "Contact details, e-mails, documents, credentials" : "Kontaktdaten, E-Mails, Dokumente, Zugangsdaten",
+    erstmassnahmen: lang === "en" ? "Locate / lock / wipe device" : "Gerät orten / sperren / löschen",
+    folgemassnahmen: lang === "en" ? "Check MDM concept, improve device protection" : "MDM-Konzept prüfen, Geräteschutz verbessern",
+    betroffenengruppen: lang === "en" ? "Employees, customers, business partners" : "Beschäftigte, Kunden, Geschäftspartner",
     meldepflichtig: true,
     betroffenInformiert: false,
   },
-};
+});
 
 function DatenpanneForm({ initial, onSave, onCancel }: any) {
+  const { t, lang } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ titel: "", beschreibung: "", entdecktAm: new Date().toISOString().split("T")[0], entdecktUm: new Date().toTimeString().slice(0,5), gemeldetAm: "", gemeldetUm: "", frist72h: "", meldepflichtig: false, betroffenePersonen: 0, schwere: "mittel", status: "offen", ursache: "", massnahmen: "", kategorie: "", datenarten: "", erstmassnahmen: "", folgemassnahmen: "", betroffenengruppen: "", behoerdeMeldung: "", betroffenInformiert: false, ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
-    const template = datenpannenTemplates[value];
+    const template = getDatenpannenTemplates(lang)[value];
     if (!template) return;
     setForm((p: any) => ({ ...p, ...template }));
   };
@@ -3540,47 +3559,56 @@ function DatenpanneForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Muster-Datenpanne</Label>
+          <Label className="text-xs">{lang === "en" ? "Incident Template" : "Muster-Datenpanne"}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Keine Vorlage</SelectItem>
-              <SelectItem value="email">Fehlversand einer E-Mail</SelectItem>
-              <SelectItem value="phishing">Phishing / Account-Kompromittierung</SelectItem>
-              <SelectItem value="lostdevice">Verlust eines mobilen Endgeräts</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
+              <SelectItem value="email">{lang === "en" ? "Misdirected E-mail" : "Fehlversand einer E-Mail"}</SelectItem>
+              <SelectItem value="phishing">{lang === "en" ? "Phishing / Account Compromise" : "Phishing / Account-Kompromittierung"}</SelectItem>
+              <SelectItem value="lostdevice">{lang === "en" ? "Loss of a Mobile Device" : "Verlust eines mobilen Endgeräts"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Titel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Entdeckt am *</Label><Input type="date" value={form.entdecktAm} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktAm: e.target.value }))} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Entdeckt um *</Label><Input type="time" value={form.entdecktUm || ""} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktUm: e.target.value }))} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Gemeldet am</Label><Input type="date" value={form.gemeldetAm || ""} onChange={e => set("gemeldetAm", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Gemeldet um</Label><Input type="time" value={form.gemeldetUm || ""} onChange={e => set("gemeldetUm", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">72h-Frist</Label><Input type="datetime-local" value={form.frist72h || ""} onChange={e => set("frist72h", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Schwere</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Title" : "Titel"} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Discovered on *" : "Entdeckt am *"}</Label><Input type="date" value={form.entdecktAm} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktAm: e.target.value }))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Discovered at *" : "Entdeckt um *"}</Label><Input type="time" value={form.entdecktUm || ""} onChange={e => setForm((p:any) => recalc72h({ ...p, entdecktUm: e.target.value }))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Reported on" : "Gemeldet am"}</Label><Input type="date" value={form.gemeldetAm || ""} onChange={e => set("gemeldetAm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Reported at" : "Gemeldet um"}</Label><Input type="time" value={form.gemeldetUm || ""} onChange={e => set("gemeldetUm", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "72h Deadline" : "72h-Frist"}</Label><Input type="datetime-local" value={form.frist72h || ""} onChange={e => set("frist72h", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("severity")}</Label>
           <Select value={form.schwere} onValueChange={v => set("schwere", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="niedrig">Niedrig</SelectItem><SelectItem value="mittel">Mittel</SelectItem><SelectItem value="hoch">Hoch</SelectItem><SelectItem value="kritisch">Kritisch</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="niedrig">{t("low")}</SelectItem>
+              <SelectItem value="mittel">{t("medium")}</SelectItem>
+              <SelectItem value="hoch">{t("high")}</SelectItem>
+              <SelectItem value="kritisch">{t("critical")}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("status")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="offen">Offen</SelectItem><SelectItem value="gemeldet">Gemeldet</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="offen">{t("open")}</SelectItem>
+              <SelectItem value="gemeldet">{t("reported")}</SelectItem>
+              <SelectItem value="abgeschlossen">{t("completed")}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Betroffene Personen (ca.)</Label><Input type="number" value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", Number(e.target.value))} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Kategorie</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" placeholder="z. B. Vertraulichkeitsverletzung" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Datenarten</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Betroffenengruppen</Label><Textarea value={form.betroffenengruppen} onChange={e => set("betroffenengruppen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Ursache</Label><Textarea value={form.ursache} onChange={e => set("ursache", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Erstmaßnahmen</Label><Textarea value={form.erstmassnahmen} onChange={e => set("erstmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Ergriffene Maßnahmen</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Folge- und Verbesserungsmaßnahmen</Label><Textarea value={form.folgemassnahmen} onChange={e => set("folgemassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="flex items-center gap-2"><input type="checkbox" id="meld" checked={!!form.meldepflichtig} onChange={e => set("meldepflichtig", e.target.checked)} className="rounded" /><Label htmlFor="meld" className="text-xs">Meldepflichtig (Art. 33 DSGVO – 72h-Frist)</Label></div>
-        <div className="space-y-1"><Label className="text-xs">Behördenmeldung</Label><Input type="date" value={form.behoerdeMeldung || ""} onChange={e => set("behoerdeMeldung", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="flex items-center gap-2"><input type="checkbox" id="betrinf" checked={!!form.betroffenInformiert} onChange={e => set("betroffenInformiert", e.target.checked)} className="rounded" /><Label htmlFor="betrinf" className="text-xs">Betroffene informiert (Art. 34)</Label></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Affected persons (approx.)" : "Betroffene Personen (ca.)"}</Label><Input type="number" value={form.betroffenePersonen} onChange={e => set("betroffenePersonen", Number(e.target.value))} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("category")}</Label><Input value={form.kategorie} onChange={e => set("kategorie", e.target.value)} className="h-8 text-sm" placeholder={lang === "en" ? "e.g. Confidentiality Breach" : "z. B. Vertraulichkeitsverletzung"} /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("description")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("dataTypes")}</Label><Textarea value={form.datenarten} onChange={e => set("datenarten", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("affectedGroups")}</Label><Textarea value={form.betroffenengruppen} onChange={e => set("betroffenengruppen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("cause")}</Label><Textarea value={form.ursache} onChange={e => set("ursache", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Immediate Measures" : "Erstmaßnahmen"}</Label><Textarea value={form.erstmassnahmen} onChange={e => set("erstmassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Measures Taken" : "Ergriffene Maßnahmen"}</Label><Textarea value={form.massnahmen} onChange={e => set("massnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Follow-up & Improvement Measures" : "Folge- und Verbesserungsmaßnahmen"}</Label><Textarea value={form.folgemassnahmen} onChange={e => set("folgemassnahmen", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="flex items-center gap-2"><input type="checkbox" id="meld" checked={!!form.meldepflichtig} onChange={e => set("meldepflichtig", e.target.checked)} className="rounded" /><Label htmlFor="meld" className="text-xs">{lang === "en" ? "Reportable (Art. 33 GDPR – 72h deadline)" : "Meldepflichtig (Art. 33 DSGVO – 72h-Frist)"}</Label></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Authority Notification" : "Behördenmeldung"}</Label><Input type="date" value={form.behoerdeMeldung || ""} onChange={e => set("behoerdeMeldung", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="flex items-center gap-2"><input type="checkbox" id="betrinf" checked={!!form.betroffenInformiert} onChange={e => set("betroffenInformiert", e.target.checked)} className="rounded" /><Label htmlFor="betrinf" className="text-xs">{lang === "en" ? "Data subjects notified (Art. 34)" : "Betroffene informiert (Art. 34)"}</Label></div>
       </div>
       <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background px-6 pt-3 pb-1">
         <DialogFooter>
@@ -3964,33 +3992,52 @@ const dsrArten: Record<string, string> = {
   einschraenkung: "Einschränkung (Art. 18)", portabilitaet: "Datenübertragbarkeit (Art. 20)", widerspruch: "Widerspruch (Art. 21)"
 };
 
+const getDsrArtLabel = (key: string, lang: string): string => {
+  const en: Record<string, string> = {
+    auskunft: "Access (Art. 15)",
+    berichtigung: "Rectification (Art. 16)",
+    loeschung: "Erasure (Art. 17)",
+    einschraenkung: "Restriction (Art. 18)",
+    portabilitaet: "Data Portability (Art. 20)",
+    widerspruch: "Objection (Art. 21)"
+  };
+  if (lang === "en") return en[key] || dsrArten[key] || key;
+  return dsrArten[key] || key;
+};
+
 function DsrForm({ initial, onSave, onCancel }: any) {
+  const { t, lang } = useI18n();
   const [form, setForm] = useState({ art: "auskunft", antragsteller: "", eingangsdatum: new Date().toISOString().split("T")[0], fristDatum: "", beschreibung: "", status: "offen", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Art der Anfrage *</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Request Type" : "Art der Anfrage"} *</Label>
           <Select value={form.art} onValueChange={v => set("art", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{Object.entries(dsrArten).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>)}</SelectContent>
+            <SelectContent>{Object.keys(dsrArten).map(k => <SelectItem key={k} value={k} className="text-xs">{getDsrArtLabel(k, lang)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Antragsteller</Label><Input value={form.antragsteller} onChange={e => set("antragsteller", e.target.value)} className="h-8 text-sm" placeholder="Anonym möglich" /></div>
-        <div className="space-y-1"><Label className="text-xs">Eingang *</Label><Input type="date" value={form.eingangsdatum} onChange={e => set("eingangsdatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Frist (30 Tage)</Label><Input type="date" value={form.fristDatum} onChange={e => set("fristDatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Data Subject / Requestor" : "Antragsteller"}</Label><Input value={form.antragsteller} onChange={e => set("antragsteller", e.target.value)} className="h-8 text-sm" placeholder={lang === "en" ? "Anonymous possible" : "Anonym möglich"} /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Received on" : "Eingang"} *</Label><Input type="date" value={form.eingangsdatum} onChange={e => set("eingangsdatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Deadline (30 Days)" : "Frist (30 Tage)"}</Label><Input type="date" value={form.fristDatum} onChange={e => set("fristDatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("status")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="offen">Offen</SelectItem><SelectItem value="in_bearbeitung">In Bearbeitung</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem><SelectItem value="abgelehnt">Abgelehnt</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="offen">{t("open")}</SelectItem>
+              <SelectItem value="in_bearbeitung">{t("inProgress")}</SelectItem>
+              <SelectItem value="abgeschlossen">{t("completed")}</SelectItem>
+              <SelectItem value="abgelehnt">{t("rejected")}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-10" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("description")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("notes")}</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-10" /></div>
       </div>
       <DialogFooter>
-        <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-        <Button size="sm" className="bg-primary" onClick={() => onSave(form)}>Speichern</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>{t("cancel")}</Button>
+        <Button size="sm" className="bg-primary" onClick={() => onSave(form)}>{t("save")}</Button>
       </DialogFooter>
     </div>
   );
@@ -4062,24 +4109,32 @@ function DsrPage() {
   const buildDsrTaskDraft = (item: any, kind: "deadline-missed" | "deadline-soon" | "missing-deadline" | "verification") => {
     const drafts: Record<string, { title: string; priority: string; description: string }> = {
       "deadline-missed": {
-        title: `DSR-Frist überschritten: ${dsrArten[item.art] || item.art}`,
+        title: lang === "en" ? `DSR Deadline Missed: ${getDsrArtLabel(item.art, lang)}` : `DSR-Frist überschritten: ${getDsrArtLabel(item.art, lang)}`,
         priority: "kritisch",
-        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} hat ihre Frist überschritten. Bitte Rechtslage, Kommunikationsstand und Sofortmaßnahmen dokumentieren.`,
+        description: lang === "en"
+          ? `The data subject request by ${item.antragsteller || "unknown"} has exceeded its deadline. Please document the legal status, communication status and immediate actions.`
+          : `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} hat ihre Frist überschritten. Bitte Rechtslage, Kommunikationsstand und Sofortmaßnahmen dokumentieren.`,
       },
       "deadline-soon": {
-        title: `DSR-Frist absichern: ${dsrArten[item.art] || item.art}`,
+        title: lang === "en" ? `Secure DSR Deadline: ${getDsrArtLabel(item.art, lang)}` : `DSR-Frist absichern: ${getDsrArtLabel(item.art, lang)}`,
         priority: "hoch",
-        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} läuft kurzfristig aus. Bitte Bearbeitung, Rückmeldung und Nachweise priorisieren.`,
+        description: lang === "en"
+          ? `The data subject request by ${item.antragsteller || "unknown"} is about to expire shortly. Please prioritize processing, response and evidence.`
+          : `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} läuft kurzfristig aus. Bitte Bearbeitung, Rückmeldung und Nachweise priorisieren.`,
       },
       "missing-deadline": {
-        title: `DSR-Frist ergänzen: ${dsrArten[item.art] || item.art}`,
+        title: lang === "en" ? `Complete DSR Deadline: ${getDsrArtLabel(item.art, lang)}` : `DSR-Frist ergänzen: ${getDsrArtLabel(item.art, lang)}`,
         priority: "mittel",
-        description: `Für die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} fehlt eine dokumentierte Frist. Bitte Fristberechnung und Bearbeitungssteuerung nachziehen.`,
+        description: lang === "en"
+          ? `A documented deadline is missing for the data subject request by ${item.antragsteller || "unknown"}. Please update deadline calculation and processing control.`
+          : `Für die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} fehlt eine dokumentierte Frist. Bitte Fristberechnung und Bearbeitungssteuerung nachziehen.`,
       },
       verification: {
-        title: `DSR-Identitäts-/Prüfstatus klären: ${dsrArten[item.art] || item.art}`,
+        title: lang === "en" ? `Clarify DSR Identity/Verification Status: ${getDsrArtLabel(item.art, lang)}` : `DSR-Identitäts-/Prüfstatus klären: ${getDsrArtLabel(item.art, lang)}`,
         priority: "hoch",
-        description: `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} befindet sich im Prüfstatus. Bitte Identifikation, Umfang und Bearbeitungsstand verbindlich klären.`,
+        description: lang === "en"
+          ? `The data subject request by ${item.antragsteller || "unknown"} is in verification status. Please clarify identification, scope and processing status bindingly.`
+          : `Die Betroffenenanfrage von ${item.antragsteller || "unbekannt"} befindet sich im Prüfstatus. Bitte Identifikation, Umfang und Bearbeitungsstand verbindlich klären.`,
       },
     };
     const draft = drafts[kind];
@@ -4091,7 +4146,7 @@ function DsrPage() {
     const draft = buildDsrTaskDraft(item, kind);
     const duplicate = aufgaben.find((task: any) => String(task?.vorlagenBezug || "") === draft.source && String(task?.status || "") !== "erledigt");
     if (duplicate) {
-      toast({ title: "Aufgabe bereits vorhanden", description: `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
+      toast({ title: lang === "en" ? "Task already exists" : "Aufgabe bereits vorhanden", description: lang === "en" ? `Open follow-up task found: ${duplicate.titel}` : `Offene Folgeaufgabe gefunden: ${duplicate.titel}` });
       return;
     }
     await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
@@ -4108,41 +4163,43 @@ function DsrPage() {
       vorlagenBezug: draft.source,
     });
     await qc.invalidateQueries({ queryKey: [`/api/mandanten/${activeMandantId}/aufgaben`] });
-    toast({ title: "Folgeaufgabe erstellt", description: draft.title });
+    toast({ title: lang === "en" ? "Follow-up task created" : "Folgeaufgabe erstellt", description: draft.title });
   };
 
   const createDsrPdcaCycle = async (item: any, kind: "deadline-missed" | "deadline-soon" | "missing-deadline" | "verification") => {
     const source = `dsr-pdca:${kind}:${item.id}`;
     const duplicate = pdca.find((entry: any) => String(entry?.actNaechsterZyklus || "").includes(source) && String(entry?.status || "") !== "abgeschlossen");
     if (duplicate) {
-      toast({ title: "PDCA bereits vorhanden", description: `Offener Zyklus gefunden: ${duplicate.titel}` });
+      toast({ title: lang === "en" ? "PDCA already exists" : "PDCA bereits vorhanden", description: lang === "en" ? `Open cycle found: ${duplicate.titel}` : `Offener Zyklus gefunden: ${duplicate.titel}` });
       return;
     }
     const reviewDate = new Date();
     reviewDate.setDate(reviewDate.getDate() + (kind === "deadline-missed" ? 3 : kind === "deadline-soon" ? 7 : 14));
     const titleMap: Record<string, string> = {
-      "deadline-missed": `PDCA DSR-Fristverletzung: ${dsrArten[item.art] || item.art}`,
-      "deadline-soon": `PDCA DSR-Fristsicherung: ${dsrArten[item.art] || item.art}`,
-      "missing-deadline": `PDCA DSR-Friststeuerung: ${dsrArten[item.art] || item.art}`,
-      verification: `PDCA DSR-Prüfstatus: ${dsrArten[item.art] || item.art}`,
+      "deadline-missed": lang === "en" ? `PDCA DSR Deadline Breach: ${getDsrArtLabel(item.art, lang)}` : `PDCA DSR-Fristverletzung: ${getDsrArtLabel(item.art, lang)}`,
+      "deadline-soon": lang === "en" ? `PDCA DSR Deadline Security: ${getDsrArtLabel(item.art, lang)}` : `PDCA DSR-Fristsicherung: ${getDsrArtLabel(item.art, lang)}`,
+      "missing-deadline": lang === "en" ? `PDCA DSR Deadline Control: ${getDsrArtLabel(item.art, lang)}` : `PDCA DSR-Friststeuerung: ${getDsrArtLabel(item.art, lang)}`,
+      verification: lang === "en" ? `PDCA DSR Verification Status: ${getDsrArtLabel(item.art, lang)}` : `PDCA DSR-Prüfstatus: ${getDsrArtLabel(item.art, lang)}`,
     };
     const pdcaItem = await apiRequest("POST", `/api/mandanten/${activeMandantId}/pdca`, {
       titel: titleMap[kind],
-      beschreibung: `Verbesserungszyklus zur Bearbeitung der Betroffenenanfrage von ${item.antragsteller || "unbekannt"}.`,
+      beschreibung: lang === "en" ? `Improvement cycle for processing the data subject request of ${item.antragsteller || "unknown"}.` : `Verbesserungszyklus zur Bearbeitung der Betroffenenanfrage von ${item.antragsteller || "unbekannt"}.`,
       zyklusTyp: "verbesserungsmassnahme",
       status: "geplant",
       prioritaet: kind === "deadline-missed" ? "kritisch" : "hoch",
       verantwortlicher: "",
       naechstePruefungAm: reviewDate.toISOString().split("T")[0],
-      planRisiken: `DSR-Anfrage: ${dsrArten[item.art] || item.art}\nAntragsteller: ${item.antragsteller || "unbekannt"}\nStatus: ${item.status || "offen"}`,
-      planMassnahmen: kind === "deadline-missed" ? "Fristverletzung rechtlich und operativ aufarbeiten, Rückmeldung absichern und Nachweisführung schließen." : kind === "deadline-soon" ? "Bearbeitung priorisieren, Rückmeldung vorbereiten und Nachweise bündeln." : kind === "missing-deadline" ? "Fristberechnung und Zuständigkeit verbindlich festlegen." : "Identitätsprüfung, Umfang und Bearbeitungsweg rechtssicher klären.",
-      planZiele: "Betroffenenanfragen fristgerecht, nachvollziehbar und rechtskonform steuern.",
+      planRisiken: lang === "en" ? `DSR Request: ${getDsrArtLabel(item.art, lang)}\nRequestor: ${item.antragsteller || "unknown"}\nStatus: ${item.status || "open"}` : `DSR-Anfrage: ${getDsrArtLabel(item.art, lang)}\nAntragsteller: ${item.antragsteller || "unbekannt"}\nStatus: ${item.status || "offen"}`,
+      planMassnahmen: lang === "en"
+        ? (kind === "deadline-missed" ? "Process deadline breach legally and operationally, secure response and close records." : kind === "deadline-soon" ? "Prioritize processing, prepare response and bundle evidence." : kind === "missing-deadline" ? "Define deadline calculation and responsibility bindingly." : "Clarify identity verification, scope and processing path legally.")
+        : (kind === "deadline-missed" ? "Fristverletzung rechtlich und operativ aufarbeiten, Rückmeldung absichern und Nachweisführung schließen." : kind === "deadline-soon" ? "Bearbeitung priorisieren, Rückmeldung vorbereiten und Nachweise bündeln." : kind === "missing-deadline" ? "Fristberechnung und Zuständigkeit verbindlich festlegen." : "Identitätsprüfung, Umfang und Bearbeitungsweg rechtssicher klären."),
+      planZiele: lang === "en" ? "Manage data subject requests in a timely, traceable and compliant manner." : "Betroffenenanfragen fristgerecht, nachvollziehbar und rechtskonform steuern.",
       actNaechsterZyklus: source,
       verknuepftesAuditId: null,
     }).then(r => r.json());
     await apiRequest("POST", `/api/mandanten/${activeMandantId}/aufgaben`, {
-      titel: `${titleMap[kind]} – Folgeaufgabe`,
-      beschreibung: `Operative Folgeaufgabe zum DSR-PDCA-Zyklus für ${item.antragsteller || "unbekannt"}.`,
+      titel: `${titleMap[kind]} – ${lang === "en" ? "Follow-up Task" : "Folgeaufgabe"}`,
+      beschreibung: lang === "en" ? `Operational follow-up task for the DSR PDCA cycle of ${item.antragsteller || "unknown"}.` : `Operative Folgeaufgabe zum DSR-PDCA-Zyklus für ${item.antragsteller || "unbekannt"}.`,
       typ: kind === "verification" ? "review" : "task",
       prioritaet: kind === "deadline-missed" ? "kritisch" : "hoch",
       status: "offen",
@@ -4169,8 +4226,8 @@ function DsrPage() {
   }).slice().sort((a: any, b: any) => {
     const metaA = getDsrMeta(a);
     const metaB = getDsrMeta(b);
-    if (dsrSort === "newest") return String(b.eingangsdatum || "").localeCompare(String(a.eingangsdatum || "")) || String(a.antragsteller || "").localeCompare(String(b.antragsteller || ""), "de");
-    if (dsrSort === "type") return String(dsrArten[a.art] || a.art || "").localeCompare(String(dsrArten[b.art] || b.art || ""), "de") || String(a.eingangsdatum || "").localeCompare(String(b.eingangsdatum || ""));
+    if (dsrSort === "newest") return String(b.eingangsdatum || "").localeCompare(String(a.eingangsdatum || "")) || String(a.antragsteller || "").localeCompare(String(b.antragsteller || ""), lang === "en" ? "en" : "de");
+    if (dsrSort === "type") return String(getDsrArtLabel(a.art, lang) || a.art || "").localeCompare(String(getDsrArtLabel(b.art, lang) || b.art || ""), lang === "en" ? "en" : "de") || String(a.eingangsdatum || "").localeCompare(String(b.eingangsdatum || ""));
     return (metaA.deadline || "9999-12-31").localeCompare(metaB.deadline || "9999-12-31") || String(a.eingangsdatum || "").localeCompare(String(b.eingangsdatum || ""));
   });
 
@@ -4253,7 +4310,7 @@ function DsrPage() {
             <Button type="button" size="sm" variant={dsrSort === "type" ? "default" : "outline"} onClick={() => setDsrSort("type")}>Art</Button>
           </div>
 
-          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">Keine DSR-Anfragen vorhanden.</CardContent></Card>}
+          {data.length === 0 && <Card className="border-dashed"><CardContent className="py-12 text-center text-sm text-muted-foreground">{lang === "en" ? "No DSR requests found." : "Keine DSR-Anfragen vorhanden."}</CardContent></Card>}
           {filtered.map((item: any) => {
             const meta = getDsrMeta(item);
             return (
@@ -4262,17 +4319,17 @@ function DsrPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <UserCheck className={`h-4 w-4 shrink-0 ${meta.deadlineMissed ? "text-red-400" : meta.deadlineSoon || meta.missingDeadline || meta.verification ? "text-yellow-400" : "text-purple-400"}`} />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{dsrArten[item.art] || item.art}</p>
-                      <p className="text-xs text-muted-foreground">{item.antragsteller || "Anonym"} · Eingang: {item.eingangsdatum}{meta.deadline ? ` · Frist: ${meta.deadline}` : " · Frist offen"}</p>
-                      <p className="text-xs text-muted-foreground">{item.status || "offen"}{meta.deadlineMissed ? " · Frist überschritten" : meta.deadlineSoon ? " · Frist läuft" : meta.missingDeadline ? " · Frist ergänzen" : ""}</p>
+                      <p className="text-sm font-medium truncate">{getDsrArtLabel(item.art, lang)}</p>
+                      <p className="text-xs text-muted-foreground">{item.antragsteller || (lang === "en" ? "Anonymous" : "Anonym")} · {lang === "en" ? "Received" : "Eingang"}: {item.eingangsdatum}{meta.deadline ? ` · ${lang === "en" ? "Deadline" : "Frist"}: ${meta.deadline}` : ` · ${lang === "en" ? "Deadline open" : "Frist offen"}`}</p>
+                      <p className="text-xs text-muted-foreground">{t(item.status as any) || item.status}{meta.deadlineMissed ? ` · ${lang === "en" ? "Deadline exceeded" : "Frist überschritten"}` : meta.deadlineSoon ? ` · ${lang === "en" ? "Deadline running" : "Frist läuft"}` : meta.missingDeadline ? ` · ${lang === "en" ? "Complete deadline" : "Frist ergänzen"}` : ""}</p>
                     </div>
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 shrink-0 sm:w-auto sm:justify-end">
                     <div className="flex items-center gap-2 flex-wrap justify-end">
-                      {meta.deadlineMissed && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">Überfällig</Badge>}
-                      {meta.deadlineSoon && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Frist bald</Badge>}
-                      {meta.missingDeadline && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Frist fehlt</Badge>}
-                      {meta.verification && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">Prüfstatus</Badge>}
+                      {meta.deadlineMissed && <Badge variant="outline" className="text-xs border-red-500/40 text-red-600">{lang === "en" ? "Overdue" : "Überfällig"}</Badge>}
+                      {meta.deadlineSoon && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">{lang === "en" ? "Deadline soon" : "Frist bald"}</Badge>}
+                      {meta.missingDeadline && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">{lang === "en" ? "Missing deadline" : "Frist fehlt"}</Badge>}
+                      {meta.verification && <Badge variant="outline" className="text-xs border-yellow-500/40 text-yellow-600">{lang === "en" ? "Verification status" : "Prüfstatus"}</Badge>}
                       <StatusBadge value={item.status} />
                     </div>
                     <button onClick={() => setModal(item)} className="p-1 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"><Pencil className="h-3.5 w-3.5" /></button>
@@ -4302,114 +4359,222 @@ const tomKategorien: Record<string, string> = {
   verfuegbarkeit: "Verfügbarkeitskontrolle", trennung: "Trennungsgebot"
 };
 
-const tomTemplates: Record<string, any> = {
-  none: null,
-  mfa: {
-    massnahme: "Mehr-Faktor-Authentisierung für kritische Systeme",
-    kategorie: "zugangskontrolle",
-    beschreibung: "Absicherung administrativer und sensibler Benutzerzugänge durch MFA.",
-    status: "implementiert",
-    verantwortlicher: "IT / Informationssicherheit",
-    pruefintervall: "jährlich",
-    schutzziel: "Vertraulichkeit und Integrität",
-    nachweis: "MFA-Konfiguration, Rollout-Dokumentation, Richtlinie",
-    wirksamkeit: "hoch",
-    notizen: "Regelmäßige Überprüfung privilegierter Konten erforderlich",
-  },
-  backup: {
-    massnahme: "Backup- und Wiederherstellungskonzept",
-    kategorie: "verfuegbarkeit",
-    beschreibung: "Regelmäßige Datensicherungen mit dokumentierten Restore-Tests.",
-    status: "implementiert",
-    verantwortlicher: "IT-Betrieb",
-    pruefintervall: "halbjährlich",
-    schutzziel: "Verfügbarkeit",
-    nachweis: "Backup-Protokolle, Restore-Test, Betriebsdokumentation",
-    wirksamkeit: "hoch",
-    notizen: "Offline-/Immutable-Backups prüfen",
-  },
-  rollen: {
-    massnahme: "Rollen- und Berechtigungskonzept",
-    kategorie: "zugriffskontrolle",
-    beschreibung: "Vergabe von Zugriffsrechten nach Rollen- und Need-to-know-Prinzip.",
-    status: "implementiert",
-    verantwortlicher: "IT / Fachbereich",
-    pruefintervall: "jährlich",
-    schutzziel: "Vertraulichkeit",
-    nachweis: "Berechtigungsmatrix, Freigabeprozess, Rezertifizierung",
-    wirksamkeit: "hoch",
-    notizen: "Regelmäßige Rezertifizierung von Berechtigungen einplanen",
-  },
-  loeschung: {
-    massnahme: "Lösch- und Aufbewahrungskonzept",
-    kategorie: "trennung",
-    beschreibung: "Regelbasierte Löschung und Trennung von Datenbeständen nach Zweck und Frist.",
-    status: "geplant",
-    verantwortlicher: "Datenschutz / Fachbereich / IT",
-    pruefintervall: "jährlich",
-    schutzziel: "Vertraulichkeit und Datenminimierung",
-    nachweis: "Löschkonzept, Löschprotokolle, Richtlinie",
-    wirksamkeit: "mittel",
-    notizen: "Systemübergreifende Fristen harmonisieren",
-  },
-  logging: {
-    massnahme: "Protokollierung sicherheitsrelevanter Zugriffe",
-    kategorie: "eingabe",
-    beschreibung: "Nachvollziehbarkeit von Zugriffen, Änderungen und sicherheitsrelevanten Ereignissen.",
-    status: "implementiert",
-    verantwortlicher: "IT / SOC / Administratoren",
-    pruefintervall: "quartalsweise",
-    schutzziel: "Integrität und Nachvollziehbarkeit",
-    nachweis: "Log-Policy, Audit-Logs, SIEM-Auswertung",
-    wirksamkeit: "hoch",
-    notizen: "Datenschutzkonforme Logspeicherung beachten",
-  },
-  dsdms_tom_zutritt: {
-    massnahme: "BSI-konforme Zutrittssicherung (Gebäude & Server)",
-    kategorie: "zutrittskontrolle",
-    beschreibung: "Physische Sicherung von Gebäuden und IT-Infrastrukturen durch strukturierte Zugangszonen, Chipkartensystem und Videoüberwachung.",
-    status: "implementiert",
-    verantwortlicher: "Facility Management / ISB",
-    pruefintervall: "jährlich",
-    schutzziel: "Vertraulichkeit und Verfügbarkeit",
-    nachweis: "Zutrittskontroll-Richtlinie, Schließplan, Chipkarten-Logs, Wartungsbericht Alarmanlage",
-    wirksamkeit: "hoch",
-    notizen: "Orientiert an BSI IT-Grundschutz INF.1 (Gebäudesicherheit).",
-  },
-  dsdms_tom_zugang: {
-    massnahme: "BSI-konforme Zugangskontrolle (MFA & Passwortrichtlinie)",
-    kategorie: "zugangskontrolle",
-    beschreibung: "Erzwingung einer starken Passwortkomplexität (min. 12 Zeichen) kombiniert mit flächendeckendem Einsatz von Multi-Faktor-Authentisierung (MFA) für alle externen Zugriffe (VPN, Cloud).",
-    status: "implementiert",
-    verantwortlicher: "IT-Administration / ISB",
-    pruefintervall: "halbjährlich",
-    schutzziel: "Vertraulichkeit und Integrität",
-    nachweis: "Active Directory GPO-Reports, Azure AD MFA Compliance-Statistik, Schulungsnachweis Beschäftigte",
-    wirksamkeit: "hoch",
-    notizen: "Abstimmung mit BSI ORP.4 (Identitäts- und Berechtigungsmanagement).",
-  },
-  dsdms_tom_weitergabe: {
-    massnahme: "Transport- und Weitergabesicherung (Verschlüsselung)",
-    kategorie: "weitergabe",
-    beschreibung: "Durchgängige Transportverschlüsselung für alle Datenflüsse (TLS 1.3 / HTTPS) und Festplattenvollverschlüsselung (BitLocker / FileVault) für all mobile Endgeräte.",
-    status: "implementiert",
-    verantwortlicher: "IT-Support / Admins",
-    pruefintervall: "quartalsweise",
-    schutzziel: "Vertraulichkeit",
-    nachweis: "MDM-Systemberichte (Compliance State), SSL-Labs Testergebnisse externer Webservices, Richtlinie Mobiles Arbeiten",
-    wirksamkeit: "hoch",
-    notizen: "Harmonisiert mit BSI SYS.2.1 (Client-Sicherheit) und CON.1 (Kryptokonzept).",
-  },
-  ...allTomTemplates
+const getLocalTomTemplates = (lang: string): Record<string, any> => {
+  const de = {
+    none: null,
+    mfa: {
+      massnahme: "Mehr-Faktor-Authentisierung für kritische Systeme",
+      kategorie: "zugangskontrolle",
+      beschreibung: "Absicherung administrativer und sensibler Benutzerzugänge durch MFA.",
+      status: "implementiert",
+      verantwortlicher: "IT / Informationssicherheit",
+      pruefintervall: "jährlich",
+      schutzziel: "Vertraulichkeit und Integrität",
+      nachweis: "MFA-Konfiguration, Rollout-Dokumentation, Richtlinie",
+      wirksamkeit: "hoch",
+      notizen: "Regelmäßige Überprüfung privilegierter Konten erforderlich",
+    },
+    backup: {
+      massnahme: "Backup- und Wiederherstellungskonzept",
+      kategorie: "verfuegbarkeit",
+      beschreibung: "Regelmäßige Datensicherungen mit dokumentierten Restore-Tests.",
+      status: "implementiert",
+      verantwortlicher: "IT-Betrieb",
+      pruefintervall: "halbjährlich",
+      schutzziel: "Verfügbarkeit",
+      nachweis: "Backup-Protokolle, Restore-Test, Betriebsdokumentation",
+      wirksamkeit: "hoch",
+      notizen: "Offline-/Immutable-Backups prüfen",
+    },
+    rollen: {
+      massnahme: "Rollen- und Berechtigungskonzept",
+      kategorie: "zugriffskontrolle",
+      beschreibung: "Vergabe von Zugriffsrechten nach Rollen- und Need-to-know-Prinzip.",
+      status: "implementiert",
+      verantwortlicher: "IT / Fachbereich",
+      pruefintervall: "jährlich",
+      schutzziel: "Vertraulichkeit",
+      nachweis: "Berechtigungsmatrix, Freigabeprozess, Rezertifizierung",
+      wirksamkeit: "hoch",
+      notizen: "Regelmäßige Rezertifizierung von Berechtigungen einplanen",
+    },
+    loeschung: {
+      massnahme: "Lösch- und Aufbewahrungskonzept",
+      kategorie: "trennung",
+      beschreibung: "Regelbasierte Löschung und Trennung von Datenbeständen nach Zweck und Frist.",
+      status: "geplant",
+      verantwortlicher: "Datenschutz / Fachbereich / IT",
+      pruefintervall: "jährlich",
+      schutzziel: "Vertraulichkeit und Datenminimierung",
+      nachweis: "Löschkonzept, Löschprotokolle, Richtlinie",
+      wirksamkeit: "mittel",
+      notizen: "Systemübergreifende Fristen harmonisieren",
+    },
+    logging: {
+      massnahme: "Protokollierung sicherheitsrelevanter Zugriffe",
+      kategorie: "eingabe",
+      beschreibung: "Nachvollziehbarkeit von Zugriffen, Änderungen und sicherheitsrelevanten Ereignissen.",
+      status: "implementiert",
+      verantwortlicher: "IT / SOC / Administratoren",
+      pruefintervall: "quartalsweise",
+      schutzziel: "Integrität und Nachvollziehbarkeit",
+      nachweis: "Log-Policy, Audit-Logs, SIEM-Auswertung",
+      wirksamkeit: "hoch",
+      notizen: "Datenschutzkonforme Logspeicherung beachten",
+    },
+    dsdms_tom_zutritt: {
+      massnahme: "BSI-konforme Zutrittssicherung (Gebäude & Server)",
+      kategorie: "zutrittskontrolle",
+      beschreibung: "Physische Sicherung von Gebäuden und IT-Infrastrukturen durch strukturierte Zugangszonen, Chipkartensystem und Videoüberwachung.",
+      status: "implementiert",
+      verantwortlicher: "Facility Management / ISB",
+      pruefintervall: "jährlich",
+      schutzziel: "Vertraulichkeit und Verfügbarkeit",
+      nachweis: "Zutrittskontroll-Richtlinie, Schließplan, Chipkarten-Logs, Wartungsbericht Alarmanlage",
+      wirksamkeit: "hoch",
+      notizen: "Orientiert an BSI IT-Grundschutz INF.1 (Gebäudesicherheit).",
+    },
+    dsdms_tom_zugang: {
+      massnahme: "BSI-konforme Zugangskontrolle (MFA & Passwortrichtlinie)",
+      kategorie: "zugangskontrolle",
+      beschreibung: "Erzwingung einer starken Passwortkomplexität (min. 12 Zeichen) kombiniert mit flächendeckendem Einsatz von Multi-Faktor-Authentisierung (MFA) für alle externen Zugriffe (VPN, Cloud).",
+      status: "implementiert",
+      verantwortlicher: "IT-Administration / ISB",
+      pruefintervall: "halbjährlich",
+      schutzziel: "Vertraulichkeit und Integrität",
+      nachweis: "Active Directory GPO-Reports, Azure AD MFA Compliance-Statistik, Schulungsnachweis Beschäftigte",
+      wirksamkeit: "hoch",
+      notizen: "Abstimmung mit BSI ORP.4 (Identitäts- und Berechtigungsmanagement).",
+    },
+    dsdms_tom_weitergabe: {
+      massnahme: "Transport- und Weitergabesicherung (Verschlüsselung)",
+      kategorie: "weitergabe",
+      beschreibung: "Durchgängige Transportverschlüsselung für alle Datenflüsse (TLS 1.3 / HTTPS) und Festplattenvollverschlüsselung (BitLocker / FileVault) für all mobile Endgeräte.",
+      status: "implementiert",
+      verantwortlicher: "IT-Support / Admins",
+      pruefintervall: "quartalsweise",
+      schutzziel: "Vertraulichkeit",
+      nachweis: "MDM-Systemberichte (Compliance State), SSL-Labs Testergebnisse externer Webservices, Richtlinie Mobiles Arbeiten",
+      wirksamkeit: "hoch",
+      notizen: "Harmonisiert mit BSI SYS.2.1 (Client-Sicherheit) und CON.1 (Kryptokonzept).",
+    },
+  };
+
+  const en = {
+    none: null,
+    mfa: {
+      massnahme: "Multi-Factor Authentication for Critical Systems",
+      kategorie: "zugangskontrolle",
+      beschreibung: "Securing administrative and sensitive user access via MFA.",
+      status: "implementiert",
+      verantwortlicher: "IT / Information Security",
+      pruefintervall: "annually",
+      schutzziel: "Confidentiality and Integrity",
+      nachweis: "MFA configuration, rollout documentation, policy",
+      wirksamkeit: "high",
+      notizen: "Regular review of privileged accounts required",
+    },
+    backup: {
+      massnahme: "Backup and Disaster Recovery Concept",
+      kategorie: "verfuegbarkeit",
+      beschreibung: "Regular data backups with documented restore tests.",
+      status: "implementiert",
+      verantwortlicher: "IT Operations",
+      pruefintervall: "semi-annually",
+      schutzziel: "Availability",
+      nachweis: "Backup logs, restore test, operational documentation",
+      wirksamkeit: "high",
+      notizen: "Consider offline/immutable backups",
+    },
+    rollen: {
+      massnahme: "Role and Authorization Concept",
+      kategorie: "zugriffskontrolle",
+      beschreibung: "Granting access rights based on roles and need-to-know principle.",
+      status: "implementiert",
+      verantwortlicher: "IT / Business Departments",
+      pruefintervall: "annually",
+      schutzziel: "Confidentiality",
+      nachweis: "Authorization matrix, approval process, recertification",
+      wirksamkeit: "high",
+      notizen: "Schedule regular recertification of access rights",
+    },
+    loeschung: {
+      massnahme: "Deletion and Retention Concept",
+      kategorie: "trennung",
+      beschreibung: "Rule-based deletion and separation of databases according to purpose and deadline.",
+      status: "geplant",
+      verantwortlicher: "Data Protection / Business Departments / IT",
+      pruefintervall: "annually",
+      schutzziel: "Confidentiality and Data Minimization",
+      nachweis: "Deletion concept, deletion logs, policy",
+      wirksamkeit: "medium",
+      notizen: "Harmonize retention periods across systems",
+    },
+    logging: {
+      massnahme: "Logging of Security-Relevant Access",
+      kategorie: "eingabe",
+      beschreibung: "Auditability of access, changes and security-relevant events.",
+      status: "implementiert",
+      verantwortlicher: "IT / SOC / Administrators",
+      pruefintervall: "quarterly",
+      schutzziel: "Integrity and Auditability",
+      nachweis: "Log policy, audit logs, SIEM evaluation",
+      wirksamkeit: "high",
+      notizen: "Ensure data-compliant log storage",
+    },
+    dsdms_tom_zutritt: {
+      massnahme: "BSI-compliant Physical Access Control (Buildings & Servers)",
+      kategorie: "zutrittskontrolle",
+      beschreibung: "Physical securing of buildings and IT infrastructure through structured access zones, chip card system and video surveillance.",
+      status: "implementiert",
+      verantwortlicher: "Facility Management / ISB",
+      pruefintervall: "annually",
+      schutzziel: "Confidentiality and Availability",
+      nachweis: "Access control policy, locking plan, chip card logs, maintenance report alarm system",
+      wirksamkeit: "high",
+      notizen: "Aligned with BSI IT-Baseline Protection INF.1 (Building security).",
+    },
+    dsdms_tom_zugang: {
+      massnahme: "BSI-compliant Access Control (MFA & Password Policy)",
+      kategorie: "zugangskontrolle",
+      beschreibung: "Enforcing strong password complexity (min. 12 characters) combined with comprehensive use of multi-factor authentication (MFA) for all external access (VPN, Cloud).",
+      status: "implementiert",
+      verantwortlicher: "IT Administration / ISB",
+      pruefintervall: "semi-annually",
+      schutzziel: "Confidentiality and Integrity",
+      nachweis: "Active Directory GPO reports, Azure AD MFA compliance statistics, employee training records",
+      wirksamkeit: "high",
+      notizen: "Aligned with BSI ORP.4 (Identity and access management).",
+    },
+    dsdms_tom_weitergabe: {
+      massnahme: "Transmission and Data Exchange Security (Encryption)",
+      kategorie: "weitergabe",
+      beschreibung: "Consistent transport encryption for all data flows (TLS 1.3 / HTTPS) and full disk encryption (BitLocker / FileVault) for all mobile endpoints.",
+      status: "implementiert",
+      verantwortlicher: "IT Support / Admins",
+      pruefintervall: "quarterly",
+      schutzziel: "Confidentiality",
+      nachweis: "MDM system reports (Compliance State), SSL-Labs test results of external web services, remote working policy",
+      wirksamkeit: "high",
+      notizen: "Harmonized with BSI SYS.2.1 (Client security) and CON.1 (Client cryptographic concept).",
+    },
+  };
+
+  const templates = lang === "en" ? en : de;
+  return {
+    ...templates,
+    ...getAllTomTemplates(lang)
+  };
 };
 
 function TomForm({ initial, onSave, onCancel }: any) {
+  const { t, lang } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [form, setForm] = useState({ massnahme: "", kategorie: "zugangskontrolle", beschreibung: "", status: "implementiert", verantwortlicher: "", pruefDatum: "", pruefintervall: "", schutzziel: "", nachweis: "", wirksamkeit: "", notizen: "", ...initial });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const applyTemplate = (value: string) => {
     setSelectedTemplate(value);
-    const template = tomTemplates[value];
+    const template = getLocalTomTemplates(lang)[value];
     if (!template) return;
     setForm((p: any) => ({ ...p, ...template }));
   };
@@ -4417,21 +4582,21 @@ function TomForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Muster-TOM</Label>
+          <Label className="text-xs">{lang === "en" ? "TOM Template" : "Muster-TOM"}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent className="max-h-80">
-              <SelectItem value="none">Keine Vorlage</SelectItem>
-              <SelectItem value="mfa">Mehr-Faktor-Authentisierung</SelectItem>
-              <SelectItem value="backup">Backup- und Wiederherstellungskonzept</SelectItem>
-              <SelectItem value="rollen">Rollen- und Berechtigungskonzept</SelectItem>
-              <SelectItem value="loeschung">Lösch- und Aufbewahrungskonzept</SelectItem>
-              <SelectItem value="logging">Protokollierung sicherheitsrelevanter Zugriffe</SelectItem>
-              <SelectItem value="dsdms_tom_zutritt">DSDMS: BSI Zutrittssicherung</SelectItem>
-              <SelectItem value="dsdms_tom_zugang">DSDMS: BSI Zugangskontrolle</SelectItem>
-              <SelectItem value="dsdms_tom_weitergabe">DSDMS: Transport verschlüsselt</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
+              <SelectItem value="mfa">{lang === "en" ? "Multi-Factor Authentication" : "Mehr-Faktor-Authentisierung"}</SelectItem>
+              <SelectItem value="backup">{lang === "en" ? "Backup and Recovery Concept" : "Backup- und Wiederherstellungskonzept"}</SelectItem>
+              <SelectItem value="rollen">{lang === "en" ? "Role and Authorization Concept" : "Rollen- und Berechtigungskonzept"}</SelectItem>
+              <SelectItem value="loeschung">{lang === "en" ? "Deletion and Retention Concept" : "Lösch- und Aufbewahrungskonzept"}</SelectItem>
+              <SelectItem value="logging">{lang === "en" ? "Logging of Security-Relevant Access" : "Protokollierung sicherheitsrelevanter Zugriffe"}</SelectItem>
+              <SelectItem value="dsdms_tom_zutritt">{lang === "en" ? "DSDMS: Physical Access Control" : "DSDMS: BSI Zutrittssicherung"}</SelectItem>
+              <SelectItem value="dsdms_tom_zugang">{lang === "en" ? "DSDMS: System Access Control" : "DSDMS: BSI Zugangskontrolle"}</SelectItem>
+              <SelectItem value="dsdms_tom_weitergabe">{lang === "en" ? "DSDMS: Encrypted Data Transport" : "DSDMS: Transport verschlüsselt"}</SelectItem>
               <Separator />
-              {Object.entries(allTomTemplates)
+              {Object.entries(getAllTomTemplates(lang))
                 .sort((a, b) => a[1].massnahme.localeCompare(b[1].massnahme))
                 .map(([key, t]) => (
                   <SelectItem key={key} value={key}>
@@ -4442,25 +4607,29 @@ function TomForm({ initial, onSave, onCancel }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Maßnahme *</Label><Input value={form.massnahme} onChange={e => set("massnahme", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Kategorie</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Measure" : "Maßnahme"} *</Label><Input value={form.massnahme} onChange={e => set("massnahme", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Category" : "Kategorie"}</Label>
           <Select value={form.kategorie} onValueChange={v => set("kategorie", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{Object.entries(tomKategorien).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>)}</SelectContent>
+            <SelectContent>{Object.keys(tomKategorien).map(k => <SelectItem key={k} value={k} className="text-xs">{getTomKategorieLabel(k, lang)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="space-y-1"><Label className="text-xs">{t("status")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="geplant">Geplant</SelectItem><SelectItem value="implementiert">Implementiert</SelectItem><SelectItem value="überprüft">Überprüft</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="geplant">{t("planned")}</SelectItem>
+              <SelectItem value="implementiert">{lang === "en" ? "Implemented" : "Implementiert"}</SelectItem>
+              <SelectItem value="überprüft">{lang === "en" ? "Reviewed" : "Überprüft"}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Verantwortlicher</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Nächste Prüfung</Label><Input type="date" value={form.pruefDatum} onChange={e => set("pruefDatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Prüfintervall</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder="z. B. jährlich" /></div>
-        <div className="space-y-1"><Label className="text-xs">Schutzziel</Label><Input value={form.schutzziel} onChange={e => set("schutzziel", e.target.value)} className="h-8 text-sm" placeholder="Vertraulichkeit, Integrität, Verfügbarkeit" /></div>
-        <div className="space-y-1"><Label className="text-xs">Wirksamkeit</Label><Input value={form.wirksamkeit} onChange={e => set("wirksamkeit", e.target.value)} className="h-8 text-sm" placeholder="niedrig / mittel / hoch" /></div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Beschreibung</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Responsible" : "Verantwortlicher"}</Label><Input value={form.verantwortlicher} onChange={e => set("verantwortlicher", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Next Audit" : "Nächste Prüfung"}</Label><Input type="date" value={form.pruefDatum} onChange={e => set("pruefDatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Audit Interval" : "Prüfintervall"}</Label><Input value={form.pruefintervall} onChange={e => set("pruefintervall", e.target.value)} className="h-8 text-sm" placeholder={lang === "en" ? "e.g. annually" : "z. B. jährlich"} /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Security Goal" : "Schutzziel"}</Label><Input value={form.schutzziel} onChange={e => set("schutzziel", e.target.value)} className="h-8 text-sm" placeholder={lang === "en" ? "Confidentiality, Integrity, Availability" : "Vertraulichkeit, Integrität, Verfügbarkeit"} /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Effectiveness" : "Wirksamkeit"}</Label><Input value={form.wirksamkeit} onChange={e => set("wirksamkeit", e.target.value)} className="h-8 text-sm" placeholder={lang === "en" ? "low / medium / high" : "niedrig / mittel / hoch"} /></div>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{t("description")}</Label><Textarea value={form.beschreibung} onChange={e => set("beschreibung", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Nachweis / Dokumentation</Label><Textarea value={form.nachweis} onChange={e => set("nachweis", e.target.value)} className="text-sm min-h-12" /></div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Notizen</Label><Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-12" /></div>
       </div>
@@ -4857,6 +5026,7 @@ const auditTemplates: Record<string, any> = {
 };
 
 function AuditForm({ initial, onSave, onCancel }: any) {
+  const { t, lang } = useI18n();
   const [selectedTemplate, setSelectedTemplate] = useState("none");
   const { data: pdca = [] } = useModuleData("pdca");
   const [form, setForm] = useState({ titel: "", auditart: "intern", pruefbereich: "", auditdatum: new Date().toISOString().split("T")[0], auditor: "", status: "geplant", ergebnis: "offen", scope: "", methode: "", feststellungen: "", positiveAspekte: "", abweichungen: "", empfehlungen: "", verknuepftePdcaIds: "[]", followUpDatum: "", naechstesAuditAm: "", createPdcaFollowUp: false, createAuditTasks: false, ...initial });
@@ -4881,32 +5051,41 @@ function AuditForm({ initial, onSave, onCancel }: any) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Audit-Vorlage</Label>
+          <Label className="text-xs">{lang === "en" ? "Audit Template" : "Audit-Vorlage"}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Keine Vorlage</SelectItem>
-              <SelectItem value="intern">Internes Datenschutz-Audit</SelectItem>
-              <SelectItem value="tom">TOM-Audit</SelectItem>
-              <SelectItem value="auftragsverarbeitung">Audit Auftragsverarbeitung</SelectItem>
+              <SelectItem value="none">{t("noTemplate")}</SelectItem>
+              <SelectItem value="intern">{lang === "en" ? "Internal Data Protection Audit" : "Internes Datenschutz-Audit"}</SelectItem>
+              <SelectItem value="tom">{lang === "en" ? "TOM Audit" : "TOM-Audit"}</SelectItem>
+              <SelectItem value="auftragsverarbeitung">{lang === "en" ? "DPA / Processor Audit" : "Audit Auftragsverarbeitung"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="col-span-2 space-y-1"><Label className="text-xs">Audittitel *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Auditart</Label><Input value={form.auditart} onChange={e => set("auditart", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Prüfbereich</Label><Input value={form.pruefbereich} onChange={e => set("pruefbereich", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Auditdatum *</Label><Input type="date" value={form.auditdatum} onChange={e => set("auditdatum", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Auditor</Label><Input value={form.auditor} onChange={e => set("auditor", e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1"><Label className="text-xs">Status</Label>
+        <div className="col-span-2 space-y-1"><Label className="text-xs">{lang === "en" ? "Audit Title" : "Audittitel"} *</Label><Input value={form.titel} onChange={e => set("titel", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Audit Type" : "Auditart"}</Label><Input value={form.auditart} onChange={e => set("auditart", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Audit Area" : "Prüfbereich"}</Label><Input value={form.pruefbereich} onChange={e => set("pruefbereich", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Audit Date" : "Auditdatum"} *</Label><Input type="date" value={form.auditdatum} onChange={e => set("auditdatum", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Auditor" : "Auditor"}</Label><Input value={form.auditor} onChange={e => set("auditor", e.target.value)} className="h-8 text-sm" /></div>
+        <div className="space-y-1"><Label className="text-xs">{t("status")}</Label>
           <Select value={form.status} onValueChange={v => set("status", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="geplant">Geplant</SelectItem><SelectItem value="laufend">Laufend</SelectItem><SelectItem value="abgeschlossen">Abgeschlossen</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="geplant">{t("planned")}</SelectItem>
+              <SelectItem value="laufend">{t("ongoing")}</SelectItem>
+              <SelectItem value="abgeschlossen">{t("completed")}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label className="text-xs">Ergebnis</Label>
+        <div className="space-y-1"><Label className="text-xs">{lang === "en" ? "Result" : "Ergebnis"}</Label>
           <Select value={form.ergebnis} onValueChange={v => set("ergebnis", v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="offen">Offen</SelectItem><SelectItem value="konform">Konform</SelectItem><SelectItem value="teilweise_konform">Teilweise konform</SelectItem><SelectItem value="kritisch">Kritische Abweichungen</SelectItem></SelectContent>
+            <SelectContent>
+              <SelectItem value="offen">{t("open")}</SelectItem>
+              <SelectItem value="konform">{lang === "en" ? "Conformant" : "Konform"}</SelectItem>
+              <SelectItem value="teilweise_konform">{lang === "en" ? "Partially Conformant" : "Teilweise konform"}</SelectItem>
+              <SelectItem value="kritisch">{lang === "en" ? "Critical Deviations" : "Kritische Abweichungen"}</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         <div className="col-span-2 space-y-1"><Label className="text-xs">Auditumfang / Scope</Label><Textarea value={form.scope} onChange={e => set("scope", e.target.value)} className="text-sm min-h-12" /></div>
