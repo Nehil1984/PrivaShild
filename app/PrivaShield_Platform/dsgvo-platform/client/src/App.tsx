@@ -19,6 +19,7 @@ import { apiRequest, setApiCsrfToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
 import { allVvtTemplates } from "@/lib/vvt-templates";
+import { allTomTemplates } from "@/lib/tom-templates";
 import { useState, createContext, useContext, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -4149,6 +4150,7 @@ const tomTemplates: Record<string, any> = {
     wirksamkeit: "hoch",
     notizen: "Harmonisiert mit BSI SYS.2.1 (Client-Sicherheit) und CON.1 (Kryptokonzept).",
   },
+  ...allTomTemplates
 };
 
 function TomForm({ initial, onSave, onCancel }: any) {
@@ -4168,7 +4170,7 @@ function TomForm({ initial, onSave, onCancel }: any) {
           <Label className="text-xs">Muster-TOM</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-80">
               <SelectItem value="none">Keine Vorlage</SelectItem>
               <SelectItem value="mfa">Mehr-Faktor-Authentisierung</SelectItem>
               <SelectItem value="backup">Backup- und Wiederherstellungskonzept</SelectItem>
@@ -4178,6 +4180,15 @@ function TomForm({ initial, onSave, onCancel }: any) {
               <SelectItem value="dsdms_tom_zutritt">DSDMS: BSI Zutrittssicherung</SelectItem>
               <SelectItem value="dsdms_tom_zugang">DSDMS: BSI Zugangskontrolle</SelectItem>
               <SelectItem value="dsdms_tom_weitergabe">DSDMS: Transport verschlüsselt</SelectItem>
+              <Separator />
+              {Object.entries(allTomTemplates)
+                .sort((a, b) => a[1].massnahme.localeCompare(b[1].massnahme))
+                .map(([key, t]) => (
+                  <SelectItem key={key} value={key}>
+                    {t.massnahme}
+                  </SelectItem>
+                ))
+              }
             </SelectContent>
           </Select>
         </div>
