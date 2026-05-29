@@ -1,0 +1,3 @@
+[submodule "app/VulnLedger/vuln-ledger"]
+	path = app/VulnLedger/vuln-ledger
+	url = https://github.com/Nehil1984/vuln-ledger.git
