@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, setApiCsrfToken } from "@/lib/queryClient";
 import { APP_VERSION } from "@/lib/app-version";
 import { messages, type Lang, type MessageKey } from "./i18n";
+import { allVvtTemplates } from "@/lib/vvt-templates";
 import { useState, createContext, useContext, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1679,6 +1680,7 @@ const vvtTemplates: Record<string, any> = {
     empfaenger: "Lohnbuchhaltung, Zeiterfassungssoftware-Anbieter (AVV)",
     tomHinweis: "Rollen- und Berechtigungskonzept, verschlüsselte Datenbankverbindung",
   },
+  ...allVvtTemplates
 };
 
 function VvtForm({ initial, onSave, onCancel }: any) {
@@ -1722,7 +1724,7 @@ function VvtForm({ initial, onSave, onCancel }: any) {
           <Label className="text-xs">{t("vvtTemplateLabel")}</Label>
           <Select value={selectedTemplate} onValueChange={applyTemplate}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("selectTemplate")} /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-80">
               <SelectItem value="none">{t("noTemplate")}</SelectItem>
               <SelectItem value="personalverwaltung">Personalverwaltung</SelectItem>
               <SelectItem value="bewerbermanagement">Bewerbermanagement</SelectItem>
@@ -1734,6 +1736,15 @@ function VvtForm({ initial, onSave, onCancel }: any) {
               <SelectItem value="dsdms_it_support">DSDMS: IT-Support extern</SelectItem>
               <SelectItem value="dsdms_zutritt">DSDMS: Zutrittskontrollsystem</SelectItem>
               <SelectItem value="dsdms_zeiterfassung">DSDMS: Zeiterfassung</SelectItem>
+              <Separator />
+              {Object.entries(allVvtTemplates)
+                .sort((a, b) => a[1].bezeichnung.localeCompare(b[1].bezeichnung))
+                .map(([key, t]) => (
+                  <SelectItem key={key} value={key}>
+                    {t.bezeichnung}
+                  </SelectItem>
+                ))
+              }
             </SelectContent>
           </Select>
         </div>
