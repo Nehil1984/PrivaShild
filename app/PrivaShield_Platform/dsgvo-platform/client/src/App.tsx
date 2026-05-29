@@ -607,7 +607,11 @@ function Dashboard() {
   const vvtMusterCount = 10 + Object.keys(allVvtTemplates).length; // 149
   const vvtMinMuster = vvtMusterCount * 0.65; // 96.85
   const vvtTargetScore = vvtMinMuster * 1.2; // 116.22
-  const vvtMaturityScore = vvt.reduce((sum: number, v: any) => sum + getVvtMaturityWeight(v), 0);
+
+  const dashboardProzessCategories = ["prozessbeschreibung", "verfahrensdokumentation"];
+  const prozessScore = dokumente
+    .filter((d: any) => dashboardProzessCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
 
   const tomCategoryKeys = ["zutrittskontrolle", "zugangskontrolle", "zugriffskontrolle", "weitergabe", "eingabe", "auftrag", "verfuegbarkeit", "trennung"];
   const tomCoveredCategoriesCount = tomCategoryKeys.filter((catKey) => {
@@ -906,8 +910,8 @@ function Dashboard() {
   const dashboardAuditCount = stats?.audits ?? 0;
   const dashboardAuditTodoCount = 0;
   const maturityCriteria = [
-    { label: "Verarbeitungstätigkeiten-Dokumentation", weight: 5, score: vvtMaturityScore >= vvtTargetScore ? 5 : vvtMaturityScore >= vvtMinMuster ? 4 : vvtMaturityScore >= (vvtMinMuster * 0.5) ? 2 : vvtMaturityScore >= 1.0 ? 1 : 0 },
-    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: prozessScore >= 2.34 ? 5 : prozessScore >= 1.95 ? 4 : prozessScore >= 1.0 ? 2 : prozessScore >= 0.5 ? 1 : 0 },
+    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: vvt.length >= vvtTargetScore ? 6 : vvt.length >= vvtMinMuster ? 4 : vvt.length >= Math.round(vvtMinMuster * 0.5) ? 2 : vvt.length > 0 ? 1 : 0 },
     { label: "DSFA-Struktur", weight: 8, score: dsfaMitDsbCheck && dsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
     { label: "DSFA-Risikosteuerung", weight: 10, score: dsfaMitArt36 === 0 && dsfaMitHohemRestrisiko === 0 && dsfaReviewFaellig === 0 ? 10 : dsfaMitArt36 + dsfaMitHohemRestrisiko + dsfaReviewFaellig <= 2 ? 5 : 0 },
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: vvtOhneLoeschkonzept === 0 ? 6 : vvtOhneLoeschkonzept <= 2 ? 3 : 0 },
@@ -934,7 +938,7 @@ function Dashboard() {
     if (normalized.includes("löschkonzept")) return "Fehlende VVT-Löschkonzept-Verknüpfungen ergänzen und dokumentieren.";
     if (normalized.includes("aufgabensteuerung")) return "Kritische und hohe Aufgaben priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen.";
     if (normalized.includes("leitlinien")) return "Fehlende Leitlinien freigeben oder bestehende Leitlinien fachlich vervollständigen.";
-    if (normalized.includes("prozessdokumentation") || normalized.includes("verarbeitung")) return "Wesentliche Verarbeitungstätigkeiten aus den Vorlagen dokumentieren und freigeben.";
+    if (normalized.includes("prozessdokumentation")) return "Wesentliche Datenschutzprozesse dokumentieren und in den operativen Ablauf überführen.";
     if (normalized.includes("verzeichnis")) return "VVT fachlich vervollständigen und relevante Verarbeitungstätigkeiten nachpflegen.";
     if (normalized.includes("tom")) return "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen.";
     if (normalized.includes("avv")) return "Fehlende AVV-Verträge bzw. Prüfdokumentationen ergänzen.";
@@ -951,8 +955,8 @@ function Dashboard() {
     if (normalized.includes("dsfa")) return { href: "/dsfa", label: "Zu DSFA" };
     if (normalized.includes("löschkonzept")) return { href: "/loeschkonzept", label: "Zum Löschkonzept" };
     if (normalized.includes("aufgabensteuerung")) return { href: "/aufgaben?filter=kritisch", label: "Zu den Aufgaben" };
-    if (normalized.includes("leitlinien") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
-    if (normalized.includes("verzeichnis") || normalized.includes("verarbeitung")) return { href: "/vvt", label: "Zu VVT" };
+    if (normalized.includes("leitlinien") || normalized.includes("prozessdokumentation") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
+    if (normalized.includes("verzeichnis")) return { href: "/vvt", label: "Zu VVT" };
     if (normalized.includes("tom")) return { href: "/tom", label: "Zu TOM" };
     if (normalized.includes("avv")) return { href: "/avv", label: "Zu AVV" };
     if (normalized.includes("verantwortungsstruktur")) return { href: "/mandanten-uebersicht", label: "Zur Mandantenübersicht" };
@@ -967,7 +971,7 @@ function Dashboard() {
     if (normalized.includes("löschkonzept")) return { priority: "mittel", title: "Löschkonzept-Verknüpfungen ergänzen", draft: "Fehlende Verknüpfungen zwischen VVT und Löschkonzept fachlich nachpflegen." };
     if (normalized.includes("aufgabensteuerung")) return { priority: "hoch", title: "Kritische Aufgaben priorisiert nachsteuern", draft: "Kritische und hohe offene Aufgaben bündeln, priorisieren und verbindlich terminieren." };
     if (normalized.includes("leitlinien")) return { priority: "mittel", title: "Leitlinienbasis vervollständigen", draft: "Fehlende Leitlinien erstellen oder bestehende Leitlinien zur Freigabe bringen." };
-    if (normalized.includes("prozessdokumentation") || normalized.includes("verarbeitung")) return { priority: "mittel", title: "Verarbeitungstätigkeiten dokumentieren", draft: "Wesentliche Verarbeitungstätigkeiten aus den Vorlagen dokumentieren und freigeben." };
+    if (normalized.includes("prozessdokumentation")) return { priority: "mittel", title: "Prozessdokumentation nachziehen", draft: "Wesentliche Datenschutzprozesse dokumentieren und in den operativen Ablauf überführen." };
     if (normalized.includes("verzeichnis")) return { priority: "mittel", title: "VVT vervollständigen", draft: "Fehlende oder unvollständige Verarbeitungstätigkeiten im Verzeichnis ergänzen." };
     if (normalized.includes("tom")) return { priority: "mittel", title: "TOM-Katalog erweitern", draft: "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen." };
     if (normalized.includes("avv")) return { priority: "mittel", title: "AVV-Nachweise ergänzen", draft: "Fehlende AVV-Verträge oder Prüfdokumentationen vervollständigen." };
@@ -8745,7 +8749,11 @@ function ExportPage() {
   const exportVvtMusterCount = 10 + Object.keys(allVvtTemplates).length;
   const exportVvtMinMuster = exportVvtMusterCount * 0.65;
   const exportVvtTargetScore = exportVvtMinMuster * 1.2;
-  const exportVvtMaturityScore = vvt.reduce((sum: number, v: any) => sum + getVvtMaturityWeight(v), 0);
+
+  const exportProzessCategories = ["prozessbeschreibung", "verfahrensdokumentation"];
+  const exportProzessScore = dokumente
+    .filter((d: any) => exportProzessCategories.includes(d.kategorie))
+    .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
 
   const exportTomCategoryKeys = ["zutrittskontrolle", "zugangskontrolle", "zugriffskontrolle", "weitergabe", "eingabe", "auftrag", "verfuegbarkeit", "trennung"];
   const exportTomCoveredCategoriesCount = exportTomCategoryKeys.filter((catKey) => {
@@ -8775,8 +8783,8 @@ function ExportPage() {
   const exportBeschaeftigtenDok = dokumente.find((d: any) => d.dokumentTyp === "beschaeftigten_datenschutz_check");
   const exportDokumenteCount = dokumente.length;
   const maturityCriteria = [
-    { label: "Verarbeitungstätigkeiten-Dokumentation", weight: 5, score: exportVvtMaturityScore >= exportVvtTargetScore ? 5 : exportVvtMaturityScore >= exportVvtMinMuster ? 4 : exportVvtMaturityScore >= (exportVvtMinMuster * 0.5) ? 2 : exportVvtMaturityScore >= 1.0 ? 1 : 0 },
-    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: (stats?.vvt ?? 0) >= 3 ? 6 : (stats?.vvt ?? 0) > 0 ? 3 : 0 },
+    { label: "Prozessdokumentation", weight: 5, score: exportProzessScore >= 2.34 ? 5 : exportProzessScore >= 1.95 ? 4 : exportProzessScore >= 1.0 ? 2 : exportProzessScore >= 0.5 ? 1 : 0 },
+    { label: "Verzeichnis von Verarbeitungstätigkeiten", weight: 6, score: vvt.length >= exportVvtTargetScore ? 6 : vvt.length >= exportVvtMinMuster ? 4 : vvt.length >= Math.round(exportVvtMinMuster * 0.5) ? 2 : vvt.length > 0 ? 1 : 0 },
     { label: "DSFA-Struktur", weight: 8, score: exportDsfaMitDsbCheck && exportDsfaOhneVvt === 0 ? 8 : dsfa.length > 0 ? 4 : 0 },
     { label: "DSFA-Risikosteuerung", weight: 10, score: exportDsfaMitArt36 === 0 && exportDsfaMitHohemRestrisiko === 0 && exportDsfaReviewFaellig === 0 ? 10 : exportDsfaMitArt36 + exportDsfaMitHohemRestrisiko + exportDsfaReviewFaellig <= 2 ? 5 : 0 },
     { label: "Löschkonzept-Verknüpfung", weight: 6, score: fehlendeLoeschBezuge === 0 ? 6 : fehlendeLoeschBezuge <= 2 ? 3 : 0 },
@@ -8803,7 +8811,7 @@ function ExportPage() {
     if (normalized.includes("löschkonzept")) return "Fehlende VVT-Löschkonzept-Verknüpfungen ergänzen und dokumentieren.";
     if (normalized.includes("aufgabensteuerung")) return "Kritische und hohe Aufgaben priorisieren, Verantwortliche bestätigen und Fälligkeiten nachziehen.";
     if (normalized.includes("leitlinien")) return "Fehlende Leitlinien freigeben oder bestehende Leitlinien fachlich vervollständigen.";
-    if (normalized.includes("prozessdokumentation") || normalized.includes("verarbeitung")) return "Wesentliche Verarbeitungstätigkeiten aus den Vorlagen dokumentieren und freigeben.";
+    if (normalized.includes("prozessdokumentation")) return "Wesentliche Datenschutzprozesse dokumentieren und in den operativen Ablauf überführen.";
     if (normalized.includes("verzeichnis")) return "VVT fachlich vervollständigen und relevante Verarbeitungstätigkeiten nachpflegen.";
     if (normalized.includes("tom")) return "Technische und organisatorische Maßnahmen strukturiert ergänzen und reviewen.";
     if (normalized.includes("avv")) return "Fehlende AVV-Verträge bzw. Prüfdokumentationen ergänzen.";
@@ -8820,8 +8828,8 @@ function ExportPage() {
     if (normalized.includes("dsfa")) return { href: "/dsfa", label: "Zu DSFA" };
     if (normalized.includes("löschkonzept")) return { href: "/loeschkonzept", label: "Zum Löschkonzept" };
     if (normalized.includes("aufgabensteuerung")) return { href: "/aufgaben?filter=kritisch", label: "Zu den Aufgaben" };
-    if (normalized.includes("leitlinien") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
-    if (normalized.includes("verzeichnis") || normalized.includes("verarbeitung")) return { href: "/vvt", label: "Zu VVT" };
+    if (normalized.includes("leitlinien") || normalized.includes("prozessdokumentation") || normalized.includes("beschäftigtendatenschutz") || normalized.includes("dokumentenreife") || normalized.includes("web-/hinweis")) return { href: "/dokumente", label: "Zu Dokumenten" };
+    if (normalized.includes("verzeichnis")) return { href: "/vvt", label: "Zu VVT" };
     if (normalized.includes("tom")) return { href: "/tom", label: "Zu TOM" };
     if (normalized.includes("avv")) return { href: "/avv", label: "Zu AVV" };
     if (normalized.includes("verantwortungsstruktur")) return { href: "/mandanten-uebersicht", label: "Zur Mandantenübersicht" };

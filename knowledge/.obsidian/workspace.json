@@ -1,0 +1,204 @@
+{
+  "main": {
+    "id": "7c9d941eb1313977",
+    "type": "split",
+    "children": [
+      {
+        "id": "5c61cf0e0eb3243b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f2bed662a5d4f687",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Neuer Tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6e26aeeb61f7a7af",
+    "type": "split",
+    "children": [
+      {
+        "id": "068a276d9bbb687c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f300fccbefae120e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Dateiexplorer"
+            }
+          },
+          {
+            "id": "374add9a47297997",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Suchen"
+            }
+          },
+          {
+            "id": "9d4f0530679b55a0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Lesezeichen"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "bc1e9a569202ae89",
+    "type": "split",
+    "children": [
+      {
+        "id": "dbe65e0d1ff2d31b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d9afc7d0819549a0",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rückverweise"
+            }
+          },
+          {
+            "id": "daaaa8eb0e47bd18",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Ausgehende Links"
+            }
+          },
+          {
+            "id": "d3f29bb79e6eb546",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "be850d3b38b7fafe",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Alle Eigenschaften"
+            }
+          },
+          {
+            "id": "dfdb47828b85509d",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Gliederung"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Schnellauswahl öffnen": false,
+      "graph:Graph-Ansicht öffnen": false,
+      "canvas:Neuen Canvas erstellen": false,
+      "daily-notes:Heutige Notiz öffnen": false,
+      "templates:Vorlage einfügen": false,
+      "command-palette:Befehlspalette öffnen": false,
+      "bases:Neue Base erstellen": false
+    }
+  },
+  "active": "f2bed662a5d4f687",
+  "lastOpenFiles": [
+    "general/templates/report_template.md.md",
+    "general/templates/email_template.md.md",
+    "general/task.md.md",
+    "datenschutz/vdss10010/vdss10010.md.md",
+    "datenschutz/templates/dsgvo_gutachten.md.md",
+    "datenschutz/nis2_ki_vo/nis2_dsgvo_link.md.md",
+    "datenschutz/dsgvo_bdsg/artikel_6.md.md",
+    "datenschutz/dsgvo_bdsg/artikel_25.md.md",
+    "cybersecurity/tools/pentest_tools.md.md",
+    "cybersecurity/templates/pentest_report.md.md",
+    "cybersecurity/documentation/nist_sp-800-171.md.md",
+    "cybersecurity/certifications/oscp_prep.md.md",
+    "shared",
+    "general/templates",
+    "general",
+    "datenschutz/vdss10010",
+    "datenschutz/templates",
+    "datenschutz/nis2_ki_vo",
+    "datenschutz/dsgvo_bdsg",
+    "datenschutz",
+    "cybersecurity/tools",
+    "cybersecurity/documentation"
+  ]
+}

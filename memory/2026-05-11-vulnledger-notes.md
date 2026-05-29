@@ -1,0 +1,35 @@
+# VulnLedger – Startnotizen (2026-05-11)
+
+- Produktname festgelegt: `VulnLedger`
+- GitHub-Repo-Name festgelegt: `vuln-ledger`
+- Ziel: Penetration-Testing-App zur strukturierten Dokumentation von Assessments, Scopes, Findings, Evidenzen, Bewertungen und Berichtsvorbereitung.
+- Initialer Tech-Startpunkt angelegt mit React + TypeScript + Vite.
+- Erstes MVP-Landing-UI umgesetzt.
+- Dockerfile, `.dockerignore`, GHCR-Workflow und `unraid-template.xml` angelegt.
+- Erstes Logo/Unraid-Icon unter `public/vulnledger-logo.png` und `public/unraid-icon.png` abgelegt.
+- Version initial auf `0.1.0` gesetzt.
+- Vor GitHub-Push lokal verifiziert mit `npm run build` und `npm run lint`.
+- GitHub-Repo privat angelegt: `https://github.com/Nehil1984/vuln-ledger`
+- Initialer Commit: `cf882cd` (`feat: initialize VulnLedger MVP shell`)
+- Initialer Push nach `master` erfolgt; zusätzlicher Versionsbranch `0.1.0` angelegt und gepusht.
+- Architekturphase nachgezogen: `docs/architecture.md`, `docs/page-map.md` und `docs/roadmap.md` angelegt.
+- Fachlicher MVP-Rahmen für Kunden, Assessments, Scope, Findings, Evidence, Retest und Reports dokumentiert.
+- Architektur-Commit: `e2da996` (`docs: define VulnLedger MVP architecture`) nach `master` gepusht.
+- Erste echte MVP-Oberfläche umgesetzt: Sidebar-Navigation, Dashboard-Layout, Kennzahlen, priorisierte Findings, Kunden-/Assessment-Listen und Roadmap-Panel als Mock-UI.
+- UI erfolgreich mit `npm run build` und `npm run lint` verifiziert.
+- UI-Commit: `6b7c640` (`feat: add VulnLedger MVP dashboard shell`) nach `master` gepusht.
+- Routing-Ausbau umgesetzt: `react-router-dom` ergänzt und VulnLedger auf echte MVP-Seiten für Dashboard, Kunden, Assessments, Findings, Reports und Einstellungen umgestellt.
+- Build und Lint nach Routing-Ausbau erfolgreich grün.
+- Routing-Commit: `9de04db` (`feat: add routed MVP pages for VulnLedger`) nach `master` gepusht.
+- Platzhalter deutlich reduziert und durch interaktive Frontend-Workflows ersetzt: Kunden anlegen/anzeigen, Assessments anlegen mit Statuspflege, Findings anlegen mit Statuswechsel sowie Reports anlegen und steuern. Einstellungen enthalten nun pflegbare Default-Werte statt reiner Listen.
+- Workflow-Ausbau erfolgreich mit `npm run build` und `npm run lint` verifiziert.
+- Workflow-Commit: `c7c0941` (`feat: add interactive MVP workflows`) nach `master` gepusht.
+- Backend-Grundlage ergänzt: Express-Server, Session-Login, Rollenmodell (`admin`/`user`), Admin-User-API und DB-Backend-Umschalter aufgebaut.
+- Datenhaltung jetzt standardmäßig über `lowdb`, alternativ umschaltbar auf `sqlite`.
+- Full-Stack-Build erfolgreich verifiziert mit `npm run build:full` und `npm run lint`.
+- Backend-Commit: `b5cab2b` (`feat: add auth backend with lowdb default and sqlite option`) nach `master` gepusht.
+- Lizenzierung und Backup-Logik in VulnLedger nach PrivaShield-Muster integriert: Lizenzstatus/-pflege, Backup-Konfiguration, Backup-Run, Backup-Liste und Restore-Endpunkte ergänzt.
+- Frontend jetzt mit Login-Seite, Session-Check, Logout, Rollenanzeige und Admin-Bereich für Benutzer, DB-Backend, Lizenz und Backup.
+- Kunden, Assessments und Findings hängen nun an echte API-Endpunkte statt rein lokalem In-Memory-State.
+- Verifiziert mit `npm run build:full` und `npm run lint`.
+- Commit: `ecd6b3b` (`feat: add licensing backups and authenticated admin flows`) nach `master` gepusht.
