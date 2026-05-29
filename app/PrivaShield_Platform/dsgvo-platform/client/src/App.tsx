@@ -484,6 +484,23 @@ function MandantGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ─── MATURITY WEIGHT HELPERS (module-level, used by Dashboard + ExportPage) ──
+function getDocMaturityWeight(d: any): number {
+  if (d.status === "aktiv") return 1.0;
+  if (d.status === "entwurf" || d.status === "in_bearbeitung" || d.status === "überprüfung") return 0.5;
+  return 0.0;
+}
+function getTomMaturityWeight(t: any): number {
+  if (t.status === "implementiert" || t.status === "überprüft") return 1.0;
+  if (t.status === "geplant") return 0.5;
+  return 0.0;
+}
+function getVvtMaturityWeight(v: any): number {
+  if (v.status === "aktiv") return 1.0;
+  if (v.status === "entwurf") return 0.5;
+  return 0.0;
+}
+
 // ─── DASHBOARD ─────────────────────────────────────────────────────────────
 function Dashboard() {
   const { t } = useI18n();
@@ -580,29 +597,12 @@ function Dashboard() {
   const sichtbareInterneNotizen = interneNotizen.slice(0, 5);
   const gruppenKennzahl = activeMandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === activeMandant.gruppeId).length : 0;
   const dokumenteCount = dokumente.length;
-  const getDocMaturityWeight = (d: any) => {
-    if (d.status === "aktiv") return 1.0;
-    if (d.status === "entwurf" || d.status === "in_bearbeitung" || d.status === "überprüfung") return 0.5;
-    return 0.0;
-  };
-  const getTomMaturityWeight = (t: any) => {
-    if (t.status === "implementiert" || t.status === "überprüft") return 1.0;
-    if (t.status === "geplant") return 0.5;
-    return 0.0;
-  };
+
   const dashboardLeitlinienCategories = ["leitlinie", "leitlinie_datenschutz", "leitlinie_informationssicherheit", "richtlinie"];
-
   const leitlinienCount = dokumente.filter((d: any) => dashboardLeitlinienCategories.includes(d.kategorie)).length;
-
   const leitlinienScore = dokumente
     .filter((d: any) => dashboardLeitlinienCategories.includes(d.kategorie))
     .reduce((sum: number, d: any) => sum + getDocMaturityWeight(d), 0);
-
-  const getVvtMaturityWeight = (v: any) => {
-    if (v.status === "aktiv") return 1.0;
-    if (v.status === "entwurf") return 0.5;
-    return 0.0;
-  };
 
   const vvtMusterCount = 10 + Object.keys(allVvtTemplates).length; // 149
   const vvtMinMuster = vvtMusterCount * 0.65; // 96.85
