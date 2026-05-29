@@ -12,6 +12,9 @@ import { storage, reloadStorage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDbBackend, writeDbBackend } from "./db-config";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 import { clearCsrfCookie, clearLoginFailures, csrfProtection, issueCsrfToken, loginRateLimit, registerLoginFailure, setCsrfCookie } from "./security";
 import { inspectBackup, inspectUploadedBackup, listBackups, nextBackupRunEstimate, readBackupConfig, readBackupStatus, restoreBackup, restoreUploadedBackup, runBackupNow, startBackupScheduler, writeBackupConfig } from "./backup";
 import { validateBody } from "./validation";
@@ -711,6 +714,478 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       storage.getInterneNotizenByMandant(mandantId),
     ]);
     res.json({ mandant, logs, stats, modules: { vvt, avv, dsfa, datenpannen, dsr, tom, audits, pdca, loeschkonzept, aufgaben, dokumente, interne_notizen: interneNotizen } });
+  });
+
+  // ─── AES-256-GCM Verschlüsselungs-Helfer ──────────────────────────────────────
+  function encryptData(dataStr: string, password?: string): any {
+    if (!password) {
+      return { encrypted: false, data: JSON.parse(dataStr) };
+    }
+    const salt = crypto.randomBytes(16);
+    const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    
+    let ciphertext = cipher.update(dataStr, "utf8", "hex");
+    ciphertext += cipher.final("hex");
+    const authTag = cipher.getAuthTag().toString("hex");
+
+    return {
+      encrypted: true,
+      salt: salt.toString("hex"),
+      iv: iv.toString("hex"),
+      authTag: authTag.toString("hex"),
+      ciphertext
+    };
+  }
+
+  function decryptData(payload: any, password?: string): string {
+    if (!payload.encrypted) {
+      return typeof payload.data === "string" ? payload.data : JSON.stringify(payload.data);
+    }
+    if (!password) {
+      throw new Error("Entschlüsselungspasswort erforderlich");
+    }
+    const salt = Buffer.from(payload.salt, "hex");
+    const iv = Buffer.from(payload.iv, "hex");
+    const authTag = Buffer.from(payload.authTag, "hex");
+    const ciphertext = payload.ciphertext;
+
+    const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(ciphertext, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  }
+
+  // POST /api/mandanten/:mid/export-download
+  app.post("/api/mandanten/:mid/export-download", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+
+    const { modules = [], password } = req.body;
+    
+    try {
+      const [
+        mandant,
+        vvt,
+        avv,
+        dsfa,
+        datenpannen,
+        dsr,
+        tom,
+        audits,
+        pdca,
+        loeschkonzept,
+        aufgaben,
+        dokumente,
+        interneNotizen
+      ] = await Promise.all([
+        storage.getMandant(mandantId),
+        modules.includes("vvt") ? storage.getVvtByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("avv") ? storage.getAvvByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("dsfa") ? storage.getDsfaByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("datenpannen") ? storage.getDatenpannenByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("dsr") ? storage.getDsrByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("tom") ? storage.getTomByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("audits") ? storage.getAuditsByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("pdca") ? storage.getPdcaByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("loeschkonzept") ? storage.getLoeschkonzeptByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("aufgaben") ? storage.getAufgabenByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("dokumente") ? storage.getDokumenteByMandant(mandantId) : Promise.resolve(null),
+        modules.includes("interne_notizen") ? storage.getInterneNotizenByMandant(mandantId) : Promise.resolve(null),
+      ]);
+
+      const pkgPath = path.resolve("package.json");
+      let appVer = "1.24.4";
+      try {
+        if (fs.existsSync(pkgPath)) {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          appVer = pkg.version || appVer;
+        }
+      } catch (e) {}
+
+      const exportData: any = {
+        meta: {
+          version: "1.0",
+          appVersion: appVer,
+          exportedAt: new Date().toISOString(),
+          mandantName: mandant?.name || `Mandant ${mandantId}`,
+          modules,
+          encrypted: !!password
+        },
+        data: {}
+      };
+
+      if (modules.includes("mandant")) {
+        exportData.data.mandant = mandant;
+      }
+      if (vvt) exportData.data.vvt = vvt;
+      if (avv) exportData.data.avv = avv;
+      if (dsfa) exportData.data.dsfa = dsfa;
+      if (datenpannen) exportData.data.datenpannen = datenpannen;
+      if (dsr) exportData.data.dsr = dsr;
+      if (tom) exportData.data.tom = tom;
+      if (audits) exportData.data.audits = audits;
+      if (pdca) exportData.data.pdca = pdca;
+      if (loeschkonzept) exportData.data.loeschkonzept = loeschkonzept;
+      if (aufgaben) exportData.data.aufgaben = aufgaben;
+      if (dokumente) exportData.data.dokumente = dokumente;
+      if (interneNotizen) exportData.data.interne_notizen = interneNotizen;
+
+      const payload = encryptData(JSON.stringify(exportData), password);
+
+      const sanitizedName = (mandant?.name || "export").replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
+      const dateStr = new Date().toISOString().split("T")[0];
+      
+      res.setHeader("Content-Disposition", `attachment; filename="${sanitizedName}_${dateStr}.privashield"`);
+      res.setHeader("Content-Type", "application/json");
+      res.send(JSON.stringify(payload));
+    } catch (error: any) {
+      res.status(500).json({ message: `Export fehlgeschlagen: ${error?.message || error}` });
+    }
+  });
+
+  // POST /api/mandanten/:mid/import
+  app.post("/api/mandanten/:mid/import", authMiddleware, async (req: any, res) => {
+    const mandantId = Number(req.params.mid);
+    if (!(await requireMandantAccess(req, res, mandantId))) return;
+
+    const { fileContent, password, strategy = "hinzufuegen" } = req.body;
+
+    if (!fileContent) {
+      return res.status(400).json({ message: "Kein Datei-Inhalt übergeben" });
+    }
+
+    try {
+      let rawPayload: any;
+      try {
+        rawPayload = JSON.parse(fileContent);
+      } catch (e) {
+        return res.status(400).json({ message: "Ungültiges Dateiformat. Keine korrekte JSON-Datei." });
+      }
+
+      if (rawPayload.encrypted && !password) {
+        return res.status(400).json({ message: "password_required" });
+      }
+
+      let decryptedStr: string;
+      try {
+        decryptedStr = decryptData(rawPayload, password);
+      } catch (e: any) {
+        return res.status(400).json({ message: "Falsches Passwort oder beschädigte Datei." });
+      }
+
+      let importObj: any;
+      try {
+        importObj = JSON.parse(decryptedStr);
+      } catch (e) {
+        return res.status(400).json({ message: "Entschlüsselter Inhalt ist kein gültiges JSON." });
+      }
+
+      const meta = importObj.meta || {};
+      const data = importObj.data || {};
+      const modules = meta.modules || [];
+
+      if (!Array.isArray(modules)) {
+        return res.status(400).json({ message: "Ungültige Metadaten: Module fehlen." });
+      }
+
+      const tomIdMap = new Map<number, number>();
+      const avvIdMap = new Map<number, number>();
+      const vvtIdMap = new Map<number, number>();
+      const auditIdMap = new Map<number, { dbId: number; origPdcaIds: any }>();
+      const pdcaIdMap = new Map<number, number>();
+
+      const importedStats: Record<string, number> = {};
+
+      // 1. Mandant-Stammdaten
+      if (modules.includes("mandant") && data.mandant) {
+        const { id, name, createdAt, logo, ...mandantFields } = data.mandant;
+        await storage.updateMandant(mandantId, mandantFields);
+        importedStats["mandant"] = 1;
+      }
+
+      // 2. TOM
+      if (modules.includes("tom") && Array.isArray(data.tom)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getTomByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteTom(item.id);
+          }
+        }
+        importedStats["tom"] = 0;
+        for (const item of data.tom) {
+          const oldId = item.id;
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          const created = await storage.createTom({ ...fields, mandantId });
+          tomIdMap.set(oldId, created.id);
+          importedStats["tom"]++;
+        }
+      }
+
+      // 3. AVV
+      if (modules.includes("avv") && Array.isArray(data.avv)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getAvvByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteAvv(item.id);
+          }
+        }
+        importedStats["avv"] = 0;
+        for (const item of data.avv) {
+          const oldId = item.id;
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          const created = await storage.createAvv({ ...fields, mandantId });
+          avvIdMap.set(oldId, created.id);
+          importedStats["avv"]++;
+        }
+      }
+
+      // 4. VVT
+      if (modules.includes("vvt") && Array.isArray(data.vvt)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getVvtByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteVvt(item.id);
+          }
+        }
+        importedStats["vvt"] = 0;
+        for (const item of data.vvt) {
+          const oldId = item.id;
+          const { id, createdAt, updatedAt, mandantId: _mid, verknuepfte_tom_ids, verknuepfteTomIds, ...fields } = item;
+          
+          let tomIdsArr: any[] = [];
+          try {
+            const tomIdsVal = verknuepfteTomIds || verknuepfte_tom_ids || "[]";
+            const parsed = typeof tomIdsVal === "string" ? JSON.parse(tomIdsVal) : tomIdsVal;
+            if (Array.isArray(parsed)) {
+              tomIdsArr = parsed.map(tid => tomIdMap.get(Number(tid)) || tid);
+            }
+          } catch (e) {}
+
+          const created = await storage.createVvt({
+            ...fields,
+            mandantId,
+            verknuepfteTomIds: JSON.stringify(tomIdsArr)
+          });
+          vvtIdMap.set(oldId, created.id);
+          importedStats["vvt"]++;
+        }
+      }
+
+      // 5. DSFA
+      if (modules.includes("dsfa") && Array.isArray(data.dsfa)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getDsfaByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteDsfa(item.id);
+          }
+        }
+        importedStats["dsfa"] = 0;
+        for (const item of data.dsfa) {
+          const { id, createdAt, updatedAt, mandantId: _mid, vvtId, ...fields } = item;
+          const mappedVvtId = vvtId ? (vvtIdMap.get(Number(vvtId)) || vvtId) : null;
+          await storage.createDsfa({
+            ...fields,
+            vvtId: mappedVvtId,
+            mandantId
+          });
+          importedStats["dsfa"]++;
+        }
+      }
+
+      // 6. Datenpannen
+      if (modules.includes("datenpannen") && Array.isArray(data.datenpannen)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getDatenpannenByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteDatenpanne(item.id);
+          }
+        }
+        importedStats["datenpannen"] = 0;
+        for (const item of data.datenpannen) {
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          await storage.createDatenpanne({ ...fields, mandantId });
+          importedStats["datenpannen"]++;
+        }
+      }
+
+      // 7. DSR
+      if (modules.includes("dsr") && Array.isArray(data.dsr)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getDsrByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteDsr(item.id);
+          }
+        }
+        importedStats["dsr"] = 0;
+        for (const item of data.dsr) {
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          await storage.createDsr({ ...fields, mandantId });
+          importedStats["dsr"]++;
+        }
+      }
+
+      // 8. Audits
+      if (modules.includes("audits") && Array.isArray(data.audits)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getAuditsByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteAudit(item.id);
+          }
+        }
+        importedStats["audits"] = 0;
+        for (const item of data.audits) {
+          const oldId = item.id;
+          const { id, createdAt, updatedAt, mandantId: _mid, verknuepftePdcaIds, ...fields } = item;
+          const created = await storage.createAudit({
+            ...fields,
+            verknuepftePdcaIds: "[]",
+            mandantId
+          });
+          auditIdMap.set(oldId, { dbId: created.id, origPdcaIds: verknuepftePdcaIds });
+          importedStats["audits"]++;
+        }
+      }
+
+      // 9. PDCA
+      if (modules.includes("pdca") && Array.isArray(data.pdca)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getPdcaByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deletePdca(item.id);
+          }
+        }
+        importedStats["pdca"] = 0;
+        for (const item of data.pdca) {
+          const oldId = item.id;
+          const { id, createdAt, updatedAt, mandantId: _mid, verknuepftesAuditId, ...fields } = item;
+          const mappedAuditId = verknuepftesAuditId ? (auditIdMap.has(Number(verknuepftesAuditId)) ? auditIdMap.get(Number(verknuepftesAuditId)).dbId : verknuepftesAuditId) : null;
+          const created = await storage.createPdca({
+            ...fields,
+            verknuepftesAuditId: mappedAuditId,
+            mandantId
+          });
+          pdcaIdMap.set(oldId, created.id);
+          importedStats["pdca"]++;
+        }
+
+        // Update Audits' verknuepftePdcaIds
+        for (const [oldAuditId, info] of auditIdMap.entries()) {
+          try {
+            const parsed = typeof info.origPdcaIds === "string" ? JSON.parse(info.origPdcaIds) : info.origPdcaIds;
+            if (Array.isArray(parsed)) {
+              const mappedPdcaIds = parsed.map(pid => pdcaIdMap.get(Number(pid)) || pid);
+              await storage.updateAudit(info.dbId, { verknuepftePdcaIds: JSON.stringify(mappedPdcaIds) });
+            }
+          } catch (e) {}
+        }
+      }
+
+      // 10. Löschkonzept
+      if (modules.includes("loeschkonzept") && Array.isArray(data.loeschkonzept)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getLoeschkonzeptByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteLoeschkonzept(item.id);
+          }
+        }
+        importedStats["loeschkonzept"] = 0;
+        for (const item of data.loeschkonzept) {
+          const { id, createdAt, updatedAt, mandantId: _mid, quelleVvtId, ...fields } = item;
+          const mappedVvtId = quelleVvtId ? (vvtIdMap.get(Number(quelleVvtId)) || quelleVvtId) : null;
+          await storage.createLoeschkonzept({
+            ...fields,
+            quelleVvtId: mappedVvtId,
+            mandantId
+          });
+          importedStats["loeschkonzept"]++;
+        }
+      }
+
+      // 11. Aufgaben
+      if (modules.includes("aufgaben") && Array.isArray(data.aufgaben)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getAufgabenByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteAufgabe(item.id);
+          }
+        }
+        importedStats["aufgaben"] = 0;
+        for (const item of data.aufgaben) {
+          const { id, createdAt, updatedAt, mandantId: _mid, referenzId, kategorie: taskKategorie, ...fields } = item;
+          let mappedReferenzId = referenzId;
+          if (referenzId) {
+            if (taskKategorie === "pdca") {
+              mappedReferenzId = pdcaIdMap.get(Number(referenzId)) || referenzId;
+            } else if (taskKategorie === "audit") {
+              mappedReferenzId = auditIdMap.has(Number(referenzId)) ? auditIdMap.get(Number(referenzId)).dbId : referenzId;
+            } else if (taskKategorie === "vvt") {
+              mappedReferenzId = vvtIdMap.get(Number(referenzId)) || referenzId;
+            }
+          }
+          await storage.createAufgabe({
+            ...fields,
+            kategorie: taskKategorie,
+            referenzId: mappedReferenzId,
+            mandantId
+          });
+          importedStats["aufgaben"]++;
+        }
+      }
+
+      // 12. Dokumente
+      if (modules.includes("dokumente") && Array.isArray(data.dokumente)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getDokumenteByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteDokument(item.id);
+          }
+        }
+        importedStats["dokumente"] = 0;
+        for (const item of data.dokumente) {
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          await storage.createDokument({ ...fields, mandantId });
+          importedStats["dokumente"]++;
+        }
+      }
+
+      // 13. Interne Notizen
+      if (modules.includes("interne_notizen") && Array.isArray(data.interne_notizen)) {
+        if (strategy === "ersetzen") {
+          const existing = await storage.getInterneNotizenByMandant(mandantId);
+          for (const item of existing) {
+            await storage.deleteInterneNotiz(item.id);
+          }
+        }
+        importedStats["interne_notizen"] = 0;
+        for (const item of data.interne_notizen) {
+          const { id, createdAt, updatedAt, mandantId: _mid, ...fields } = item;
+          await storage.createInterneNotiz({ ...fields, mandantId });
+          importedStats["interne_notizen"]++;
+        }
+      }
+
+      const user = await storage.getUserById(req.userId);
+      await storage.createMandantenLog({
+        mandantId,
+        userId: req.userId,
+        userName: user?.name,
+        aktion: `import_erfolgt`,
+        modul: "system",
+        entitaetTyp: "mandant",
+        entitaetId: mandantId,
+        beschreibung: `Import von Mandantendaten durchgeführt (${strategy === "ersetzen" ? "Ersetzen" : "Hinzufügen"}).`,
+        detailsJson: JSON.stringify({ importedStats, strategy }),
+      });
+
+      res.json({ ok: true, importedStats });
+    } catch (err: any) {
+      res.status(500).json({ message: `Import fehlgeschlagen: ${err?.message || err}` });
+    }
   });
 
   // ─── BENUTZER (Admin only) ────────────────────────────────────────────────

@@ -38,7 +38,8 @@ import {
   LogOut, ChevronRight, Plus, Pencil, Trash2, Eye,
   Sun, Moon, Bell, Menu, X, AlertCircle, Clock,
   TrendingUp, CheckCircle2, XCircle, MoreVertical, Settings, Database, HardDrive,
-  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen, RefreshCcw
+  Printer, Download, ChevronDown, ChevronUp, Copy, Globe, Mail, Bot, ClipboardList, Archive, NotebookPen, RefreshCcw,
+  EyeOff, FileUp, FileDown, ArrowLeftRight
 } from "lucide-react";
 
 
@@ -238,6 +239,7 @@ const navItems = [
   { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
   { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
   { path: "/export", label: "exportPrint", icon: Printer },
+  { path: "/datentransfer", label: "Daten-Transfer", icon: ArrowLeftRight },
   { path: "/backups", label: "backups", icon: Archive },
 ];
 
@@ -8613,6 +8615,514 @@ const EXPORT_MODULES = [
   { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-slate-400" },
 ];
 
+function MandantExportImportPage() {
+  const { toast } = useToast();
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const { activeMandantId } = useMandant();
+  const queryClient = useQueryClient();
+
+  const [exportMandantId, setExportMandantId] = useState<number | null>(activeMandantId);
+  const [importMandantId, setImportMandantId] = useState<number | null>(activeMandantId);
+
+  const { data: mandanten = [] } = useQuery({
+    queryKey: ["/api/mandanten"],
+    queryFn: () => apiRequest("GET", "/api/mandanten").then(r => r.json()),
+  });
+
+  const sichtbareMandanten = user?.role === "admin"
+    ? mandanten
+    : mandanten.filter((m: any) => {
+        try {
+          const allowedIds = JSON.parse(user?.mandantIds || "[]");
+          return allowedIds.includes(m.id);
+        } catch {
+          return false;
+        }
+      });
+
+  useEffect(() => {
+    if (!exportMandantId && activeMandantId) setExportMandantId(activeMandantId);
+    if (!importMandantId && activeMandantId) setImportMandantId(activeMandantId);
+  }, [activeMandantId]);
+
+  const AVAILABLE_MODULES = [
+    { key: "vvt", label: "VVT (Verarbeitungstätigkeiten)", icon: FileText, color: "text-blue-500" },
+    { key: "tom", label: "TOM-Katalog (Techn. Organ. Maßnahmen)", icon: Lock, color: "text-teal-500" },
+    { key: "avv", label: "AVV (Auftragsverarbeitung)", icon: Shield, color: "text-indigo-500" },
+    { key: "dsfa", label: "DSFA (Datenschutz-Folgenabschätzung)", icon: AlertTriangle, color: "text-amber-500" },
+    { key: "datenpannen", label: "Datenpannen", icon: AlertCircle, color: "text-red-500" },
+    { key: "dsr", label: "DSR (Betroffenenrechte)", icon: UserCheck, color: "text-pink-500" },
+    { key: "audits", label: "Interne Audits", icon: ClipboardList, color: "text-orange-500" },
+    { key: "pdca", label: "PDCA / Verbesserungszyklus", icon: RefreshCcw, color: "text-cyan-500" },
+    { key: "loeschkonzept", label: "Löschkonzept", icon: Database, color: "text-purple-500" },
+    { key: "aufgaben", label: "Aufgaben", icon: CheckSquare, color: "text-emerald-500" },
+    { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-sky-500" },
+    { key: "interne_notizen", label: "Interne Notizen", icon: NotebookPen, color: "text-yellow-600" },
+    { key: "mandant", label: "Mandanten-Stammdaten", icon: Building2, color: "text-violet-500" },
+  ];
+
+  const [selectedModules, setSelectedModules] = useState<string[]>(AVAILABLE_MODULES.map(m => m.key));
+  const [exportPassword, setExportPassword] = useState("");
+  const [showExportPassword, setShowExportPassword] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importFileContent, setImportFileContent] = useState<string>("");
+  const [importFileMeta, setImportFileMeta] = useState<any>(null);
+  const [importPassword, setImportPassword] = useState("");
+  const [showImportPassword, setShowImportPassword] = useState(false);
+  const [importStrategy, setImportStrategy] = useState<"hinzufuegen" | "ersetzen">("hinzufuegen");
+  const [importLoading, setImportLoading] = useState(false);
+
+  const getPasswordStrength = (pw: string) => {
+    if (!pw) return { score: 0, text: "", color: "" };
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+    switch (score) {
+      case 1:
+      case 2:
+        return { score, text: "Schwach", color: "bg-red-500" };
+      case 3:
+      case 4:
+        return { score, text: "Mittel", color: "bg-amber-500" };
+      case 5:
+        return { score, text: "Sehr stark", color: "bg-emerald-500" };
+      default:
+        return { score: 0, text: "", color: "" };
+    }
+  };
+
+  const strength = getPasswordStrength(exportPassword);
+
+  const toggleModule = (key: string) => {
+    setSelectedModules(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const selectAllModules = () => {
+    setSelectedModules(AVAILABLE_MODULES.map(m => m.key));
+  };
+
+  const deselectAllModules = () => {
+    setSelectedModules([]);
+  };
+
+  const handleExport = async () => {
+    if (!exportMandantId) {
+      toast({ title: "Fehler", description: "Bitte wählen Sie einen Mandanten aus.", variant: "destructive" });
+      return;
+    }
+    if (selectedModules.length === 0) {
+      toast({ title: "Fehler", description: "Bitte wählen Sie mindestens ein Modul zum Exportieren aus.", variant: "destructive" });
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/mandanten/${exportMandantId}/export-download`, {
+        modules: selectedModules,
+        password: exportPassword || undefined
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Export fehlgeschlagen");
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("Content-Disposition");
+      let filename = "export.privashield";
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Export erfolgreich", description: `Die Exportdatei ${filename} wurde heruntergeladen.` });
+    } catch (err: any) {
+      toast({ title: "Export fehlgeschlagen", description: err.message || "Beim Exportieren ist ein Fehler aufgetreten.", variant: "destructive" });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setImportFile(file);
+    setImportFileContent("");
+    setImportFileMeta(null);
+    setImportPassword("");
+
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setImportFileContent(text);
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.meta) {
+          setImportFileMeta(parsed.meta);
+        }
+      } catch (err) {
+        toast({ title: "Fehler", description: "Die Datei konnte nicht als JSON geparst werden.", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (!importMandantId) {
+      toast({ title: "Fehler", description: "Bitte wählen Sie den Ziel-Mandanten aus.", variant: "destructive" });
+      return;
+    }
+    if (!importFileContent) {
+      toast({ title: "Fehler", description: "Bitte wählen Sie eine .privashield Exportdatei aus.", variant: "destructive" });
+      return;
+    }
+    if (importFileMeta?.encrypted && !importPassword) {
+      toast({ title: "Passwort erforderlich", description: "Diese Exportdatei ist verschlüsselt. Bitte geben Sie das Passwort ein.", variant: "destructive" });
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/mandanten/${importMandantId}/import`, {
+        fileContent: importFileContent,
+        password: importPassword || undefined,
+        strategy: importStrategy
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.message === "password_required") {
+          throw new Error("Entschlüsselungspasswort erforderlich");
+        }
+        throw new Error(data.message || "Import fehlgeschlagen");
+      }
+
+      toast({
+        title: "Import erfolgreich abgeschlossen",
+        description: "Die Mandantendaten wurden erfolgreich eingespielt."
+      });
+
+      setImportFile(null);
+      setImportFileContent("");
+      setImportFileMeta(null);
+      setImportPassword("");
+      queryClient.refetchQueries();
+    } catch (err: any) {
+      toast({
+        title: "Import fehlgeschlagen",
+        description: err.message || "Beim Importieren ist ein Fehler aufgetreten.",
+        variant: "destructive"
+      });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Daten-Transfer" desc="Exportieren und Importieren Sie Mandanten-Module selektiv mit optionaler Passwort-Verschlüsselung." />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* EXPORT CONTAINER */}
+        <Card className="border border-border/80 bg-card/60 backdrop-blur-md shadow-lg shadow-black/5 hover:border-border transition-colors duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                <FileUp className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Selektiver Daten-Export</CardTitle>
+                <CardDescription className="text-xs">Module auswählen, Mandantendaten exportieren & verschlüsseln</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 text-sm">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quell-Mandant</Label>
+              <Select value={exportMandantId ? exportMandantId.toString() : ""} onValueChange={v => setExportMandantId(Number(v))}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Wähle Mandant..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sichtbareMandanten.map((m: any) => (
+                    <SelectItem key={m.id} value={m.id.toString()} className="text-xs">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Module für Export ({selectedModules.length})</Label>
+                <div className="flex items-center gap-2 text-xs">
+                  <button onClick={selectAllModules} className="text-primary hover:underline font-medium">Alle wählen</button>
+                  <span className="text-muted-foreground">•</span>
+                  <button onClick={deselectAllModules} className="text-primary hover:underline font-medium">Keine</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {AVAILABLE_MODULES.map(m => {
+                  const Icon = m.icon;
+                  const isChecked = selectedModules.includes(m.key);
+                  return (
+                    <div
+                      key={m.key}
+                      onClick={() => toggleModule(m.key)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        isChecked
+                          ? "border-primary/40 bg-primary/5 hover:border-primary/60"
+                          : "border-border/60 bg-secondary/20 hover:border-border/100 hover:bg-secondary/40"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                      />
+                      <Icon className={`h-4 w-4 shrink-0 ${m.color}`} />
+                      <span className="text-xs font-medium truncate">{m.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-border/40">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Passwortschutz (Optional)</Label>
+                <span className="text-muted-foreground text-xxs">Verschlüsselt die Exportdatei mit dem robusten AES-256-GCM Algorithmus.</span>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showExportPassword ? "text" : "password"}
+                  placeholder="Geben Sie ein sicheres Passwort ein..."
+                  value={exportPassword}
+                  onChange={e => setExportPassword(e.target.value)}
+                  className="h-9 pr-10 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowExportPassword(!showExportPassword)}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground bg-transparent border-0"
+                >
+                  {showExportPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+
+              {exportPassword && (
+                <div className="space-y-1.5 animate-fadeIn">
+                  <div className="flex justify-between items-center text-xxs">
+                    <span className="text-muted-foreground">Stärke:</span>
+                    <span className="font-semibold text-foreground">{strength.text}</span>
+                  </div>
+                  <div className="h-1 w-full bg-secondary/50 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${strength.color} transition-all duration-300`}
+                      style={{ width: `${(strength.score / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={handleExport}
+              disabled={exportLoading || selectedModules.length === 0}
+              className="w-full h-10 mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium shadow-md shadow-blue-500/10 rounded-xl cursor-pointer"
+            >
+              {exportLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Export wird erstellt...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <Download className="h-4 w-4" />
+                  <span>Datenpaket herunterladen (.privashield)</span>
+                </div>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* EXPORT / IMPORT SPLIT */}
+        <Card className="border border-border/80 bg-card/60 backdrop-blur-md shadow-lg shadow-black/5 hover:border-border transition-colors duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                <FileDown className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Sicherer Daten-Import</CardTitle>
+                <CardDescription className="text-xs">Dateipaket einspielen, entschlüsseln & Module importieren</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 text-sm">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ziel-Mandant</Label>
+              <Select value={importMandantId ? importMandantId.toString() : ""} onValueChange={v => setImportMandantId(Number(v))}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Wähle Mandant..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sichtbareMandanten.map((m: any) => (
+                    <SelectItem key={m.id} value={m.id.toString()} className="text-xs">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Datenpaket auswählen (.privashield)</Label>
+              <div className="relative border-2 border-dashed border-border/60 hover:border-primary/40 rounded-xl px-4 py-6 flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary/10 hover:bg-secondary/20 transition-all duration-300 group">
+                <input
+                  type="file"
+                  accept=".privashield"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <div className="p-2.5 rounded-full bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform duration-300">
+                  <HardDrive className="h-5 w-5" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-medium text-foreground">{importFile ? importFile.name : "Klicken oder Datei hier ablegen"}</p>
+                  <p className="text-xxs text-muted-foreground mt-0.5">{importFile ? `${(importFile.size / 1024).toFixed(1)} KB` : "Nur .privashield Dateien"}</p>
+                </div>
+              </div>
+            </div>
+
+            {importFileMeta?.encrypted && (
+              <div className="space-y-3 px-4 py-3 bg-red-500/5 border border-red-500/20 rounded-xl animate-fadeIn">
+                <div className="flex flex-col gap-0.5">
+                  <Label className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5" /> Passwortgeschützte Datei
+                  </Label>
+                  <span className="text-muted-foreground text-xxs">Geben Sie das Passwort ein, um die Daten entschlüsseln zu können.</span>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showImportPassword ? "text" : "password"}
+                    placeholder="Entschlüsselungspasswort..."
+                    value={importPassword}
+                    onChange={e => setImportPassword(e.target.value)}
+                    className="h-9 pr-10 text-xs border-red-500/30 focus-visible:ring-red-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowImportPassword(!showImportPassword)}
+                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground bg-transparent border-0"
+                  >
+                    {showImportPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importFileMeta && (
+              <div className="space-y-3 px-4 py-3 bg-secondary/15 rounded-xl border border-border/40 animate-fadeIn">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inhalt & Metadaten</Label>
+                
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xxs">
+                  <div>
+                    <span className="text-muted-foreground">Original-Mandant:</span>
+                    <p className="font-semibold text-foreground truncate mt-0.5">{importFileMeta.mandantName}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Exportdatum:</span>
+                    <p className="font-semibold text-foreground truncate mt-0.5">
+                      {new Date(importFileMeta.exportedAt).toLocaleString("de-DE")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Verschlüsselt:</span>
+                    <p className="font-semibold text-foreground mt-0.5">
+                      {importFileMeta.encrypted ? "Ja (AES-256)" : "Nein"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Module:</span>
+                    <p className="font-semibold text-foreground mt-0.5 truncate">
+                      {importFileMeta.modules?.join(", ")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Import-Strategie</Label>
+              <div className="flex gap-3">
+                <div
+                  onClick={() => setImportStrategy("hinzufuegen")}
+                  className={`flex-1 px-4 py-2.5 rounded-xl border cursor-pointer select-none text-center transition-all duration-200 ${
+                    importStrategy === "hinzufuegen"
+                      ? "border-primary bg-primary/5 text-primary font-medium"
+                      : "border-border/60 hover:border-border hover:bg-secondary/20 text-muted-foreground"
+                  }`}
+                >
+                  <p className="text-xs">Hinzufügen</p>
+                  <p className="text-xxs opacity-70 mt-0.5">Daten ergänzen</p>
+                </div>
+                <div
+                  onClick={() => setImportStrategy("ersetzen")}
+                  className={`flex-1 px-4 py-2.5 rounded-xl border cursor-pointer select-none text-center transition-all duration-200 ${
+                    importStrategy === "ersetzen"
+                      ? "border-red-500 bg-red-500/5 text-red-400 font-medium"
+                      : "border-border/60 hover:border-border hover:bg-secondary/20 text-muted-foreground"
+                  }`}
+                >
+                  <p className="text-xs">Überschreiben</p>
+                  <p className="text-xxs opacity-70 mt-0.5 text-red-500/60">Module leeren vor Import</p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleImport}
+              disabled={importLoading || !importFileContent}
+              className="w-full h-10 mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium shadow-md shadow-indigo-500/10 rounded-xl cursor-pointer"
+            >
+              {importLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Daten werden eingespielt...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <ArrowLeftRight className="h-4 w-4" />
+                  <span>Import starten</span>
+                </div>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function ExportPage() {
   const { t } = useI18n();
   const { activeMandantId } = useMandant();
@@ -9750,6 +10260,7 @@ function AppRoutes() {
           <Route path="/benutzer" component={BenutzerPage} />
           <Route path="/system" component={SystemPage} />
           <Route path="/export" component={ExportPage} />
+          <Route path="/datentransfer" component={MandantExportImportPage} />
           <Route path="/backups" component={BackupsPage} />
           <Route path="/interne-notizen" component={InterneNotizenPage} />
         </Switch>
