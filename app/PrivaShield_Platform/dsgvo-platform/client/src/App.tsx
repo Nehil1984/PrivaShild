@@ -222,33 +222,33 @@ function LoginPage({ onLogin }: { onLogin: (u: AuthUser) => void }) {
 const navItems = [
   { path: "/", label: "dashboard", icon: LayoutDashboard },
   { path: "/overview", label: "overview", icon: Eye },
-  { path: "/vvt", label: "VVT", icon: FileText },
-  { path: "/avv", label: "AVV", icon: Shield },
-  { path: "/dsfa", label: "DSFA", icon: AlertTriangle },
-  { path: "/datenpannen", label: "Datenpannen", icon: AlertCircle },
-  { path: "/dsr", label: "DSR / Betroffenenrechte", icon: UserCheck },
-  { path: "/tom", label: "TOM-Katalog", icon: Lock },
-  { path: "/audits", label: "Interne Audits", icon: ClipboardList },
-  { path: "/pdca", label: "PDCA / Verbesserungszyklus", icon: RefreshCcw },
-  { path: "/loeschkonzept", label: "Löschkonzept", icon: Database },
-  { path: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
-  { path: "/dokumente", label: "Dokumente", icon: FolderOpen },
+  { path: "/vvt", label: "vvtNav", icon: FileText },
+  { path: "/avv", label: "avvNav", icon: Shield },
+  { path: "/dsfa", label: "dsfaNav", icon: AlertTriangle },
+  { path: "/datenpannen", label: "datenpannenNav", icon: AlertCircle },
+  { path: "/dsr", label: "dsrNav", icon: UserCheck },
+  { path: "/tom", label: "tomNav", icon: Lock },
+  { path: "/audits", label: "auditsNav", icon: ClipboardList },
+  { path: "/pdca", label: "pdcaNav", icon: RefreshCcw },
+  { path: "/loeschkonzept", label: "loeschkonzeptNav", icon: Database },
+  { path: "/aufgaben", label: "aufgabenNav", icon: CheckSquare },
+  { path: "/dokumente", label: "dokumenteNav", icon: FolderOpen },
   { path: "/interne-notizen", label: "internalNotes", icon: NotebookPen },
-  { path: "/web-datenschutz", label: "Web-Datenschutz", icon: Globe },
-  { path: "/ki-compliance", label: "KI-Tools & Compliance", icon: Bot },
-  { path: "/beschaeftigten-datenschutz", label: "Beschäftigtendatenschutz", icon: Users },
-  { path: "/extras", label: "Mandanten-Extras", icon: MoreVertical },
+  { path: "/web-datenschutz", label: "webPrivacyNav", icon: Globe },
+  { path: "/ki-compliance", label: "kiComplianceNav", icon: Bot },
+  { path: "/beschaeftigten-datenschutz", label: "employeePrivacyNav", icon: Users },
+  { path: "/extras", label: "tenantExtrasNav", icon: MoreVertical },
   { path: "/export", label: "exportPrint", icon: Printer },
-  { path: "/datentransfer", label: "Daten-Transfer", icon: ArrowLeftRight },
+  { path: "/datentransfer", label: "dataTransfer", icon: ArrowLeftRight },
   { path: "/backups", label: "backups", icon: Archive },
 ];
 
 const adminNavItems = [
-  { path: "/mandanten", label: "Mandanten", icon: Building2 },
-  { path: "/gruppen", label: "Gruppen", icon: ChevronDown },
-  { path: "/vorlagenpakete", label: "Vorlagenpakete", icon: FolderOpen },
-  { path: "/benutzer", label: "Benutzer", icon: Users },
-  { path: "/system", label: "System", icon: Settings },
+  { path: "/mandanten", label: "tenantsNav", icon: Building2 },
+  { path: "/gruppen", label: "groupsNav", icon: ChevronDown },
+  { path: "/vorlagenpakete", label: "templatesNav", icon: FolderOpen },
+  { path: "/benutzer", label: "usersNav", icon: Users },
+  { path: "/system", label: "systemTitle", icon: Settings },
 ];
 
 function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
@@ -321,7 +321,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
                     ? "bg-primary/15 text-primary font-medium"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}>
-                  <Icon className="h-4 w-4 shrink-0" />{(["dashboard","overview","exportPrint","backups","internalNotes"] as string[]).includes(label) ? t(label as MessageKey) : label}
+                  <Icon className="h-4 w-4 shrink-0" />{t(label as MessageKey)}
                 </a>
               </Link>
             );
@@ -339,7 +339,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
                     <a onClick={onClose} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                       active ? "bg-primary/15 text-primary font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     }`}>
-                      <Icon className="h-4 w-4 shrink-0" />{(["dashboard","overview","exportPrint","backups","internalNotes"] as string[]).includes(label) ? t(label as MessageKey) : label}
+                      <Icon className="h-4 w-4 shrink-0" />{t(label as MessageKey)}
                     </a>
                   </Link>
                 );
@@ -8617,7 +8617,7 @@ const EXPORT_MODULES = [
 
 function MandantExportImportPage() {
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   const { activeMandantId } = useMandant();
   const queryClient = useQueryClient();
@@ -8647,19 +8647,19 @@ function MandantExportImportPage() {
   }, [activeMandantId]);
 
   const AVAILABLE_MODULES = [
-    { key: "vvt", label: "VVT (Verarbeitungstätigkeiten)", icon: FileText, color: "text-blue-500" },
-    { key: "tom", label: "TOM-Katalog (Techn. Organ. Maßnahmen)", icon: Lock, color: "text-teal-500" },
-    { key: "avv", label: "AVV (Auftragsverarbeitung)", icon: Shield, color: "text-indigo-500" },
-    { key: "dsfa", label: "DSFA (Datenschutz-Folgenabschätzung)", icon: AlertTriangle, color: "text-amber-500" },
-    { key: "datenpannen", label: "Datenpannen", icon: AlertCircle, color: "text-red-500" },
-    { key: "dsr", label: "DSR (Betroffenenrechte)", icon: UserCheck, color: "text-pink-500" },
-    { key: "audits", label: "Interne Audits", icon: ClipboardList, color: "text-orange-500" },
-    { key: "pdca", label: "PDCA / Verbesserungszyklus", icon: RefreshCcw, color: "text-cyan-500" },
-    { key: "loeschkonzept", label: "Löschkonzept", icon: Database, color: "text-purple-500" },
-    { key: "aufgaben", label: "Aufgaben", icon: CheckSquare, color: "text-emerald-500" },
-    { key: "dokumente", label: "Dokumente & Vorlagen", icon: FolderOpen, color: "text-sky-500" },
-    { key: "interne_notizen", label: "Interne Notizen", icon: NotebookPen, color: "text-yellow-600" },
-    { key: "mandant", label: "Mandanten-Stammdaten", icon: Building2, color: "text-violet-500" },
+    { key: "vvt", labelKey: "vvtNav", icon: FileText, color: "text-blue-500" },
+    { key: "tom", labelKey: "tomNav", icon: Lock, color: "text-teal-500" },
+    { key: "avv", labelKey: "avvNav", icon: Shield, color: "text-indigo-500" },
+    { key: "dsfa", labelKey: "dsfaNav", icon: AlertTriangle, color: "text-amber-500" },
+    { key: "datenpannen", labelKey: "datenpannenNav", icon: AlertCircle, color: "text-red-500" },
+    { key: "dsr", labelKey: "dsrNav", icon: UserCheck, color: "text-pink-500" },
+    { key: "audits", labelKey: "auditsNav", icon: ClipboardList, color: "text-orange-500" },
+    { key: "pdca", labelKey: "pdcaNav", icon: RefreshCcw, color: "text-cyan-500" },
+    { key: "loeschkonzept", labelKey: "loeschkonzeptNav", icon: Database, color: "text-purple-500" },
+    { key: "aufgaben", labelKey: "aufgabenNav", icon: CheckSquare, color: "text-emerald-500" },
+    { key: "dokumente", labelKey: "dokumenteNav", icon: FolderOpen, color: "text-sky-500" },
+    { key: "interne_notizen", labelKey: "internalNotes", icon: NotebookPen, color: "text-yellow-600" },
+    { key: "mandant", labelKey: "tenantMasterData", icon: Building2, color: "text-violet-500" },
   ];
 
   const [selectedModules, setSelectedModules] = useState<string[]>(AVAILABLE_MODULES.map(m => m.key));
@@ -8687,12 +8687,12 @@ function MandantExportImportPage() {
     switch (score) {
       case 1:
       case 2:
-        return { score, text: "Schwach", color: "bg-red-500" };
+        return { score, text: t("passwordWeak"), color: "bg-red-500" };
       case 3:
       case 4:
-        return { score, text: "Mittel", color: "bg-amber-500" };
+        return { score, text: t("passwordMedium"), color: "bg-amber-500" };
       case 5:
-        return { score, text: "Sehr stark", color: "bg-emerald-500" };
+        return { score, text: t("passwordStrong"), color: "bg-emerald-500" };
       default:
         return { score: 0, text: "", color: "" };
     }
@@ -8716,11 +8716,11 @@ function MandantExportImportPage() {
 
   const handleExport = async () => {
     if (!exportMandantId) {
-      toast({ title: "Fehler", description: "Bitte wählen Sie einen Mandanten aus.", variant: "destructive" });
+      toast({ title: t("errorTitle"), description: t("chooseTenantError"), variant: "destructive" });
       return;
     }
     if (selectedModules.length === 0) {
-      toast({ title: "Fehler", description: "Bitte wählen Sie mindestens ein Modul zum Exportieren aus.", variant: "destructive" });
+      toast({ title: t("errorTitle"), description: t("chooseModuleError"), variant: "destructive" });
       return;
     }
 
@@ -8733,7 +8733,7 @@ function MandantExportImportPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Export fehlgeschlagen");
+        throw new Error(errorData.message || t("exportFailed"));
       }
 
       const blob = await res.blob();
@@ -8753,9 +8753,9 @@ function MandantExportImportPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      toast({ title: "Export erfolgreich", description: `Die Exportdatei ${filename} wurde heruntergeladen.` });
+      toast({ title: t("exportSuccessTitle"), description: t("exportSuccessDesc") });
     } catch (err: any) {
-      toast({ title: "Export fehlgeschlagen", description: err.message || "Beim Exportieren ist ein Fehler aufgetreten.", variant: "destructive" });
+      toast({ title: t("exportFailed"), description: err.message || t("exportErrorOccurred"), variant: "destructive" });
     } finally {
       setExportLoading(false);
     }
@@ -8780,7 +8780,7 @@ function MandantExportImportPage() {
           setImportFileMeta(parsed.meta);
         }
       } catch (err) {
-        toast({ title: "Fehler", description: "Die Datei konnte nicht als JSON geparst werden.", variant: "destructive" });
+        toast({ title: t("errorTitle"), description: t("invalidJsonError"), variant: "destructive" });
       }
     };
     reader.readAsText(file);
@@ -8788,15 +8788,15 @@ function MandantExportImportPage() {
 
   const handleImport = async () => {
     if (!importMandantId) {
-      toast({ title: "Fehler", description: "Bitte wählen Sie den Ziel-Mandanten aus.", variant: "destructive" });
+      toast({ title: t("errorTitle"), description: t("chooseTargetTenantError"), variant: "destructive" });
       return;
     }
     if (!importFileContent) {
-      toast({ title: "Fehler", description: "Bitte wählen Sie eine .privashield Exportdatei aus.", variant: "destructive" });
+      toast({ title: t("errorTitle"), description: t("chooseFileError"), variant: "destructive" });
       return;
     }
     if (importFileMeta?.encrypted && !importPassword) {
-      toast({ title: "Passwort erforderlich", description: "Diese Exportdatei ist verschlüsselt. Bitte geben Sie das Passwort ein.", variant: "destructive" });
+      toast({ title: t("passwordRequired"), description: t("enterDecryptionPasswordError"), variant: "destructive" });
       return;
     }
 
@@ -8811,14 +8811,14 @@ function MandantExportImportPage() {
       const data = await res.json();
       if (!res.ok) {
         if (data.message === "password_required") {
-          throw new Error("Entschlüsselungspasswort erforderlich");
+          throw new Error(t("enterDecryptionPasswordError"));
         }
-        throw new Error(data.message || "Import fehlgeschlagen");
+        throw new Error(data.message || t("importFailed"));
       }
 
       toast({
-        title: "Import erfolgreich abgeschlossen",
-        description: "Die Mandantendaten wurden erfolgreich eingespielt."
+        title: t("importSuccessTitle"),
+        description: t("importSuccessDesc")
       });
 
       setImportFile(null);
@@ -8828,8 +8828,8 @@ function MandantExportImportPage() {
       queryClient.refetchQueries();
     } catch (err: any) {
       toast({
-        title: "Import fehlgeschlagen",
-        description: err.message || "Beim Importieren ist ein Fehler aufgetreten.",
+        title: t("importFailed"),
+        description: err.message || t("importErrorOccurred"),
         variant: "destructive"
       });
     } finally {
@@ -8839,7 +8839,7 @@ function MandantExportImportPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Daten-Transfer" desc="Exportieren und Importieren Sie Mandanten-Module selektiv mit optionaler Passwort-Verschlüsselung." />
+      <PageHeader title={t("dataTransfer")} desc={t("dataTransferDesc")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* EXPORT CONTAINER */}
@@ -8850,17 +8850,17 @@ function MandantExportImportPage() {
                 <FileUp className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">Selektiver Daten-Export</CardTitle>
-                <CardDescription className="text-xs">Module auswählen, Mandantendaten exportieren & verschlüsseln</CardDescription>
+                <CardTitle className="text-base font-semibold">{t("selectiveExport")}</CardTitle>
+                <CardDescription className="text-xs">{t("selectiveExportDesc")}</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6 text-sm">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quell-Mandant</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("sourceTenant")}</Label>
               <Select value={exportMandantId ? exportMandantId.toString() : ""} onValueChange={v => setExportMandantId(Number(v))}>
                 <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Wähle Mandant..." />
+                  <SelectValue placeholder={t("selectTenantPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {sichtbareMandanten.map((m: any) => (
@@ -8872,11 +8872,11 @@ function MandantExportImportPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Module für Export ({selectedModules.length})</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("modulesForExport")} ({selectedModules.length})</Label>
                 <div className="flex items-center gap-2 text-xs">
-                  <button onClick={selectAllModules} className="text-primary hover:underline font-medium">Alle wählen</button>
+                  <button onClick={selectAllModules} className="text-primary hover:underline font-medium">{t("selectAllModules")}</button>
                   <span className="text-muted-foreground">•</span>
-                  <button onClick={deselectAllModules} className="text-primary hover:underline font-medium">Keine</button>
+                  <button onClick={deselectAllModules} className="text-primary hover:underline font-medium">{t("selectNoModules")}</button>
                 </div>
               </div>
 
@@ -8901,7 +8901,7 @@ function MandantExportImportPage() {
                         className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
                       />
                       <Icon className={`h-4 w-4 shrink-0 ${m.color}`} />
-                      <span className="text-xs font-medium truncate">{m.label}</span>
+                      <span className="text-xs font-medium truncate">{t(m.labelKey as MessageKey)}</span>
                     </div>
                   );
                 })}
@@ -8910,13 +8910,13 @@ function MandantExportImportPage() {
 
             <div className="space-y-3 pt-2 border-t border-border/40">
               <div className="flex flex-col gap-1">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Passwortschutz (Optional)</Label>
-                <span className="text-muted-foreground text-xxs">Verschlüsselt die Exportdatei mit dem robusten AES-256-GCM Algorithmus.</span>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("passwordProtectionOptional")}</Label>
+                <span className="text-muted-foreground text-xxs">{t("passwordProtectionHint")}</span>
               </div>
               <div className="relative">
                 <Input
                   type={showExportPassword ? "text" : "password"}
-                  placeholder="Geben Sie ein sicheres Passwort ein..."
+                  placeholder={t("enterPasswordPlaceholder")}
                   value={exportPassword}
                   onChange={e => setExportPassword(e.target.value)}
                   className="h-9 pr-10 text-xs"
@@ -8933,7 +8933,7 @@ function MandantExportImportPage() {
               {exportPassword && (
                 <div className="space-y-1.5 animate-fadeIn">
                   <div className="flex justify-between items-center text-xxs">
-                    <span className="text-muted-foreground">Stärke:</span>
+                    <span className="text-muted-foreground">{t("passwordStrength")}:</span>
                     <span className="font-semibold text-foreground">{strength.text}</span>
                   </div>
                   <div className="h-1 w-full bg-secondary/50 rounded-full overflow-hidden">
@@ -8954,12 +8954,12 @@ function MandantExportImportPage() {
               {exportLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Export wird erstellt...</span>
+                  <span>{t("exportCreating")}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <Download className="h-4 w-4" />
-                  <span>Datenpaket herunterladen (.privashield)</span>
+                  <span>{t("downloadDataPackage")}</span>
                 </div>
               )}
             </Button>
@@ -8974,17 +8974,17 @@ function MandantExportImportPage() {
                 <FileDown className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">Sicherer Daten-Import</CardTitle>
-                <CardDescription className="text-xs">Dateipaket einspielen, entschlüsseln & Module importieren</CardDescription>
+                <CardTitle className="text-base font-semibold">{t("secureImport")}</CardTitle>
+                <CardDescription className="text-xs">{t("secureImportDesc")}</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6 text-sm">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ziel-Mandant</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("targetTenant")}</Label>
               <Select value={importMandantId ? importMandantId.toString() : ""} onValueChange={v => setImportMandantId(Number(v))}>
                 <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Wähle Mandant..." />
+                  <SelectValue placeholder={t("selectTenantPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {sichtbareMandanten.map((m: any) => (
@@ -8995,7 +8995,7 @@ function MandantExportImportPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Datenpaket auswählen (.privashield)</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("chooseDataPackage")}</Label>
               <div className="relative border-2 border-dashed border-border/60 hover:border-primary/40 rounded-xl px-4 py-6 flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary/10 hover:bg-secondary/20 transition-all duration-300 group">
                 <input
                   type="file"
@@ -9007,8 +9007,8 @@ function MandantExportImportPage() {
                   <HardDrive className="h-5 w-5" />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-medium text-foreground">{importFile ? importFile.name : "Klicken oder Datei hier ablegen"}</p>
-                  <p className="text-xxs text-muted-foreground mt-0.5">{importFile ? `${(importFile.size / 1024).toFixed(1)} KB` : "Nur .privashield Dateien"}</p>
+                  <p className="text-xs font-medium text-foreground">{importFile ? importFile.name : t("clickOrDragFile")}</p>
+                  <p className="text-xxs text-muted-foreground mt-0.5">{importFile ? `${(importFile.size / 1024).toFixed(1)} KB` : t("privashieldFilesOnly")}</p>
                 </div>
               </div>
             </div>
@@ -9017,14 +9017,14 @@ function MandantExportImportPage() {
               <div className="space-y-3 px-4 py-3 bg-red-500/5 border border-red-500/20 rounded-xl animate-fadeIn">
                 <div className="flex flex-col gap-0.5">
                   <Label className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
-                    <Lock className="h-3.5 w-3.5" /> Passwortgeschützte Datei
+                    <Lock className="h-3.5 w-3.5" /> {t("passwordProtectedFile")}
                   </Label>
-                  <span className="text-muted-foreground text-xxs">Geben Sie das Passwort ein, um die Daten entschlüsseln zu können.</span>
+                  <span className="text-muted-foreground text-xxs">{t("enterPasswordToDecrypt")}</span>
                 </div>
                 <div className="relative">
                   <Input
                     type={showImportPassword ? "text" : "password"}
-                    placeholder="Entschlüsselungspasswort..."
+                    placeholder={t("decryptionPasswordPlaceholder")}
                     value={importPassword}
                     onChange={e => setImportPassword(e.target.value)}
                     className="h-9 pr-10 text-xs border-red-500/30 focus-visible:ring-red-500"
@@ -9042,29 +9042,32 @@ function MandantExportImportPage() {
 
             {importFileMeta && (
               <div className="space-y-3 px-4 py-3 bg-secondary/15 rounded-xl border border-border/40 animate-fadeIn">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inhalt & Metadaten</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("contentAndMetadata")}</Label>
                 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xxs">
                   <div>
-                    <span className="text-muted-foreground">Original-Mandant:</span>
+                    <span className="text-muted-foreground">{t("originalTenant")}:</span>
                     <p className="font-semibold text-foreground truncate mt-0.5">{importFileMeta.mandantName}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Exportdatum:</span>
+                    <span className="text-muted-foreground">{t("exportDate")}:</span>
                     <p className="font-semibold text-foreground truncate mt-0.5">
-                      {new Date(importFileMeta.exportedAt).toLocaleString("de-DE")}
+                      {new Date(importFileMeta.exportedAt).toLocaleString(lang === "de" ? "de-DE" : "en-US")}
                     </p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Verschlüsselt:</span>
+                    <span className="text-muted-foreground">{t("encrypted")}:</span>
                     <p className="font-semibold text-foreground mt-0.5">
-                      {importFileMeta.encrypted ? "Ja (AES-256)" : "Nein"}
+                      {importFileMeta.encrypted ? t("yesAes256") : t("no")}
                     </p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Module:</span>
+                    <span className="text-muted-foreground">{t("modules")}:</span>
                     <p className="font-semibold text-foreground mt-0.5 truncate">
-                      {importFileMeta.modules?.join(", ")}
+                      {importFileMeta.modules?.map((mKey: string) => {
+                        const mod = AVAILABLE_MODULES.find(x => x.key === mKey);
+                        return mod ? t(mod.labelKey as MessageKey) : mKey;
+                      }).join(", ")}
                     </p>
                   </div>
                 </div>
@@ -9072,7 +9075,7 @@ function MandantExportImportPage() {
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Import-Strategie</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("importStrategy")}</Label>
               <div className="flex gap-3">
                 <div
                   onClick={() => setImportStrategy("hinzufuegen")}
@@ -9082,8 +9085,8 @@ function MandantExportImportPage() {
                       : "border-border/60 hover:border-border hover:bg-secondary/20 text-muted-foreground"
                   }`}
                 >
-                  <p className="text-xs">Hinzufügen</p>
-                  <p className="text-xxs opacity-70 mt-0.5">Daten ergänzen</p>
+                  <p className="text-xs">{t("addStrategy")}</p>
+                  <p className="text-xxs opacity-70 mt-0.5">{t("addStrategyDesc")}</p>
                 </div>
                 <div
                   onClick={() => setImportStrategy("ersetzen")}
@@ -9093,8 +9096,8 @@ function MandantExportImportPage() {
                       : "border-border/60 hover:border-border hover:bg-secondary/20 text-muted-foreground"
                   }`}
                 >
-                  <p className="text-xs">Überschreiben</p>
-                  <p className="text-xxs opacity-70 mt-0.5 text-red-500/60">Module leeren vor Import</p>
+                  <p className="text-xs">{t("replaceStrategy")}</p>
+                  <p className="text-xxs opacity-70 mt-0.5 text-red-500/60">{t("replaceStrategyDesc")}</p>
                 </div>
               </div>
             </div>
@@ -9107,12 +9110,12 @@ function MandantExportImportPage() {
               {importLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Daten werden eingespielt...</span>
+                  <span>{t("importingData")}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <ArrowLeftRight className="h-4 w-4" />
-                  <span>Import starten</span>
+                  <span>{t("startImport")}</span>
                 </div>
               )}
             </Button>
