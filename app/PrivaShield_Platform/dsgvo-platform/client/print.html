@@ -325,7 +325,7 @@ if (!raw) {
 const config = JSON.parse(raw);
 
 // ─── Premium-Export-Designstile (Executive, Minimalist, Printable) ────────
-const designStyle = config.mandantInfo?.exportDesignStyle || "executive";
+const designStyle = config.mandantInfo?.exportDesignStyle || config.mandantInfo?.export_design_style || "executive";
 
 const styleEl = document.createElement("style");
 if (designStyle === "executive") {

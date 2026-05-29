@@ -7476,6 +7476,7 @@ function MandantenPage() {
       } else await apiRequest("PUT", `/api/mandanten/${modal.id}`, payload);
       qc.invalidateQueries({ queryKey: ["/api/mandanten"] });
       qc.invalidateQueries({ queryKey: ["/api/mandanten-gruppen"] });
+      qc.invalidateQueries({ queryKey: [`/api/mandanten/${modal.id}`] });
       setModal(null);
       toast({ title: "Gespeichert" });
     } catch { toast({ title: "Fehler", variant: "destructive" }); }
