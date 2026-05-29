@@ -1503,6 +1503,44 @@ async function render() {
       ? buildTableOfContents(config.modules)
       : "";
 
+    const showExecutiveSummary = !config.sections || config.sections.executive_summary;
+    const executiveSummaryHtml = showExecutiveSummary ? `
+      <div class="info-card" style="margin-bottom:24px;">
+        <h3>Executive Summary</h3>
+        <p><strong>Mandant:</strong> ${fmt(config.mandantName)}</p>
+        <p><strong>Exportierte Module:</strong> ${fmt(config.modules.length)}</p>
+        <p><strong>Audit-Logs:</strong> ${fmt((config.logs || []).length)}</p>
+        <p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p>
+        <p><strong>Top-Risiken:</strong> ${fmt((config.logs || []).filter(l => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length)}</p>
+        <p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p>
+        <p><strong>Audit-Abweichungen:</strong> ${fmt(config.managementSummary?.auditDeviationCount)}</p>
+        <p><strong>Offene Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p>
+        <p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p>
+        <p><strong>PDCA offen / laufend:</strong> ${fmt(config.managementSummary?.pdcaOpen)}</p>
+        <p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p>
+        <p><strong>PDCA mit Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaMitAuditBezug)}</p>
+        <p><strong>PDCA ohne Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaOhneAuditBezug)}</p>
+        <p><strong>Audit-Follow-ups ohne Audit-Bezug:</strong> ${fmt(config.managementSummary?.auditFollowUpsOhneAuditBezug)}</p>
+        <p><strong>Offene PDCA-Folgeaufgaben:</strong> ${fmt(config.managementSummary?.pdcaFollowUpTasksOffen)}</p>
+        <p><strong>Löschkonzept-Einträge:</strong> ${fmt((dataMap.loeschkonzept || []).length)}</p>
+        <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
+        <p><strong>Interne Notizen (freigegeben):</strong> ${fmt((dataMap.interne_notizen || []).filter(n => n.exportieren).length)}</p>
+        <p><strong>Reifegrad / Governance-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
+        <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
+      </div>
+    ` : "";
+
+    const showManagementKpis = !config.sections || config.sections.management_kpis;
+    const managementKpisHtml = showManagementKpis ? `
+      <div class="info-grid">
+        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p><p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p><p><strong>Explizite Audit↔PDCA-Links:</strong> ${fmt(config.managementSummary?.explicitAuditLinks)}</p></div>
+        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p><p><strong>Audit-Follow-ups ohne Audit:</strong> ${fmt(config.managementSummary?.auditFollowUpsOhneAuditBezug)}</p><p><strong>Offene PDCA-Folgeaufgaben:</strong> ${fmt(config.managementSummary?.pdcaFollowUpTasksOffen)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
+      </div>
+    ` : "";
+
+    const showCopilotSummary = !config.sections || config.sections.copilot_summary;
+    const copilotSummaryHtml = showCopilotSummary ? buildCopilotSummary(dataMap) : "";
+
     let html = `
       <div class="cover">
         <div class="cover-logo" style="display: flex; align-items: center; width: 100%;">
@@ -1528,34 +1566,10 @@ async function render() {
       ${buildMandantBox(config.mandantInfo)}
       ${buildRoleCards(config.mandantInfo)}
       ${config.gruppeInfo ? `<div class="info-card" style="margin-bottom:24px;"><h3>Gruppenkontext</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo.name)}</p><p><strong>Typ:</strong> ${fmt(config.gruppeInfo.typ)}</p></div>` : ""}
-      <div class="info-card" style="margin-bottom:24px;">
-        <h3>Executive Summary</h3>
-        <p><strong>Mandant:</strong> ${fmt(config.mandantName)}</p>
-        <p><strong>Exportierte Module:</strong> ${fmt(config.modules.length)}</p>
-        <p><strong>Audit-Logs:</strong> ${fmt((config.logs || []).length)}</p>
-        <p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p>
-        <p><strong>Top-Risiken:</strong> ${fmt((config.logs || []).filter(l => String(l.aktion || "").includes("geloescht") || String(l.aktion || "").includes("kritisch")).length)}</p>
-        <p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p>
-        <p><strong>Audit-Abweichungen:</strong> ${fmt(config.managementSummary?.auditDeviationCount)}</p>
-        <p><strong>Offene Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p>
-        <p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p>
-        <p><strong>PDCA offen / laufend:</strong> ${fmt(config.managementSummary?.pdcaOpen)}</p>
-        <p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p>
-        <p><strong>PDCA mit Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaMitAuditBezug)}</p>
-        <p><strong>PDCA ohne Audit-Bezug:</strong> ${fmt(config.managementSummary?.pdcaOhneAuditBezug)}</p>
-        <p><strong>Audit-Follow-ups ohne Audit-Bezug:</strong> ${fmt(config.managementSummary?.auditFollowUpsOhneAuditBezug)}</p>
-        <p><strong>Offene PDCA-Folgeaufgaben:</strong> ${fmt(config.managementSummary?.pdcaFollowUpTasksOffen)}</p>
-        <p><strong>Löschkonzept-Einträge:</strong> ${fmt((dataMap.loeschkonzept || []).length)}</p>
-        <p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "strukturiert" : "prüfbedürftig"}</p>
-        <p><strong>Interne Notizen (freigegeben):</strong> ${fmt((dataMap.interne_notizen || []).filter(n => n.exportieren).length)}</p>
-        <p><strong>Reifegrad / Governance-Score:</strong> ${fmt(config.managementSummary?.score)}%</p>
-        <p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p>
-      </div>
-      <div class="info-grid">
-        <div class="info-card"><h3>Management KPI</h3><p><strong>Module:</strong> ${fmt(config.modules?.length)}</p><p><strong>Logs:</strong> ${fmt((config.logs || []).length)}</p><p><strong>Audits:</strong> ${fmt(config.managementSummary?.audits)}</p><p><strong>PDCA-Zyklen:</strong> ${fmt(config.managementSummary?.pdca)}</p><p><strong>Explizite Audit↔PDCA-Links:</strong> ${fmt(config.managementSummary?.explicitAuditLinks)}</p></div>
-        <div class="info-card"><h3>Governance</h3><p><strong>Gruppe:</strong> ${fmt(config.gruppeInfo?.name)}</p><p><strong>Status:</strong> ${config.mandantInfo?.verantwortlicherName ? "organisiert" : "offen"}</p><p><strong>Audit-To-dos:</strong> ${fmt(config.managementSummary?.auditTodos)}</p><p><strong>PDCA-Reviews fällig:</strong> ${fmt(config.managementSummary?.pdcaReviewFaellig)}</p><p><strong>Audit-Follow-ups ohne Audit:</strong> ${fmt(config.managementSummary?.auditFollowUpsOhneAuditBezug)}</p><p><strong>Offene PDCA-Folgeaufgaben:</strong> ${fmt(config.managementSummary?.pdcaFollowUpTasksOffen)}</p><p><strong>VVT ohne Löschkonzept:</strong> ${fmt(config.managementSummary?.fehlendeLoeschBezuge)}</p></div>
-      </div>
-      ${buildCopilotSummary(dataMap)}
+      
+      ${executiveSummaryHtml}
+      ${managementKpisHtml}
+      ${copilotSummaryHtml}
     `;
 
     config.modules.forEach(key => {
@@ -1576,11 +1590,26 @@ async function render() {
       `;
     });
 
-    if ((config.managementSummary?.governanceFindings || []).length) {
-      html += `<div class="module-section"><div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Reifegrad / Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p><p><strong>Audit / PDCA Gewichtung:</strong> ${fmt((config.managementSummary?.maturityCriteria || []).filter((item) => /audit|pdca/i.test(String(item?.label || ""))).reduce((sum, item) => sum + Number(item?.weight || 0), 0))} Punkte</p></div><div class="info-card"><h3>Top-Handlungsfelder</h3><p>${(config.managementSummary?.weakestMaturityCriteria || []).map((item) => `• ${fmt(item?.label || "")}<br><span style="color:#475569">${fmt(item?.score || 0)}/${fmt(item?.weight || 0)} Punkte · ${fmt(item?.percent || 0)}% Erfüllung</span><br><span style="color:#475569">Empfehlung: ${fmt(item?.recommendation || "")}</span><br><span style="color:#475569">Aufgabenentwurf: [${fmt(item?.taskDraft?.priority || "")}] ${fmt(item?.taskDraft?.title || "")} – ${fmt(item?.taskDraft?.draft || "")}</span><br><span style="color:#475569">Ziel: ${fmt(item?.action?.label || "")}</span><br><span style="color:#475569">Aktion: ${fmt(item?.taskAction?.label || "")}</span>`).join("<br><br>") || "Keine besonderen Handlungsfelder"}</p></div><div class="info-card" style="grid-column: span 2"><h3>Priorisierte offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• [${fmt(item?.severity || "")}] ${fmt(item?.title || "")}<br><span style="color:#475569">Empfehlung: ${fmt(item?.recommendation || "")}</span>`).join("<br><br>")}</p></div></div><div style="border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><h3 style="margin:0 0 12px 0;">Score-Details nach Gewichtung</h3><table class="data-table"><thead><tr><th>Kriterium</th><th>Erreicht</th><th>Gewicht</th><th>Erfüllung</th></tr></thead><tbody>${(config.managementSummary?.maturityCriteria || []).map((item) => { const score = Number(item?.score || 0); const weight = Number(item?.weight || 0); const percent = weight ? Math.round((score / weight) * 100) : 0; const tone = percent >= 100 ? "Voll erfüllt" : percent >= 50 ? "Teilweise erfüllt" : "Kritische Lücke"; return `<tr><td>${fmt(item?.label || "")}</td><td>${fmt(score)}</td><td>${fmt(weight)}</td><td>${fmt(tone)} (${fmt(percent)}%)</td></tr>`; }).join("")}</tbody></table></div></div>`;
+    const showGovFindings = !config.sections || config.sections.governance_findings;
+    const showScoreDetails = !config.sections || config.sections.score_details;
+    if ((config.managementSummary?.governanceFindings || []).length && (showGovFindings || showScoreDetails)) {
+      let govHtml = `<div class="module-section">`;
+      if (showGovFindings) {
+        govHtml += `<div class="module-header"><h2>Governance-Bewertung und offene Punkte</h2><span class="badge">${(config.managementSummary?.governanceFindings || []).length} Hinweise</span></div><div class="info-grid" style="margin-top:0;border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><div class="info-card"><h3>Bewertung</h3><p><strong>Reifegrad / Score:</strong> ${fmt(config.managementSummary?.score)}%</p><p><strong>Ampel:</strong> ${fmt(config.managementSummary?.ampel)}</p><p><strong>Audit / PDCA Gewichtung:</strong> ${fmt((config.managementSummary?.maturityCriteria || []).filter((item) => /audit|pdca/i.test(String(item?.label || ""))).reduce((sum, item) => sum + Number(item?.weight || 0), 0))} Punkte</p></div><div class="info-card"><h3>Top-Handlungsfelder</h3><p>${(config.managementSummary?.weakestMaturityCriteria || []).map((item) => `• ${fmt(item?.label || "")}<br><span style="color:#475569">${fmt(item?.score || 0)}/${fmt(item?.weight || 0)} Punkte · ${fmt(item?.percent || 0)}% Erfüllung</span><br><span style="color:#475569">Empfehlung: ${fmt(item?.recommendation || "")}</span><br><span style="color:#475569">Aufgabenentwurf: [${fmt(item?.taskDraft?.priority || "")}] ${fmt(item?.taskDraft?.title || "")} – ${fmt(item?.taskDraft?.draft || "")}</span><br><span style="color:#475569">Ziel: ${fmt(item?.action?.label || "")}</span><br><span style="color:#475569">Aktion: ${fmt(item?.taskAction?.label || "")}</span>`).join("<br><br>") || "Keine besonderen Handlungsfelder"}</p></div><div class="info-card" style="grid-column: span 2"><h3>Priorisierte offene Punkte</h3><p>${(config.managementSummary?.governanceFindings || []).map((item) => `• [${fmt(item?.severity || "")}] ${fmt(item?.title || "")}<br><span style="color:#475569">Empfehlung: ${fmt(item?.recommendation || "")}</span>`).join("<br><br>")}</p></div></div>`;
+      }
+      if (showScoreDetails) {
+        govHtml += `<div style="border:1px solid #e2e8f0;border-top:none;padding:16px;border-radius:0 0 8px 8px;"><h3 style="margin:0 0 12px 0;">Score-Details nach Gewichtung</h3><table class="data-table"><thead><tr><th>Kriterium</th><th>Erreicht</th><th>Gewicht</th><th>Erfüllung</th></tr></thead><tbody>${(config.managementSummary?.maturityCriteria || []).map((item) => { const score = Number(item?.score || 0); const weight = Number(item?.weight || 0); const percent = weight ? Math.round((score / weight) * 100) : 0; const tone = percent >= 100 ? "Voll erfüllt" : percent >= 50 ? "Teilweise erfüllt" : "Kritische Lücke"; return `<tr><td>${fmt(item?.label || "")}</td><td>${fmt(score)}</td><td>${fmt(weight)}</td><td>${fmt(tone)} (${fmt(percent)}%)</td></tr>`; }).join("")}</tbody></table></div>`;
+      }
+      govHtml += `</div>`;
+      html += govHtml;
     }
-    html += buildAuditSummary(dataMap.audits || config.audits || [], config.auditTodos || [], dataMap.pdca || config.pdca || [], config.pdcaFollowUpTasks || []);
-    html += buildGovernancePrioritySummary(dataMap.dsfa || config.dsfa || [], dataMap.pdca || config.pdca || [], dataMap.aufgaben || config.aufgaben || []);
+
+    if (!config.sections || config.sections.audit_summary) {
+      html += buildAuditSummary(dataMap.audits || config.audits || [], config.auditTodos || [], dataMap.pdca || config.pdca || [], config.pdcaFollowUpTasks || []);
+    }
+    if (!config.sections || config.sections.governance_worklist) {
+      html += buildGovernancePrioritySummary(dataMap.dsfa || config.dsfa || [], dataMap.pdca || config.pdca || [], dataMap.aufgaben || config.aufgaben || []);
+    }
     if (config.gruppeInfo && Array.isArray(config.gruppenMitglieder) && config.gruppenMitglieder.length) {
       html += buildGroupExecutiveSummary(config.gruppeInfo, config.gruppenMitglieder);
       html += buildGroupGovernanceCards(config.gruppenMitglieder);
@@ -1597,8 +1626,12 @@ async function render() {
       html += buildGroupMembersTable(config.gruppenMitglieder);
     }
     html += buildPdcaSummary(dataMap.pdca || config.pdca || [], config.pdcaFollowUpTasks || []);
-    html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
-    html += buildLogsBox(config.logs || []);
+    if (!config.sections || config.sections.loeschkonzept_summary) {
+      html += buildLoeschkonzeptSummary(dataMap.loeschkonzept || []);
+    }
+    if (!config.sections || config.sections.audit_log) {
+      html += buildLogsBox(config.logs || []);
+    }
 
     html += `
       <div class="footer">

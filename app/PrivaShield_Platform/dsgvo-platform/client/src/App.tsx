@@ -8582,6 +8582,36 @@ function ExportPage() {
   const { activeMandantId } = useMandant();
   const [selected, setSelected] = useState<Set<string>>(new Set(EXPORT_MODULES.map((m) => m.key)));
 
+  const [sections, setSections] = useState<Record<string, boolean>>({
+    copilot_summary: true,
+    executive_summary: true,
+    management_kpis: true,
+    governance_findings: true,
+    score_details: true,
+    audit_summary: true,
+    loeschkonzept_summary: true,
+    governance_worklist: true,
+    audit_log: true,
+  });
+
+  const [logOption, setLogOption] = useState<"all" | "limit">("all");
+  const [logLimit, setLogLimit] = useState<number>(50);
+  const [logModule, setLogModule] = useState<string>("all");
+  const [logUser, setLogUser] = useState<string>("all");
+  const [logAction, setLogAction] = useState<string>("all");
+
+  const OPTIONAL_SECTIONS = [
+    { key: "executive_summary", label: "Executive Summary", icon: NotebookPen, color: "text-blue-400" },
+    { key: "management_kpis", label: "Management KPIs & Governance-Status", icon: TrendingUp, color: "text-teal-400" },
+    { key: "copilot_summary", label: "Microsoft 365 Copilot – Datenschutz & Compliance", icon: Bot, color: "text-purple-400" },
+    { key: "governance_worklist", label: "Priorisierte Governance-Arbeitsliste", icon: AlertTriangle, color: "text-yellow-400" },
+    { key: "governance_findings", label: "Governance-Bewertung & offene Punkte", icon: AlertCircle, color: "text-red-400" },
+    { key: "score_details", label: "Score-Details nach Kriteriengewichtung", icon: CheckCircle2, color: "text-emerald-400" },
+    { key: "audit_summary", label: "Auditprotokoll, Abweichungen & To-dos", icon: ClipboardList, color: "text-cyan-400" },
+    { key: "loeschkonzept_summary", label: "Löschkonzept, Löschklassen & Ampelstatus", icon: Database, color: "text-sky-400" },
+    { key: "audit_log", label: "Änderungsprotokoll / Audit-Log", icon: HardDrive, color: "text-orange-400" },
+  ];
+
   const { data: mandant } = useQuery({
     queryKey: [`/api/mandanten/${activeMandantId}`],
     queryFn: () => activeMandantId
@@ -8594,6 +8624,10 @@ function ExportPage() {
     queryFn: () => activeMandantId ? apiRequest("GET", `/api/mandanten/${activeMandantId}/logs`).then((r) => r.json()) : [],
     enabled: !!activeMandantId,
   });
+
+  const uniqueModules = Array.from(new Set(logs.map((l: any) => l.modul).filter(Boolean))) as string[];
+  const uniqueUsers = Array.from(new Set(logs.map((l: any) => l.userName).filter(Boolean))) as string[];
+  const uniqueActions = Array.from(new Set(logs.map((l: any) => l.aktion).filter(Boolean))) as string[];
   const { data: gruppen = [] } = useQuery({
     queryKey: ["/api/mandanten-gruppen"],
     queryFn: () => apiRequest("GET", "/api/mandanten-gruppen").then((r) => r.json()),
@@ -8802,13 +8836,33 @@ function ExportPage() {
   const allSel = selected.size === EXPORT_MODULES.length;
 
   const handlePrint = () => {
+    let filteredLogs = [...logs];
+    if (sections.audit_log) {
+      if (logModule !== "all") {
+        filteredLogs = filteredLogs.filter((l: any) => l.modul === logModule);
+      }
+      if (logUser !== "all") {
+        filteredLogs = filteredLogs.filter((l: any) => l.userName === logUser);
+      }
+      if (logAction !== "all") {
+        filteredLogs = filteredLogs.filter((l: any) => l.aktion === logAction);
+      }
+      if (logOption === "limit" && logLimit > 0) {
+        filteredLogs = filteredLogs
+          .sort((a: any, b: any) => new Date(b.zeitpunkt).getTime() - new Date(a.zeitpunkt).getTime())
+          .slice(0, logLimit)
+          .reverse();
+      }
+    }
+
     const cfg = {
       mandantId: activeMandantId,
       mandantName: mandant?.name ?? "Unbekannter Mandant",
       mandantInfo: mandant,
       gruppeInfo: gruppen.find((g: any) => g.id === mandant?.gruppeId) || null,
       gruppenMitglieder: mandant?.gruppeId ? mandanten.filter((m: any) => m.gruppeId === mandant.gruppeId) : [],
-      logs,
+      logs: sections.audit_log ? filteredLogs : [],
+      sections,
       audits,
       auditTodos,
       pdca,
@@ -8895,6 +8949,121 @@ function ExportPage() {
                 </span>
                 {active && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
               </button>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Zusätzliche Komponenten */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Zusätzliche Berichts- & Governance-Komponenten</CardTitle>
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                const allActive = Object.values(sections).every(Boolean);
+                const next: Record<string, boolean> = {};
+                OPTIONAL_SECTIONS.forEach(s => next[s.key] = !allActive);
+                setSections(next);
+              }}
+            >
+              {Object.values(sections).every(Boolean) ? "Alle abwählen" : "Alle auswählen"}
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-2 pt-0">
+          {OPTIONAL_SECTIONS.map((sec) => {
+            const Icon = sec.icon;
+            const active = sections[sec.key];
+            return (
+              <div key={sec.key} className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setSections(prev => ({ ...prev, [sec.key]: !prev[sec.key] }))}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 w-full text-left transition-all ${
+                    active ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <div className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${active ? "bg-primary/20" : "bg-muted"}`}>
+                    <Icon className={`h-4 w-4 ${active ? sec.color : "text-muted-foreground"}`} />
+                  </div>
+                  <span className={`text-sm flex-1 ${active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {sec.label}
+                  </span>
+                  {active && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                </button>
+
+                {sec.key === "audit_log" && active && (
+                  <div className="p-4 rounded-lg border border-border bg-muted/30 ml-0 sm:ml-10 space-y-3">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Log-Filter & Einstellungen</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Log-Umfang</Label>
+                        <Select value={logOption} onValueChange={(v: any) => setLogOption(v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Gesamtes Protokoll</SelectItem>
+                            <SelectItem value="limit">Letzte Einträge begrenzen</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {logOption === "limit" && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Anzahl Einträge</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={logLimit}
+                            onChange={(e) => setLogLimit(Number(e.target.value))}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nach Modul / Kategorie filtern</Label>
+                        <Select value={logModule} onValueChange={setLogModule}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Alle Module</SelectItem>
+                            {uniqueModules.map((mod) => (
+                              <SelectItem key={mod} value={mod}>{mod}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nach Nutzer filtern</Label>
+                        <Select value={logUser} onValueChange={setLogUser}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Alle Nutzer</SelectItem>
+                            {uniqueUsers.map((user) => (
+                              <SelectItem key={user} value={user}>{user}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label className="text-xs">Nach Aktion filtern</Label>
+                        <Select value={logAction} onValueChange={setLogAction}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Alle Aktionen</SelectItem>
+                            {uniqueActions.map((action) => (
+                              <SelectItem key={action} value={action}>{action}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </CardContent>
