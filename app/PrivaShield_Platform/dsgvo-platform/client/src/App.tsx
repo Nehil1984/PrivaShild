@@ -7426,6 +7426,7 @@ function MandantenPage() {
     itVerantwortlicherName: "", itVerantwortlicherEmail: "", itVerantwortlicherTelefon: "",
     hatIsb: false, isbName: "", isbEmail: "", isbTelefon: "",
     webseitenbetreuerName: "", webseitenbetreuerEmail: "", webseitenbetreuerTelefon: "",
+    logo: "", exportDesignStyle: "executive",
   };
   const [form, setForm] = useState<any>(emptyForm);
   const { toast } = useToast();
@@ -7657,7 +7658,57 @@ function MandantenPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1 sm:col-span-2 pt-2 border-t mt-2">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Premium PDF-Export & Design</p>
+              </div>
               <div className="space-y-1">
+                <Label className="text-xs">Export-Designstil</Label>
+                <Select value={form.exportDesignStyle || "executive"} onValueChange={v => set("exportDesignStyle", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="executive">Executive-Blau (Premium)</SelectItem>
+                    <SelectItem value="minimalist">Minimalist-Dark (Modern)</SelectItem>
+                    <SelectItem value="printable">Druckfreundlich (Klassisch)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Firmenlogo</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: any) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event: any) => {
+                          set("logo", event.target?.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="h-8 text-xs pt-1 file:mr-2 file:py-0.5 file:px-1.5 file:rounded-md file:border-0 file:text-[10px] file:bg-secondary file:text-secondary-foreground"
+                  />
+                  {form.logo && (
+                    <button
+                      onClick={() => set("logo", "")}
+                      className="text-[10px] text-red-500 hover:underline shrink-0"
+                    >
+                      Entfernen
+                    </button>
+                  )}
+                </div>
+              </div>
+              {form.logo && (
+                <div className="col-span-2">
+                  <Label className="text-[10px] text-muted-foreground">Logo-Vorschau:</Label>
+                  <div className="mt-1 p-2 rounded border bg-muted/40 max-h-16 flex items-center justify-start overflow-hidden">
+                    <img src={form.logo} alt="Logo Vorschau" className="max-h-12 object-contain" />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1 col-span-2 pt-2 border-t mt-2">
                 <Label className="text-xs">Notizen</Label>
                 <Textarea value={form.notizen} onChange={e => set("notizen", e.target.value)} className="text-sm min-h-20" />
               </div>

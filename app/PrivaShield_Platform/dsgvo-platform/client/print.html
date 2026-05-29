@@ -324,6 +324,80 @@ if (!raw) {
 }
 const config = JSON.parse(raw);
 
+// ─── Premium-Export-Designstile (Executive, Minimalist, Printable) ────────
+const designStyle = config.mandantInfo?.exportDesignStyle || "executive";
+
+const styleEl = document.createElement("style");
+if (designStyle === "executive") {
+  styleEl.textContent = `
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .cover-logo svg { color: #0284c7 !important; }
+    .module-header { background: #0b2545 !important; border-bottom: 2px solid #134074 !important; }
+    .module-header .badge-accent { background: rgba(79, 152, 163, 0.18) !important; color: #dff7fb !important; border: 1px solid rgba(79, 152, 163, 0.35) !important; }
+    #toolbar { border-bottom: 2px solid #134074 !important; }
+    #btn-print { background: #0284c7 !important; }
+    #btn-print:hover { background: #0369a1 !important; }
+    @media print {
+      .cover {
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-bottom: none !important;
+        page-break-after: always;
+        break-after: page;
+      }
+    }
+  `;
+} else if (designStyle === "minimalist") {
+  styleEl.textContent = `
+    body { color: #111827; font-family: ui-sans-serif, system-ui, sans-serif; background: #fff; }
+    .cover-logo svg { color: #111827 !important; }
+    .module-header { background: #111827 !important; border-bottom: 2px solid #374151 !important; }
+    .module-header .badge-accent { background: rgba(255,255,255,0.1) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+    #toolbar { border-bottom: 2px solid #111827 !important; }
+    #btn-print { background: #111827 !important; }
+    #btn-print:hover { background: #1f2937 !important; }
+    .info-card { border: 1px solid #e5e7eb !important; border-radius: 4px !important; }
+    .mandant-box { background: #f9fafb !important; border: 1px solid #e5e7eb !important; border-radius: 4px !important; }
+    @media print {
+      .cover {
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-bottom: none !important;
+        page-break-after: always;
+        break-after: page;
+      }
+    }
+  `;
+} else if (designStyle === "printable") {
+  styleEl.textContent = `
+    body { color: #000; font-family: Georgia, Cambria, "Times New Roman", Times, serif; line-height: 1.6; background: #fff; }
+    .cover-logo svg { color: #000 !important; }
+    .module-header { background: #fff !important; color: #000 !important; border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; padding: 6px 0 !important; border-radius: 0 !important; }
+    .module-header h2 { font-size: 14px !important; text-transform: uppercase; font-weight: 700; }
+    .module-header .badge, .module-header .badge-accent { display: none !important; }
+    .info-card { border: 1px solid #000 !important; border-radius: 0 !important; }
+    .record-table { border: 1px solid #000 !important; border-radius: 0 !important; }
+    .record-table tr:nth-child(even) td { background: #fff !important; }
+    .record-label { background: #fff !important; border-bottom: 1px solid #000 !important; color: #000 !important; }
+    .record-value { border-bottom: 1px solid #000 !important; color: #000 !important; }
+    .data-table { border: 1px solid #000 !important; border-radius: 0 !important; }
+    .data-table thead tr { background: #fff !important; }
+    .data-table th { border-bottom: 2px solid #000 !important; color: #000 !important; }
+    .data-table td { border-bottom: 1px solid #000 !important; color: #000 !important; }
+    .data-table tbody tr:nth-child(even) td { background: #fff !important; }
+    .badge-status { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; border-radius: 0 !important; padding: 0px 4px !important; }
+    .copilot-summary { border: 2px solid #000 !important; background: #fff !important; border-radius: 0 !important; }
+    .copilot-summary h3 { color: #000 !important; }
+    .mandant-box { background: #fff !important; border: 1px solid #000 !important; border-radius: 0 !important; }
+    .cover { border-bottom: 2px solid #000 !important; }
+  `;
+}
+document.head.appendChild(styleEl);
+
 // ─── Modul-Definitionen ───────────────────────────────────────────────────
 const MODULES = {
   vvt: {
@@ -1323,6 +1397,34 @@ function buildGroupMembersTable(members) {
     </div>`;
 }
 
+function buildTableOfContents(selectedModules) {
+  if (!selectedModules || selectedModules.length === 0) return "";
+  const listItems = selectedModules.map(key => {
+    const label = MODULES[key]?.label || key;
+    return `<li style="display: flex; justify-content: space-between; border-bottom: 1px dotted #cbd5e1; padding: 6px 0; font-size: 11px; color: #334155;">
+      <span>${label}</span>
+      <span style="font-weight: 500; font-family: monospace;">Abschnitt: ${key.toUpperCase()}</span>
+    </li>`;
+  }).join("");
+
+  return `
+    <div class="module-section" style="break-after: page; page-break-after: always; margin-top: 48px;">
+      <div class="module-header" style="background: #334155 !important;">
+        <h2>Inhaltsverzeichnis</h2>
+        <span class="badge">Übersicht</span>
+      </div>
+      <div class="info-card" style="border-radius: 0 0 8px 8px; padding: 24px; border-top: none; border-color: #cbd5e1 !important; background: #fafaf9 !important;">
+        <p style="font-size: 11px; color: #64748b; margin-bottom: 16px; font-style: italic;">
+          Der vorliegende Datenschutzbericht enthält die folgenden, für das Audit freigegebenen Nachweisdokumente und Berichtsmodule:
+        </p>
+        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+          ${listItems}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
 // ─── API-Abruf ────────────────────────────────────────────────────────────
 // Token aus localStorage holen (App speichert ihn dort)
 const token = localStorage.getItem("privashield_token") ||
@@ -1393,9 +1495,17 @@ async function render() {
     const dateStr = now.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
     const timeStr = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
+    const logoHtml = config.mandantInfo?.logo
+      ? `<div class="company-logo" style="margin-left: auto; max-height: 50px; display: flex; align-items: center;"><img src="${config.mandantInfo.logo}" style="max-height: 48px; object-fit: contain;" alt="Company Logo" /></div>`
+      : "";
+
+    const tocHtml = (designStyle === "executive" || designStyle === "minimalist")
+      ? buildTableOfContents(config.modules)
+      : "";
+
     let html = `
       <div class="cover">
-        <div class="cover-logo">
+        <div class="cover-logo" style="display: flex; align-items: center; width: 100%;">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="none">
             <path d="M16 2 L28 7 L28 16 C28 23 22 29 16 30 C10 29 4 23 4 16 L4 7 Z" fill="none" stroke="#4F98A3" stroke-width="2.5" stroke-linejoin="round"/>
             <path d="M11 16 L14 19 L21 12" stroke="#4F98A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -1404,6 +1514,7 @@ async function render() {
             <div class="app-name">PrivaShield</div>
             <div class="app-sub">Datenschutzmanagement-Plattform</div>
           </div>
+          ${logoHtml}
         </div>
         <h1>Datenschutzbericht – ${config.mandantName}</h1>
         <div class="meta">
@@ -1411,6 +1522,8 @@ async function render() {
           <span>📦 Module: ${config.modules.length} ausgewählt</span>
         </div>
       </div>
+
+      ${tocHtml}
 
       ${buildMandantBox(config.mandantInfo)}
       ${buildRoleCards(config.mandantInfo)}

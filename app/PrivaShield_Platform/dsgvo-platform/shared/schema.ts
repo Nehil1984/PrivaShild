@@ -49,6 +49,8 @@ export const mandanten = sqliteTable("mandanten", {
   gruppeId: integer("gruppe_id"),
   notizen: text("notizen"),
   aktiv: integer("aktiv", { mode: "boolean" }).default(true),
+  logo: text("logo"),
+  exportDesignStyle: text("export_design_style").default("executive"),
   createdAt: text("created_at").default(new Date().toISOString()),
 });
 export const insertMandantSchema = createInsertSchema(mandanten).omit({ id: true, createdAt: true }).extend({

@@ -51,6 +51,8 @@ sqlite.exec(`
     gruppe_id INTEGER,
     notizen TEXT,
     aktiv INTEGER DEFAULT 1,
+    logo TEXT,
+    export_design_style TEXT DEFAULT 'executive',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -439,4 +441,7 @@ safeAlter("ALTER TABLE avv ADD COLUMN technische_massnahmen TEXT;");
 safeAlter("ALTER TABLE avv ADD COLUMN pruefintervall TEXT;");
 safeAlter("ALTER TABLE avv ADD COLUMN subauftragnehmer_hinweis TEXT;");
 safeAlter("ALTER TABLE vvt ADD COLUMN verknuepfte_tom_ids TEXT DEFAULT '[]';");
+safeAlter("ALTER TABLE mandanten ADD COLUMN logo TEXT;");
+safeAlter("ALTER TABLE mandanten ADD COLUMN export_design_style TEXT DEFAULT 'executive';");
+
 
