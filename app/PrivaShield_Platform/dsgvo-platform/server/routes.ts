@@ -761,7 +761,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   // POST /api/mandanten/:mid/export-download
-  app.post("/api/mandanten/:mid/export-download", authMiddleware, async (req: any, res) => {
+  app.post("/api/mandanten/:mid/export-download", authMiddleware, adminOnly, async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
 
@@ -799,7 +799,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ]);
 
       const pkgPath = path.resolve("package.json");
-      let appVer = "1.24.4";
+      let appVer = "1.25.0";
       try {
         if (fs.existsSync(pkgPath)) {
           const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
@@ -849,7 +849,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/mandanten/:mid/import
-  app.post("/api/mandanten/:mid/import", authMiddleware, async (req: any, res) => {
+  app.post("/api/mandanten/:mid/import", authMiddleware, adminOnly, async (req: any, res) => {
     const mandantId = Number(req.params.mid);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
 

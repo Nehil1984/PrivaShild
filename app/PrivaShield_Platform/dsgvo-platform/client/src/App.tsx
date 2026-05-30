@@ -7634,7 +7634,12 @@ function DokumentePage() {
 
 // ─── MANDANTEN ADMIN PAGE ──────────────────────────────────────────────────
 function MandantenPage() {
+  const { user } = useAuth();
   const { t } = useI18n();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
   const qc = useQueryClient();
   const { data: mandanten = [], isLoading } = useQuery({
     queryKey: ["/api/mandanten"],
@@ -7966,7 +7971,12 @@ function MandantenPage() {
 }
 
 function GruppenPage() {
+  const { user } = useAuth();
   const { t } = useI18n();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
   const qc = useQueryClient();
   const { data: gruppen = [], isLoading } = useQuery({
     queryKey: ["/api/mandanten-gruppen"],
@@ -8197,7 +8207,12 @@ function GruppenPage() {
 }
 
 function VorlagenpaketePage() {
+  const { user } = useAuth();
   const { t } = useI18n();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
   const qc = useQueryClient();
   const { data: pakete = [], isLoading } = useQuery({
     queryKey: ["/api/vorlagenpakete"],
@@ -8400,7 +8415,12 @@ function VorlagenpaketePage() {
 
 // ─── BENUTZER ADMIN PAGE ───────────────────────────────────────────────────
 function BenutzerPage() {
+  const { user } = useAuth();
   const { t } = useI18n();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
   const qc = useQueryClient();
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -8643,7 +8663,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
 // ─── SYSTEM PAGE (DB-Backend-Umschalter) ────────────────────────────────────
 function SystemPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
   const qc = useQueryClient();
 
   const { data: cfg, isLoading } = useQuery({
@@ -8818,6 +8843,10 @@ function MandantExportImportPage() {
   const { user } = useAuth();
   const { activeMandantId } = useMandant();
   const queryClient = useQueryClient();
+
+  if (user?.role !== "admin") {
+    return <AdminGuard><div /></AdminGuard>;
+  }
 
   const [exportMandantId, setExportMandantId] = useState<number | null>(activeMandantId);
   const [importMandantId, setImportMandantId] = useState<number | null>(activeMandantId);
@@ -10454,13 +10483,13 @@ function AppRoutes() {
           <Route path="/beschaeftigten-datenschutz" component={BeschaeftigtenDatenschutzPage} />
           <Route path="/ki-compliance" component={KiCompliancePage} />
           <Route path="/extras" component={MandantenExtrasPage} />
-          <Route path="/mandanten" component={() => <AdminGuard><MandantenPage /></AdminGuard>} />
-          <Route path="/gruppen" component={() => <AdminGuard><GruppenPage /></AdminGuard>} />
-          <Route path="/vorlagenpakete" component={() => <AdminGuard><VorlagenpaketePage /></AdminGuard>} />
-          <Route path="/benutzer" component={() => <AdminGuard><BenutzerPage /></AdminGuard>} />
-          <Route path="/system" component={() => <AdminGuard><SystemPage /></AdminGuard>} />
+          <Route path="/mandanten" component={MandantenPage} />
+          <Route path="/gruppen" component={GruppenPage} />
+          <Route path="/vorlagenpakete" component={VorlagenpaketePage} />
+          <Route path="/benutzer" component={BenutzerPage} />
+          <Route path="/system" component={SystemPage} />
           <Route path="/export" component={ExportPage} />
-          <Route path="/datentransfer" component={() => <AdminGuard><MandantExportImportPage /></AdminGuard>} />
+          <Route path="/datentransfer" component={MandantExportImportPage} />
           <Route path="/backups" component={BackupsPage} />
           <Route path="/interne-notizen" component={InterneNotizenPage} />
         </Switch>
