@@ -799,7 +799,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ]);
 
       const pkgPath = path.resolve("package.json");
-      let appVer = "1.25.0";
+      let appVer = "1.25.1";
       try {
         if (fs.existsSync(pkgPath)) {
           const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));

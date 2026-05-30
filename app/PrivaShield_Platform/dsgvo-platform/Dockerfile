@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────────
-FROM node:20-alpine3.22 AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # ─── Stage 2: Production ───────────────────────────────────────────────────
-FROM node:20-alpine3.22 AS runner
+FROM node:20-alpine AS runner
 
 LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.description="Open-Source-Plattform für Datenschutzmanagement und DSGVO-Compliance" \
