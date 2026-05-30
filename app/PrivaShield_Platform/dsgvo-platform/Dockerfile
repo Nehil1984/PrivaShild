@@ -29,7 +29,8 @@ LABEL org.opencontainers.image.title="PrivaShield" \
 
 # su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
 # plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen (und tini als Init-Prozess)
-RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini
+RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini && \
+    npm install -g npm@latest
 
 # Non-root User anlegen
 # GID/UID 1099 (1000 ist auf Unraid oft bereits belegt)
