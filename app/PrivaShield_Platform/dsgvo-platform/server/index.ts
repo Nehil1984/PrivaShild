@@ -23,6 +23,7 @@ function assertProductionSecrets() {
 }
 
 const app = express();
+app.get("/api/health", (_req, res) => res.status(200).json({ status: "ok" }));
 const httpServer = createServer(app);
 
 declare module "http" {

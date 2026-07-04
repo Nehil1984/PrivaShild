@@ -29,7 +29,7 @@ LABEL org.opencontainers.image.title="PrivaShield" \
 
 # su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
 # plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen (und tini als Init-Prozess)
-RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini && \
+RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini curl && \
     npm install -g npm@latest
 
 # Non-root User anlegen
@@ -56,7 +56,7 @@ EXPOSE 5000
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:5000/ || exit 1
+  CMD curl -f http://127.0.0.1:5000/api/health || exit 1
 
 # Umgebungsvariablen
 ENV NODE_ENV=production
