@@ -7659,7 +7659,7 @@ function MandantenPage() {
   });
   const { branchen: branchenOptions } = useComplianceMeta();
   const emptyForm = {
-    name: "", rechtsform: "", anschrift: "", branche: "", branchen: [], webseite: "", notizen: "", gruppenOrganisation: false, gruppeId: "none",
+    name: "", zentraleId: "", rechtsform: "", anschrift: "", branche: "", branchen: [], webseite: "", notizen: "", gruppenOrganisation: false, gruppeId: "none",
     dsb: "", dsbEmail: "", dsbTelefon: "",
     verantwortlicherName: "", verantwortlicherEmail: "", verantwortlicherTelefon: "",
     datenschutzmanagerName: "", datenschutzmanagerEmail: "", datenschutzmanagerTelefon: "",
@@ -7787,6 +7787,7 @@ function MandantenPage() {
               </Card>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Zentrale ID</Label><Input value={form.zentraleId || ""} onChange={e => set("zentraleId", e.target.value)} className="h-8 text-sm" placeholder="z.B. KD1234" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="space-y-1"><Label className="text-xs">Rechtsform</Label><Input value={form.rechtsform} onChange={e => set("rechtsform", e.target.value)} className="h-8 text-sm" placeholder="GmbH, AG..." /></div>
               <div className="space-y-1"><Label className="text-xs">Hauptbranche</Label>
@@ -7992,14 +7993,14 @@ function GruppenPage() {
   const [selectedPaketForApply, setSelectedPaketForApply] = useState<string>("");
   const [selectedGroupForReport, setSelectedGroupForReport] = useState<string>("");
   const [selectedGroupForPrint, setSelectedGroupForPrint] = useState<string>("");
-  const [form, setForm] = useState({ name: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" });
+  const [form, setForm] = useState({ name: "", zentraleId: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" });
   const { data: pakete = [] } = useQuery({
     queryKey: ["/api/vorlagenpakete"],
     queryFn: () => apiRequest("GET", "/api/vorlagenpakete").then(r => r.json()),
   });
   const { toast } = useToast();
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
-  const openNew = () => { setForm({ name: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" }); setModal("new"); };
+  const openNew = () => { setForm({ name: "", zentraleId: "", beschreibung: "", typ: "sonstige", parentGroupId: "none" }); setModal("new"); };
   const openEdit = (g: any) => { setForm({ ...g, parentGroupId: g.parentGroupId ? String(g.parentGroupId) : "none" }); setModal(g); };
   const save = async () => {
     const payload = { ...form, parentGroupId: form.parentGroupId === "none" ? null : Number(form.parentGroupId) };
@@ -8221,13 +8222,13 @@ function VorlagenpaketePage() {
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' });
+  const [form, setForm] = useState({ name: "", zentraleId: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' });
   const [builderTasks, setBuilderTasks] = useState<string[]>([]);
   const [builderDocs, setBuilderDocs] = useState<string[]>([]);
   const [preset, setPreset] = useState("leer");
   const { toast } = useToast();
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
-  const openNew = () => { setPreset("leer"); setBuilderTasks([]); setBuilderDocs([]); setForm({ name: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' }); setModal("new"); };
+  const openNew = () => { setPreset("leer"); setBuilderTasks([]); setBuilderDocs([]); setForm({ name: "", zentraleId: "", beschreibung: "", kategorie: "allgemein", version: "1.0", aktiv: true, inhaltJson: '{"aufgaben":[],"dokumente":[]}' }); setModal("new"); };
   const openEdit = (p: any) => { setForm({ ...p }); setModal(p); };
   const duplicatePaket = (p: any) => {
     setForm({ ...p, name: `${p.name} Kopie`, version: `${p.version || "1.0"}-copy` });
@@ -8432,11 +8433,11 @@ function BenutzerPage() {
   });
   const [modal, setModal] = useState<null | "new" | any>(null);
   const [delId, setDelId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null as string | null, adminLocked: false, adminLockedAt: null as string | null, lastFailedLoginAt: null as string | null });
+  const [form, setForm] = useState({ name: "", zentraleId: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null as string | null, adminLocked: false, adminLockedAt: null as string | null, lastFailedLoginAt: null as string | null });
   const { toast } = useToast();
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
-  const openNew = () => { setForm({ name: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null, adminLocked: false, adminLockedAt: null, lastFailedLoginAt: null }); setModal("new"); };
+  const openNew = () => { setForm({ name: "", zentraleId: "", email: "", password: "", role: "user", mandantIds: "[]", failedLoginAttempts: 0, temporaryLockUntil: null, adminLocked: false, adminLockedAt: null, lastFailedLoginAt: null }); setModal("new"); };
   const openEdit = (u: any) => { setForm({ ...u, password: "" }); setModal(u); };
 
   const save = async () => {
@@ -8529,6 +8530,7 @@ function BenutzerPage() {
           <DialogHeader><DialogTitle>{modal === "new" ? "Neuer Benutzer" : "Benutzer bearbeiten"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Zentrale ID</Label><Input value={form.zentraleId || ""} onChange={e => set("zentraleId", e.target.value)} className="h-8 text-sm" placeholder="z.B. KD1234" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => set("name", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">E-Mail *</Label><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} className="h-8 text-sm" /></div>
               <div className="col-span-2 space-y-1"><Label className="text-xs">{modal === "new" ? "Passwort *" : "Passwort (leer = unverändert)"}</Label><Input type="password" value={form.password} onChange={e => set("password", e.target.value)} className="h-8 text-sm" placeholder="Mind. 12 Zeichen, inkl. Groß-/Kleinbuchstabe, Zahl und Sonderzeichen" /></div>

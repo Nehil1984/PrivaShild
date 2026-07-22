@@ -20,6 +20,7 @@ const passwordSchema = z.string()
 // ─── Mandanten ────────────────────────────────────────────────────────────────
 export const mandanten = sqliteTable("mandanten", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  zentraleId: text("zentrale_id").unique(),
   name: text("name").notNull(),
   rechtsform: text("rechtsform"),
   anschrift: text("anschrift"),
@@ -55,6 +56,7 @@ export const mandanten = sqliteTable("mandanten", {
 });
 export const insertMandantSchema = createInsertSchema(mandanten).omit({ id: true, createdAt: true }).extend({
   name: z.string().trim().min(1, "Name ist erforderlich"),
+  zentraleId: z.string().trim().optional().or(z.literal('')),
 });
 export type InsertMandant = z.infer<typeof insertMandantSchema>;
 export type Mandant = typeof mandanten.$inferSelect;

@@ -1296,7 +1296,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const ids: number[] = JSON.parse(user?.mandantIds || "[]");
     res.json(all.filter((m) => ids.includes(m.id)));
   });
-  app.get("/api/mandanten/:id", authMiddleware, async (req: any, res) => {
+  app.get("/api/mandanten/:mid", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     const m = await storage.getMandant(mandantId);
     if (!m) return res.status(404).json({ message: "Nicht gefunden" });
@@ -1321,7 +1321,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(400).json({ message: e.message });
     }
   });
-  app.put("/api/mandanten/:id", authMiddleware, adminOnly, validateBody(insertMandantSchema.partial()), async (req: any, res) => {
+  app.put("/api/mandanten/:mid", authMiddleware, adminOnly, validateBody(insertMandantSchema.partial()), async (req: any, res) => {
     try {
       const mandantId = Number(req.params.id);
       const oldMandant = await storage.getMandant(mandantId);
@@ -1346,7 +1346,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(400).json({ message: e.message });
     }
   });
-  app.delete("/api/mandanten/:id", authMiddleware, adminOnly, async (req: any, res) => {
+  app.delete("/api/mandanten/:mid", authMiddleware, adminOnly, async (req: any, res) => {
     try {
       const mandantId = Number(req.params.id);
       const oldMandant = await storage.getMandant(mandantId);
@@ -1369,14 +1369,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/mandanten/:id/logs", authMiddleware, async (req: any, res) => {
+  app.get("/api/mandanten/:mid/logs", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const logs = await storage.getMandantenLogs(mandantId);
     res.json(logs);
   });
 
-  app.get("/api/mandanten/:id/vorlagen-historie", authMiddleware, async (req: any, res) => {
+  app.get("/api/mandanten/:mid/vorlagen-historie", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const historie = await storage.getVorlagenpaketHistorie(mandantId);
@@ -1523,7 +1523,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(400).json({ message: e.message });
     }
   });
-  app.get("/api/mandanten/:id/vorlagenpakete/:paketId/preflight", authMiddleware, async (req: any, res) => {
+  app.get("/api/mandanten/:mid/vorlagenpakete/:paketId/preflight", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     try {
@@ -1748,7 +1748,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  app.get("/api/mandanten/:id/stats", authMiddleware, async (req: any, res) => {
+  app.get("/api/mandanten/:mid/stats", authMiddleware, async (req: any, res) => {
     const mandantId = Number(req.params.id);
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const stats = await storage.getStatsForMandant(mandantId);

@@ -47,6 +47,7 @@ export interface IStorage {
   // Mandanten
   getMandanten(): Promise<Mandant[]>;
   getMandant(id: number): Promise<Mandant | undefined>;
+  getMandantByZentraleId(zentraleId: string): Promise<Mandant | undefined>;
   createMandant(data: InsertMandant): Promise<Mandant>;
   updateMandant(id: number, data: Partial<InsertMandant>): Promise<Mandant | undefined>;
   deleteMandant(id: number): Promise<void>;

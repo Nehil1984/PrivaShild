@@ -443,5 +443,6 @@ safeAlter("ALTER TABLE avv ADD COLUMN subauftragnehmer_hinweis TEXT;");
 safeAlter("ALTER TABLE vvt ADD COLUMN verknuepfte_tom_ids TEXT DEFAULT '[]';");
 safeAlter("ALTER TABLE mandanten ADD COLUMN logo TEXT;");
 safeAlter("ALTER TABLE mandanten ADD COLUMN export_design_style TEXT DEFAULT 'executive';");
+safeAlter("ALTER TABLE mandanten ADD COLUMN zentrale_id TEXT UNIQUE;");
 
 

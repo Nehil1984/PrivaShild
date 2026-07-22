@@ -74,6 +74,7 @@ export class DatabaseStorage implements IStorage {
   // Mandanten
   async getMandanten() { return db.select().from(mandanten).all(); }
   async getMandant(id: number) { return db.select().from(mandanten).where(eq(mandanten.id, id)).get(); }
+  async getMandantByZentraleId(zentraleId: string) { return db.select().from(mandanten).where(eq(mandanten.zentraleId, zentraleId)).get(); }
   async createMandant(data: InsertMandant) { return db.insert(mandanten).values({ ...data, createdAt: new Date().toISOString() }).returning().get(); }
   async updateMandant(id: number, data: Partial<InsertMandant>) { return db.update(mandanten).set(data).where(eq(mandanten.id, id)).returning().get(); }
   async deleteMandant(id: number) { db.delete(mandanten).where(eq(mandanten.id, id)).run(); }
