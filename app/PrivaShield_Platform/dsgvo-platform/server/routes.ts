@@ -486,6 +486,17 @@ async function seedVorlagenpakete() {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  app.param('mid', async (req: any, res: any, next: any, mid: string) => {
+    let mandantId = Number(mid);
+    if (isNaN(mandantId)) {
+      const mandant = await storage.getMandantByZentraleId(mid);
+      if (!mandant) return res.status(404).json({ message: "Mandant nicht gefunden" });
+      mandantId = mandant.id;
+    }
+    req.mandantId = mandantId;
+    next();
+  });
+
   await seedAdmin();
   await seedVorlagenpakete();
 
@@ -601,7 +612,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/loeschkonzept/import-vvt/:vvtId", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const vvtId = Number(req.params.vvtId);
     const vvt = await storage.getVvt(vvtId);
@@ -630,13 +641,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/mandanten/:mid/loeschkonzept", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.json(await storage.getLoeschkonzeptByMandant(mandantId));
   });
 
   app.post("/api/mandanten/:mid/loeschkonzept", authMiddleware, validateBody(requestLoeschkonzeptSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createLoeschkonzept({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -694,7 +705,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/mandanten/:mid/export-context", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const [mandant, logs, stats, vvt, avv, dsfa, datenpannen, dsr, tom, audits, pdca, loeschkonzept, aufgaben, dokumente, interneNotizen] = await Promise.all([
       storage.getMandant(mandantId),
@@ -762,7 +773,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // POST /api/mandanten/:mid/export-download
   app.post("/api/mandanten/:mid/export-download", authMiddleware, adminOnly, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
 
     const { modules = [], password } = req.body;
@@ -850,7 +861,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // POST /api/mandanten/:mid/import
   app.post("/api/mandanten/:mid/import", authMiddleware, adminOnly, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
 
     const { fileContent, password, strategy = "hinzufuegen" } = req.body;
@@ -1297,7 +1308,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(all.filter((m) => ids.includes(m.id)));
   });
   app.get("/api/mandanten/:mid", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.id);
+    const mandantId = req.mandantId;
     const m = await storage.getMandant(mandantId);
     if (!m) return res.status(404).json({ message: "Nicht gefunden" });
     if (!(await requireMandantAccess(req, res, mandantId))) return;
@@ -1323,7 +1334,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
   app.put("/api/mandanten/:mid", authMiddleware, adminOnly, validateBody(insertMandantSchema.partial()), async (req: any, res) => {
     try {
-      const mandantId = Number(req.params.id);
+      const mandantId = req.mandantId;
       const oldMandant = await storage.getMandant(mandantId);
       if (!oldMandant) return res.status(404).json({ message: "Nicht gefunden" });
 
@@ -1348,7 +1359,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
   app.delete("/api/mandanten/:mid", authMiddleware, adminOnly, async (req: any, res) => {
     try {
-      const mandantId = Number(req.params.id);
+      const mandantId = req.mandantId;
       const oldMandant = await storage.getMandant(mandantId);
       if (oldMandant) {
         await storage.deleteMandant(mandantId);
@@ -1370,14 +1381,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/mandanten/:mid/logs", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.id);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const logs = await storage.getMandantenLogs(mandantId);
     res.json(logs);
   });
 
   app.get("/api/mandanten/:mid/vorlagen-historie", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.id);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const historie = await storage.getVorlagenpaketHistorie(mandantId);
     res.json(historie);
@@ -1524,7 +1535,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
   app.get("/api/mandanten/:mid/vorlagenpakete/:paketId/preflight", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.id);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     try {
       const result = await storage.getVorlagenpaketPreflight(mandantId, Number(req.params.paketId));
@@ -1568,7 +1579,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/vvt", authMiddleware, validateBody(requestVvtSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createVvt({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1587,7 +1598,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/avv", authMiddleware, validateBody(requestAvvSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createAvv({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1606,7 +1617,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/dsfa", authMiddleware, validateBody(requestDsfaSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     let sanitizedBody: ReturnType<typeof sanitizeDsfaPayload>;
     try {
@@ -1631,7 +1642,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/datenpannen", authMiddleware, validateBody(requestDatenpanneSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDatenpanne({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1650,7 +1661,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/dsr", authMiddleware, validateBody(requestDsrSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDsr({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1669,7 +1680,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/tom", authMiddleware, validateBody(requestTomSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createTom({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1688,7 +1699,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/audits", authMiddleware, validateBody(requestAuditSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createAudit({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1707,7 +1718,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/mandanten/:mid/dokumente", authMiddleware, validateBody(requestDokumentSchema), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const item = await storage.createDokument({ ...req.body, mandantId });
     const user = await storage.getUserById(req.userId);
@@ -1727,12 +1738,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── STATS ────────────────────────────────────────────────────────────────
   app.get("/api/mandanten/:mid/interne-notizen", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.json(await storage.getInterneNotizenByMandant(mandantId));
   });
   app.post("/api/mandanten/:mid/interne-notizen", authMiddleware, validateBody(requestInterneNotizSchema as ZodTypeAny), async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     res.status(201).json(await storage.createInterneNotiz({ ...req.body, mandantId }));
   });
@@ -1749,7 +1760,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/mandanten/:mid/stats", authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.id);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const stats = await storage.getStatsForMandant(mandantId);
     res.json(stats);
@@ -1766,7 +1777,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     updateSchema?: ZodTypeAny,
   ) {
     app.get(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
-      const mandantId = Number(req.params.mid);
+      const mandantId = req.mandantId;
       if (!(await requireMandantAccess(req, res, mandantId))) return;
       res.json(await getAll(mandantId));
     });
@@ -1776,7 +1787,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json(item);
     });
     app.post(`/api/mandanten/:mid/${path}`, authMiddleware, async (req: any, res) => {
-      const mandantId = Number(req.params.mid);
+      const mandantId = req.mandantId;
       if (!(await requireMandantAccess(req, res, mandantId))) return;
       const body = path === "audits"
         ? sanitizeAuditPayload(req.body)
@@ -1876,7 +1887,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   crudRoutes("vvt", storage.getVvtByMandant.bind(storage), storage.getVvt.bind(storage), storage.createVvt.bind(storage), storage.updateVvt.bind(storage), storage.deleteVvt.bind(storage), insertVvtSchema.partial());
   crudRoutes("avv", storage.getAvvByMandant.bind(storage), storage.getAvv.bind(storage), storage.createAvv.bind(storage), storage.updateAvv.bind(storage), storage.deleteAvv.bind(storage), insertAvvSchema.partial());
   app.get(`/api/mandanten/:mid/dsfa`, authMiddleware, async (req: any, res) => {
-    const mandantId = Number(req.params.mid);
+    const mandantId = req.mandantId;
     if (!(await requireMandantAccess(req, res, mandantId))) return;
     const rows = await storage.getDsfaByMandant(mandantId);
     res.json(rows.sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""))));
