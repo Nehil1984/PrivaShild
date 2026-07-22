@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # ─── Stage 2: Production ───────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.description="Open-Source-Plattform für Datenschutzmanagement und DSGVO-Compliance" \
@@ -27,9 +27,9 @@ LABEL org.opencontainers.image.title="PrivaShield" \
       org.opencontainers.image.documentation="https://github.com/Nehil1984/PrivaShild/tree/master/app/PrivaShield_Platform/dsgvo-platform" \
       org.opencontainers.image.licenses="Apache-2.0"
 
-# su-exec + libc-utils für getent/stat-Verfügbarkeit im Entrypoint
+# su-exec + musl-utils + coreutils für getent/stat-Verfügbarkeit im Entrypoint
 # plus explizites Base-Image-Update für aktuelle Security-Fixes in Alpine-Paketen (und tini als Init-Prozess)
-RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec libc-utils tini curl && \
+RUN apk update && apk upgrade --no-cache && apk add --no-cache su-exec musl-utils coreutils tini curl && \
     npm install -g npm@latest
 
 # Non-root User anlegen
